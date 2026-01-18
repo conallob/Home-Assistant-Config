@@ -1,0 +1,259 @@
+
+substitutions:
+  # Device Info
+  device_name: "e-ink-frame-downstairs"
+  friendly_name: "E-Ink Frame Downstairs"
+  
+  # Pin Assignments
+  pin_clk: "GPIO0"    # aka D0
+  pin_mosi: "GPIO1"   # aka D1
+  pin_cs: "GPIO2"     # aka D2
+  pin_dc: "GPIO21"    # aka D3
+  pin_busy: "GPIO23"  # aka D4
+  pin_reset: "GPIO22" # aka D5
+  
+  # Deep Sleep
+  gpio_deep_sleep_wake_up: "GPIO04"
+  sleep_duration: "30min"
+  
+  # Location
+  latitude: "53.1935777"
+  longitude: "-6.120645"
+  timezone: "Europe/Dublin"
+  
+  # Display
+  waveshare_model: "7.30in-f"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: seeed_xiao_esp32c6
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable IPv6
+network:
+  enable_ipv6: true
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key_e_ink_frame_downstairs
+
+ota:
+  - platform: esphome
+    password: !secret ota_password_e_ink_frame_downstairs
+
+# SPI Configuration for e-ink display
+spi:
+  clk_pin: ${pin_clk}
+  mosi_pin: ${pin_mosi}
+  id: spi_bus
+
+# Time component
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    timezone: ${timezone}
+
+# Sun component for sunrise/sunset
+sun:
+  latitude: ${latitude}
+  longitude: ${longitude}
+
+# Define colors for 7-color display
+color:
+  - id: color_black
+    red: 0%
+    green: 0%
+    blue: 0%
+    white: 0%
+    
+  - id: color_white
+    red: 100%
+    green: 100%
+    blue: 100%
+    white: 100%
+    
+  - id: color_green
+    red: 0%
+    green: 100%
+    blue: 0%
+    
+  - id: color_blue
+    red: 0%
+    green: 0%
+    blue: 100%
+    
+  - id: color_red
+    red: 100%
+    green: 0%
+    blue: 0%
+    
+  - id: color_yellow
+    red: 100%
+    green: 100%
+    blue: 0%
+    
+  - id: color_orange
+    red: 100%
+    green: 50%
+    blue: 0%
+
+# Fonts
+font:
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 20
+    
+  - file: "gfonts://Roboto"
+    id: font_medium
+    size: 30
+    
+  - file: "gfonts://Roboto"
+    id: font_large
+    size: 60
+    
+  - file: "gfonts://Roboto@700"
+    id: font_bold
+    size: 40
+
+# Material Design Icons
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf'
+    id: font_icons
+    size: 50
+    glyphs:
+      - "\U000F0590" # mdi:weather-cloudy
+      - "\U000F0591" # mdi:weather-fog
+      - "\U000F0592" # mdi:weather-hail
+      - "\U000F0593" # mdi:weather-lightning
+      - "\U000F067E" # mdi:weather-lightning-rainy
+      - "\U000F0594" # mdi:weather-night
+      - "\U000F0595" # mdi:weather-partlycloudy
+      - "\U000F0596" # mdi:weather-pouring
+      - "\U000F0597" # mdi:weather-rainy
+      - "\U000F0598" # mdi:weather-snowy
+      - "\U000F067F" # mdi:weather-snowy-rainy
+      - "\U000F0599" # mdi:weather-sunny
+      - "\U000F059D" # mdi:weather-windy
+      - "\U000F059E" # mdi:weather-windy-variant
+
+# Text sensors for Home Assistant data
+text_sensor:
+  - platform: homeassistant
+    id: weather_condition
+    entity_id: weather.home
+    
+  - platform: homeassistant
+    id: calendar_event
+    entity_id: calendar.personal
+    attribute: message
+
+# Sensors for Home Assistant data  
+sensor:
+  - platform: homeassistant
+    id: weather_temperature
+    entity_id: weather.home
+    attribute: temperature
+    
+  - platform: homeassistant
+    id: weather_humidity
+    entity_id: weather.home
+    attribute: humidity
+
+  # WiFi Signal Sensor
+  - platform: wifi_signal
+    name: "${friendly_name} WiFi Signal"
+    update_interval: 60s
+
+# E-Ink Display
+display:
+  - platform: waveshare_epaper
+    id: eink_display
+    cs_pin: ${pin_cs}
+    dc_pin: ${pin_dc}
+    busy_pin:
+      number: ${pin_busy}
+      inverted: false
+    reset_pin: ${pin_reset}
+    model: ${waveshare_model}
+    update_interval: never
+    rotation: 0°
+    
+    lambda: |-
+      // Clear display with white
+      it.fill(id(color_white));
+      
+      // Get current time
+      auto time = id(homeassistant_time).now();
+      
+      if (!time.is_valid()) {
+        it.printf(400, 300, id(font_medium), id(color_black), TextAlign::CENTER,
+                  "Waiting for time...");
+        return;
+      }
+      
+      // Draw time in large font (black)
+      it.printf(400, 50, id(font_large), id(color_black), TextAlign::TOP_CENTER,
+                "%02d:%02d", time.hour, time.minute);
+      
+      // Draw date (black)
+      it.strftime(400, 130, id(font_medium), id(color_black), TextAlign::TOP_CENTER,
+                  "%A, %B %d, %Y", time);
+      
+      // Draw weather info if available
+      if (id(weather_temperature).has_state()) {
+        it.printf(400, 250, id(font_bold), id(color_red), TextAlign::TOP_CENTER,
+                  "%.1f°C", id(weather_temperature).state);
+      }
+      
+      if (id(weather_condition).has_state()) {
+        it.printf(400, 310, id(font_medium), id(color_blue), TextAlign::TOP_CENTER,
+                  "%s", id(weather_condition).state.c_str());
+      }
+      
+      // Draw a decorative line (orange)
+      it.line(100, 400, 700, 400, id(color_orange));
+      
+      // Draw calendar event if available (green)
+      if (id(calendar_event).has_state()) {
+        it.printf(400, 430, id(font_small), id(color_green), TextAlign::TOP_CENTER,
+                  "Next: %s", id(calendar_event).state.c_str());
+      }
+
+# Deep Sleep Configuration
+deep_sleep:
+  id: deep_sleep_control
+  run_duration: 30s
+  sleep_duration: ${sleep_duration}
+  wakeup_pin: ${gpio_deep_sleep_wake_up}
+  wakeup_pin_mode: KEEP_AWAKE
+
+# Buttons to control display update
+button:
+  - platform: template
+    name: "${friendly_name} Refresh Display"
+    icon: "mdi:refresh"
+    on_press:
+      then:
+        - component.update: eink_display
+        
+  - platform: template
+    name: "${friendly_name} Deep Sleep"
+    icon: "mdi:sleep"
+    on_press:
+      then:
+        - deep_sleep.enter: deep_sleep_control
+
+  - platform: restart
+    name: "${friendly_name} Restart"

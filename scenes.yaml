@@ -1,0 +1,147 @@
+- id: '1661815410664'
+  name: Taku Bedtime
+  entities:
+    scene.bathroom_bedtime_on_nightlight:
+      friendly_name: Bathroom Bedtime On Nightlight
+      group_name: Bathroom Bedtime On
+      group_type: zone
+      name: Nightlight
+      speed: 0.5
+      brightness: 0.39
+      is_dynamic: false
+      state: unknown
+    scene.bathroom_bedtime_on_bright:
+      friendly_name: Bathroom Bedtime On Bright
+      group_name: Bathroom Bedtime On
+      group_type: zone
+      name: Bright
+      speed: 0.5
+      brightness: 100
+      is_dynamic: false
+      state: unknown
+    scene.bathroom_bedtime_on_dimmed:
+      friendly_name: Bathroom Bedtime On Dimmed
+      group_name: Bathroom Bedtime On
+      group_type: zone
+      name: Dimmed
+      speed: 0.5
+      brightness: 30.31
+      is_dynamic: false
+      state: unknown
+  icon: mdi:sleep
+  metadata: {}
+- id: '1662710027260'
+  name: AdGuard Filtering
+  entities:
+    switch.adguard_home_parental_control:
+      icon: mdi:shield-check
+      friendly_name: AdGuard Home Parental control
+      state: 'on'
+    switch.adguard_home_protection:
+      icon: mdi:shield-check
+      friendly_name: AdGuard Home Protection
+      state: 'on'
+    switch.adguard_home_filtering:
+      icon: mdi:shield-check
+      friendly_name: AdGuard Home Filtering
+      state: 'on'
+    switch.adguard_home_safe_browsing:
+      icon: mdi:shield-check
+      friendly_name: AdGuard Home Safe browsing
+      state: 'on'
+    switch.adguard_home_safe_search:
+      icon: mdi:shield-check
+      friendly_name: AdGuard Home Safe search
+      state: 'on'
+  icon: mdi:chess-pawn
+  metadata:
+    switch.adguard_home_parental_control:
+      entity_only: true
+    switch.adguard_home_protection:
+      entity_only: true
+    switch.adguard_home_filtering:
+      entity_only: true
+    switch.adguard_home_safe_browsing:
+      entity_only: true
+    switch.adguard_home_safe_search:
+      entity_only: true
+- id: '1663330159134'
+  name: Home Office - Do Not Disturb
+  entities:
+    light.office_busy_light:
+      supported_color_modes:
+      - rgb
+      friendly_name: Office Busy Light
+      supported_features: 40
+      color_mode: rgb
+      brightness: 204
+      hs_color:
+      - 0
+      - 100
+      rgb_color:
+      - 255
+      - 0
+      - 0
+      xy_color:
+      - 0.701
+      - 0.299
+      state: 'on'
+  icon: mdi:office-building
+  metadata: {}
+- id: '1663330198330'
+  name: Home Office - Interruptable
+  entities:
+    light.office_busy_light:
+      supported_color_modes:
+      - rgb
+      friendly_name: Office Busy Light
+      supported_features: 40
+      color_mode: rgb
+      brightness: 204
+      hs_color:
+      - 135.059
+      - 100
+      rgb_color:
+      - 0
+      - 255
+      - 64
+      xy_color:
+      - 0.17
+      - 0.701
+      state: 'on'
+  icon: mdi:office-building
+  metadata: {}
+- id: '1664834882073'
+  name: Heating - Laundry
+  entities:
+    climate.etrv_hall_thermostat:
+      hvac_modes:
+      - heat
+      min_temp: 10
+      max_temp: 40
+      target_temp_step: 0.5
+      friendly_name: hall_trv Thermostat
+      supported_features: 1
+      current_temperature: 17.5
+      temperature: 21
+      state: 'off'
+    climate.sitting_room_thermostat:
+      hvac_modes:
+      - heat
+      min_temp: 10
+      max_temp: 40
+      target_temp_step: 0.5
+      friendly_name: sitting_room_trv Thermostat
+      supported_features: 1
+      state: 'off'
+  icon: mdi:tumble-dryer
+  metadata:
+    climate.etrv_hall_thermostat:
+      entity_only: true
+    climate.sitting_room_thermostat:
+      entity_only: true
+- id: '1670799758036'
+  name: 'Christmas '
+  entities: {}
+  icon: mdi:string-lights
+  metadata: {}

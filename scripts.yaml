@@ -1,0 +1,6 @@
+#pvoutput_oneshot:
+#  alias: PVOutput Oneshot
+#  sequence:
+#  - service: rest_command.pvoutput_upload
+#    data: {}
+#  mode: single

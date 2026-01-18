@@ -1,0 +1,16 @@
+substitutions:
+  name: "upsy-desky"
+packages:
+  tj_horner.upsy_desky: github://tjhorner/upsy-desky/firmware/stock.yaml@v4.0.2
+esphome:
+  name: ${name}
+  name_add_mac_suffix: false
+
+
+# Enable IPv6
+network:
+    enable_ipv6: true
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password

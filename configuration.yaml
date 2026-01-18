@@ -1,0 +1,139 @@
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+
+frontend:
+  themes: !include_dir_merge_named themes
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+group: !include groups.yaml
+
+# GUI Maintained Automations
+automation ui: !include automations.yaml
+
+# Config Maintained Automations
+automation manual: !include_dir_named /config/automation
+
+script: !include scripts.yaml
+scene: !include scenes.yaml
+template: !include_dir_list /config/template
+
+sensor: !include_dir_list /config/sensor
+
+rest: !include_dir_list /config/rest
+rest_command: !include_dir_named /config/rest_command
+
+media_player: !include media_player.yaml
+
+http:
+  server_port: 8123
+  use_x_forwarded_for: true
+  trusted_proxies: 
+    - 192.168.1.2  # Megatron
+    - 192.168.2.2  # Megatron
+
+prometheus:
+
+# https://www.home-assistant.io/integrations/recorder/
+recorder:
+
+binary_sensor:
+  - platform: tcp
+    name: "Megatron SSH Probe"
+    host: homeassistant@192.168.1.2
+    port: 22
+    timeout: 5
+    payload: "\n\n~."
+
+# Logging per integration controls
+logger:
+  default: warning
+  logs:
+    homeassistant.components.rest: debug
+    homeassistant.components.rest_command: debug
+    homeassistant.components.tcp: debug
+
+# Home Connect, for Bosch Washing Machine
+#home_connect:
+#  client_id: 74A640F8DC51085AEF23CF5B7B245E248C91BE37C9D07E32480C2221F228D520
+#  client_secret: 18DFD7C8EFE4EE6417B0A3F24051C3E9AC2925CAB74404F96E1CF12913C4663A
+
+# Nest Integration
+#nest:
+#  nest_client_id: 39950549742-d6auejs17i4760ap7dar888s4cvnbitb.apps.googleusercontent.com
+#  nest_client_secret: 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
+  # "Project ID" in the Device Access Console (not Cloud Project ID!)
+  #  nest_project_id: 77994445-0676-419a-972b-04ce1ef0a271
+
+mqtt:
+
+# Utility Meter for Electricity Meter
+utility_meter:
+  daily_electrcity_energy:
+    source: sensor.grid_em_channel_1_power
+    name: Daily Electricity Meter Energy
+    cycle: daily
+    tariffs:
+      - day
+      - peak
+      - night
+  monthly_electricity_energy:
+    source: sensor.grid_em_channel_1_power
+    name: Monthly Electricity Meter Energy
+    cycle: monthly
+    tariffs:
+      - day
+      - peak
+      - night
+
+powercalc:
+  enable_analytics: true
+  utility_meter_tariffs:
+    - day
+    - peak
+    - night
+#
+# HACS Integration Configs
+#
+
+notify:
+  - name: "Omnifocus"
+    platform: smtp
+    sender: "home-assistant@taku.ie"
+    recipient: "conall.asmzn@sync.omnigroup.com"
+
+
+# dLight, using custom component code
+#light:
+#  - platform: dlight
+#    host: 192.168.0.204
+#    device_id: QzvVfdhT
+
+#switch:
+#  # timeular.com - Stop Current Activity Button
+#  - platform: rest
+#    resource: "https://api.timeular.com/api/v3/tracking/stop"
+#    name: "timeular_stop"
+#    method: POST
+#    headers:
+#      Content-Type: application/json
+#      Authorization: >
+#        Bearer !secret timeular_api_token
+#      User-Agent: "Home Assistant Rest Command"
+#    verify_ssl: true
+
+#timeular:
+#api_key: !secret timeular_api_key
+#api_secret: !secret timeular_api_secret
+
+keyboard_remote:
+  # Green 8Bitdo Micro
+- device_descriptor: '/dev/input/event0'
+  type:
+    - 'key_up'
+    - 'key_down'
+
+go2rtc:
+  url: http://ratchet.int.taku.ie:1984

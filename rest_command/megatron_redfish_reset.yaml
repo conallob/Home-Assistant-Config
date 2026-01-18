@@ -1,0 +1,22 @@
+# Redfish RestAPI version of 
+# https://hugoideler.com/2021/09/switching-on-ipmi-devices-using-home-assistant/
+#
+# Equivalent in curl:
+# curl -k --user "ADMIN:ADMIN" \
+#   -d '{ "ResetType":"ForceRestart" }' \
+#   -H "Content-Type: application/json" \
+#   https://192.168.1.17//redfish/v1/Systems/1/Actions/ComputerSystem.Reset
+#
+#   See Also:
+#
+#   https://github.com/openbmc/docs/blob/master/REDFISH-cheatsheet.md
+url: "https://192.168.1.17/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+method: POST
+username: !secret redfish_user
+password: !secret redfish_password
+verify_ssl: false
+headers:
+  Content-Type: "application/json"
+  Accept: "application/json"
+  User-Agent: "Home Assistant Rest Command"
+payload: '{ "ResetType": "ForceRestart" }'

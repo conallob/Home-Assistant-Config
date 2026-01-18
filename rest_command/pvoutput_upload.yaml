@@ -1,0 +1,11 @@
+# pvoutput.org Webhook - Upload Solar PV Details
+  url: "https://www.pvoutput.org/service/r2/addstatus.jsp"
+  method: POST
+  headers:
+    Content-Type: "application/x-www-form-urlencoded"
+      # "application/json"
+    X-Pvoutput-Apikey: !secret pvoutput_api_key
+    X-Pvoutput-SystemId: !secret pvoutput_system_id
+      #User-Agent: "Home Assistant Rest Command"
+  payload: >-
+      d={{ now().strftime('%Y%m%d') }}&t={{ now().strftime('%H:%M') }}&v2={{ states('sensor.solis_ac_output_total_power')|int }}&v5={{ states('sensor.solis_temperature')|float|round(1) }}&v6={{ states('sensor.solis_dc_voltage_pv2')|float|round(1) }}

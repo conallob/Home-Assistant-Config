@@ -1,0 +1,807 @@
+- id: '1647450171464'
+  alias: Fermentation Too Cold
+  description: ''
+  triggers:
+  - type: temperature
+    device_id: 8c37d522ec0bf45b89ab1bdc8c8f05e4
+    entity_id: sensor.tilt_purple_temperature
+    domain: sensor
+    below: 17
+    trigger: device
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: 9f1143de79fc8e41307873d633503a96
+    entity_id: 60ddc4fb4c471de45af9c56d81903718
+    domain: switch
+  mode: single
+- id: '1647450252435'
+  alias: Fermentation Too Hot
+  description: ''
+  triggers:
+  - type: temperature
+    device_id: 8c37d522ec0bf45b89ab1bdc8c8f05e4
+    entity_id: sensor.tilt_purple_temperature
+    domain: sensor
+    above: 22
+    trigger: device
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: 9f1143de79fc8e41307873d633503a96
+    entity_id: 60ddc4fb4c471de45af9c56d81903718
+    domain: switch
+  mode: single
+- id: '1651352180757'
+  alias: PVOutout Upload
+  description: ''
+  trigger:
+  - platform: time_pattern
+    minutes: /5
+  condition:
+  - condition: numeric_state
+    entity_id: sensor.solis_dc_current_pv2
+    above: 0
+  action:
+  - service: rest_command.pvoutput_upload
+    data: {}
+  mode: single
+- id: '1663330431179'
+  alias: Home Office Busy Light - DND
+  description: ''
+  trigger:
+  - platform: numeric_state
+    entity_id: sensor.timeular_current_activity
+    above: 835285
+    below: 835287
+  condition:
+  - condition: zone
+    entity_id: person.conall_o_brien
+    zone: zone.home
+  action:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.home_office_working
+    metadata: {}
+  mode: single
+- id: '1664193605389'
+  alias: Operation Reuben Lie In
+  description: ''
+  triggers:
+  - at: 04:00:00
+    trigger: time
+  conditions: []
+  actions:
+  - metadata: {}
+    data:
+      temperature: 14
+    action: climate.set_temperature
+    target:
+      label_id: heating
+  - metadata: {}
+    data:
+      temperature: 20
+    action: climate.set_temperature
+    target:
+      entity_id: climate.reuben_trv
+  mode: single
+- id: '1668898839563'
+  alias: Brewfather - Multi Sensor Upload
+  description: ''
+  trigger:
+  - platform: time_pattern
+    minutes: /15
+  condition:
+  - type: is_temperature
+    condition: device
+    device_id: 8c37d522ec0bf45b89ab1bdc8c8f05e4
+    entity_id: sensor.tilt_purple_temperature
+    domain: sensor
+    above: 0
+    below: 80
+  action:
+  - service: rest_command.brewfather_upload
+    data: {}
+  mode: single
+- id: '1677159641371'
+  alias: Solar Smart Immersion
+  description: 'If the Solar PV battery is approaching capacity and we are feeding
+    100W+ back to the grid consistently, then turn on the immersion for 90 min.
+
+
+    This will use surplus electricity, which is more valuable than being paid to feed
+    the grid.'
+  trigger:
+  - type: power
+    platform: device
+    device_id: caa2889d639b75b5d5ff10d750f5eb02
+    entity_id: sensor.grid_em_channel_1_power
+    domain: sensor
+    below: -100
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  condition:
+  - condition: numeric_state
+    entity_id: sensor.solis_remaining_battery_capacity
+    above: 92
+  - condition: numeric_state
+    entity_id: sensor.appliance_em_channel_2_power
+    above: 100
+    below: 10
+    enabled: false
+  action:
+  - type: turn_on
+    device_id: 4083dc6a35662e04adfa685edaff48ce
+    entity_id: switch.immersion
+    domain: switch
+  - device_id: 34a445b8cb3b53dba77631c57276b85a
+    domain: mobile_app
+    type: notify
+    message: Solar Smart Immersion Triggered
+    title: Solar Smart Immersion
+  - delay:
+      hours: 1
+      minutes: 30
+      seconds: 0
+      milliseconds: 0
+  - type: turn_off
+    device_id: 4083dc6a35662e04adfa685edaff48ce
+    entity_id: switch.immersion
+    domain: switch
+  mode: single
+- id: '1678108862995'
+  alias: Rotate Electricity Meter Counter
+  description: Home Assistant respresentation of the ESB Networks Smart Meter Counters
+  trigger:
+  - platform: time
+    at: 08:00:00
+    variables:
+      tariff: day
+  - platform: time
+    at: '17:00:00'
+    variables:
+      tariff: peak
+  - platform: time
+    at: '19:00:00'
+    variables:
+      tariff: day
+  - platform: time
+    at: '23:00:00'
+    variables:
+      tariff: night
+  action:
+  - target:
+      entity_id: select.daily_electricity_energy
+    data:
+      option: '{{ tariff }}'
+    action: select.select_option
+  - target:
+      entity_id: select.monthly_electricity_energy
+    data:
+      option: '{{ tariff }}'
+    action: select.select_option
+  - target:
+      entity_id: select.current_electricity_tariff
+    data:
+      option: '{{ tariff }}'
+    action: select.select_option
+  mode: single
+- id: '1679084552949'
+  alias: Megatron OOB Watchdog
+  description: Out of Band ICMP+plex probe, connected into a watchdog to whackamole
+    hung system via Redfish RestAPI on the BMC
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.megatron_ping
+    from: 'on'
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 3
+      seconds: 0
+  condition:
+  - condition: state
+    entity_id: sensor.plex_megatron
+    state: unavailable
+    for:
+      hours: 0
+      minutes: 3
+      seconds: 0
+    enabled: false
+  action:
+  - data: {}
+    action: rest_command.megatron_redfish_reset
+  - device_id: 34a445b8cb3b53dba77631c57276b85a
+    domain: mobile_app
+    type: notify
+    message: Megatron Reset
+    title: Megatron OOB Reset
+  - device_id: 2eb30aa066a4ed1b6dbfa6e19447e755
+    domain: mobile_app
+    type: notify
+    message: Megatron Reset
+  mode: single
+- id: '1687543507543'
+  alias: Dishwasher - Avoid Peak Grid Electricity
+  description: ''
+  trigger:
+  - platform: time_pattern
+    hours: '15'
+  condition:
+  - condition: numeric_state
+    entity_id: sensor.solis_remaining_battery_capacity
+    below: 25
+  action:
+  - type: turn_off
+    device_id: eeb3b1f4e1ef032a8f0023ff13d38061
+    entity_id: switch.shellyplus1pm_3c610572b334_switch_0
+    domain: switch
+  - delay:
+      hours: 4
+      minutes: 0
+      seconds: 0
+      milliseconds: 0
+  - type: turn_on
+    device_id: eeb3b1f4e1ef032a8f0023ff13d38061
+    entity_id: switch.shellyplus1pm_3c610572b334_switch_0
+    domain: switch
+  mode: single
+- id: '1689766786526'
+  alias: Conall Home Office Desk - Off When Out
+  description: If Conall is out, with his laptop, then turn off his home office desk
+  trigger:
+  - platform: state
+    entity_id:
+    - person.conall_o_brien
+    from: home
+    to: not_home
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  - platform: device
+    device_id: 8317d0f450f43ebb047be73edaf49d32
+    domain: device_tracker
+    entity_id: a081a888b1fa427238e774f3ea9eb7f6
+    type: leaves
+    zone: zone.home
+  condition:
+  - condition: time
+    after: 09:00:00
+    before: '19:00:00'
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+    - sat
+    - sun
+  - condition: device
+    device_id: 8317d0f450f43ebb047be73edaf49d32
+    domain: device_tracker
+    entity_id: a081a888b1fa427238e774f3ea9eb7f6
+    type: is_not_home
+  action:
+  - type: turn_off
+    device_id: 12634e07d254156525d63ef3e22d71bc
+    entity_id: 04c458c0259cf106627fb8cbb80584c7
+    domain: switch
+  mode: single
+- id: '1690366173344'
+  alias: Conall Home Office Desk - On When Home
+  description: ''
+  trigger:
+  - platform: device
+    device_id: 8317d0f450f43ebb047be73edaf49d32
+    domain: device_tracker
+    entity_id: a081a888b1fa427238e774f3ea9eb7f6
+    type: enters
+    zone: zone.home
+  condition:
+  - condition: device
+    type: is_off
+    device_id: 12634e07d254156525d63ef3e22d71bc
+    entity_id: 04c458c0259cf106627fb8cbb80584c7
+    domain: switch
+  action:
+  - type: turn_on
+    device_id: 12634e07d254156525d63ef3e22d71bc
+    entity_id: 04c458c0259cf106627fb8cbb80584c7
+    domain: switch
+  mode: single
+- id: '1696432029004'
+  alias: Check Batteries
+  description: Notify Conall of batteries which need to be replaced
+  use_blueprint:
+    path: gmlupatelli/low_battery_notification.yaml
+    input:
+      threshold: 10
+      actions:
+      - device_id: 34a445b8cb3b53dba77631c57276b85a
+        domain: mobile_app
+        type: notify
+        message: Replace Battery in {{sensors}}
+        title: Replace Batteries
+      tuesday_enabled: true
+      thursday_enabled: true
+      exclude:
+        device_id:
+        - 3296c245a6f7e5e397d227f9d3d20592
+        - 3de84723adf203df84a8cf7e0bebcdb8
+        - 38ba3540fd30adfb23dd2da2a63535f8
+        entity_id:
+        - sensor.solis_force_charge_soc
+        - sensor.solis_force_discharge_soc
+- id: '1698609501546'
+  alias: Home Office Desk NFC Controls
+  description: ''
+  trigger:
+  - platform: tag
+    tag_id: e8be9cbd-bf88-408b-bf49-3303b5e1f2d5
+  condition:
+  - condition: device
+    type: is_off
+    device_id: 12634e07d254156525d63ef3e22d71bc
+    entity_id: 04c458c0259cf106627fb8cbb80584c7
+    domain: switch
+  action:
+  - type: toggle
+    device_id: 12634e07d254156525d63ef3e22d71bc
+    entity_id: 04c458c0259cf106627fb8cbb80584c7
+    domain: switch
+  mode: single
+- id: '1698610029172'
+  alias: Taku Bedtime
+  description: ''
+  trigger:
+  - device_id: b14b7c6afc5785c4323a208916939bb2
+    domain: hue
+    platform: device
+    type: long_release
+    subtype: 4
+    unique_id: 0984d4be-25ad-448e-ad50-eac92cd4662c
+  condition:
+  - condition: sun
+    after: sunset
+  action:
+  - target:
+      entity_id: scene.bathroom_bedtime_on_nightlight
+    metadata: {}
+    action: scene.turn_on
+  - data:
+      brightness: 65
+    target:
+      area_id:
+      - genevieve
+      - reuben
+    action: hue.activate_scene
+  - metadata: {}
+    data: {}
+    target:
+      area_id:
+      - back_garden
+      - front_garden
+      - sitting_room
+    action: light.turn_off
+  - device_id: e354b73952d92f0f0f0435c385b48817
+    domain: number
+    entity_id: b6e5f287839b92a49f8c397e1d19ed71
+    type: set_value
+    value: 33
+  - type: turn_off
+    device_id: 9233e835156235aa3b24411e13487ccf
+    entity_id: ebecc732ac944d9d00bfebb4fa89b61b
+    domain: light
+  mode: single
+- id: '1707308311469'
+  alias: Check TRV Batteries
+  description: Notify Conall of TRV batteries which need to be replaced
+  use_blueprint:
+    path: gmlupatelli/low_battery_notification.yaml
+    input:
+      threshold: 15
+      actions:
+      - device_id: 34a445b8cb3b53dba77631c57276b85a
+        domain: mobile_app
+        type: notify
+        message: Replace Battery in {{sensors}}
+        title: Replace TRV Batteries
+      tuesday_enabled: true
+      thursday_enabled: true
+      include:
+        entity_id:
+        - sensor.danfoss_eco_downstairs_proxy_hall_etrv_battery_level
+        - sensor.danfoss_eco_downstairs_proxy_kitchen_etrv_battery_level
+        - sensor.danfoss_eco_downstairs_proxy_sitting_room_etrv_battery_level
+        - sensor.danfoss_eco_upstairs_proxy_bedroom_etrv_battery_level
+        - sensor.danfoss_eco_upstairs_proxy_genevieve_etrv_battery_level
+        - sensor.danfoss_eco_upstairs_proxy_landing_etrv_battery_level
+        - sensor.danfoss_eco_multi_floor_proxy_reuben_etrv_battery_level
+        - sensor.danfoss_eco_multi_floor_proxy_family_room_etrv_battery_level
+      time: '11:00:00'
+      exclude:
+        entity_id:
+        - sensor.solis_force_charge_soc
+        - sensor.solis_force_discharge_soc
+        - binary_sensor.reuben_dimmer_battery
+        - sensor.bedroom_dimmer_battery_level
+        - sensor.reuben_dimmer_battery_level
+        - sensor.bathroom_dimmer_battery_level
+        - sensor.workshop_dimmer_battery_level
+        - sensor.genevieve_dimmer_battery_level
+- id: '1707386701519'
+  alias: Conall Work-From Office
+  description: 'Turn off the home office if Conall is out and planning to work from
+    the office '
+  trigger:
+  - platform: zone
+    entity_id: person.conall_o_brien
+    zone: zone.home
+    event: leave
+  condition:
+  - condition: state
+    entity_id: calendar.conall_working_from
+    attribute: message
+    state: Office
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  action:
+  - service: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.home_office_master_switch
+  mode: single
+- id: '1707413226583'
+  alias: Conall Work-From Home
+  description: Turn on the home office if Conall is home and planning to work from
+    home
+  trigger:
+  - platform: zone
+    entity_id: person.conall_o_brien
+    zone: zone.home
+    event: enter
+  condition:
+  - condition: state
+    entity_id: calendar.conall_working_from
+    attribute: all_day
+    state: WFH
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  action:
+  - service: switch.turn_on
+    target:
+      entity_id:
+      - switch.home_office_master_switch
+    data: {}
+  mode: single
+- id: '1710640529898'
+  alias: Genevieve Hue Dimmer Switch
+  description: ''
+  use_blueprint:
+    path: mertodinlo/foh4bbp.yaml
+    input:
+      hue-switch-button1:
+      - event.genevieve_dimmer_button_1
+      hue-switch-button2:
+      - event.genevieve_dimmer_button_2
+      hue-switch-button3:
+      - event.genevieve_dimmer_button_3
+      hue-switch-button4:
+      - event.genevieve_dimmer_button_4
+      button_1_short_release: []
+      button_4_short_release: []
+      button_2_short_release: []
+      button_3_short_release: []
+      button_1_press:
+      - type: turn_on
+        device_id: e354b73952d92f0f0f0435c385b48817
+        entity_id: 4c6c7fd2a823542883b9d0c38dbc62d5
+        domain: light
+      button_2_press:
+      - device_id: e354b73952d92f0f0f0435c385b48817
+        domain: light
+        entity_id: 4c6c7fd2a823542883b9d0c38dbc62d5
+        type: brightness_increase
+      button_3_press:
+      - device_id: e354b73952d92f0f0f0435c385b48817
+        domain: light
+        entity_id: 4c6c7fd2a823542883b9d0c38dbc62d5
+        type: brightness_decrease
+      button_4_press:
+      - type: turn_off
+        device_id: e354b73952d92f0f0f0435c385b48817
+        entity_id: 4c6c7fd2a823542883b9d0c38dbc62d5
+        domain: light
+- id: '1712160574560'
+  alias: "\U0001F525 Advanced Heating Control"
+  description: ''
+  use_blueprint:
+    path: panhans/heating_control.yaml
+    input:
+      input_trvs:
+      - climate.bedroomtrv
+      - climate.family_room_trv
+      - climate.genevieve_trv
+      - climate.hall_trv
+      - climate.kitchen_trv
+      - climate.landing_trv
+      - climate.reuben_trv
+      - climate.sitting_room_trv
+      input_temperature_minimum_static: 17
+      input_temperature_comfort_static: 18
+      input_scheduler_offset: 14
+      input_mode_outside_temperature: weather.home
+      input_tweaks: []
+      input_hvac_mode: auto
+      input_presence_sensor: binary_sensor.presence_sensor_fp2_ciara_desk
+- id: '1712936312301'
+  alias: Home Assistant Auto-update
+  description: ''
+  use_blueprint:
+    path: edwardtfn/auto_update_scheduled.yaml
+    input:
+      verbose_logging_bool: true
+      restart_type: core
+      schedule_monthday: 6
+      actions_pre_update:
+      - action: notify.mobile_app_conall_s_iphone_15_pro
+        metadata: {}
+        data:
+          title: Home Assistant Updates Starting
+          message: '{{ updates_list }} have been updated'
+- id: '1713310093674'
+  alias: Family Room Heating, When in Use
+  description: ''
+  triggers:
+  - type: temperature
+    device_id: 13efc89c3b059a5ad64f7286aee6d5f0
+    entity_id: a8dde629505d82f1b1b2acef3be31c2f
+    domain: sensor
+    below: 17
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    trigger: device
+  conditions:
+  - type: is_occupied
+    condition: device
+    device_id: cfe7b7642e0cbc6ec3b1e7ff6297c4e9
+    entity_id: a96327b7af0aec4371e284d158b9398a
+    domain: binary_sensor
+  - condition: time
+    after: 09:00:00
+    before: '21:00:00'
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+    - sat
+    - sun
+  actions:
+  - metadata: {}
+    data:
+      temperature: 19
+    action: climate.set_temperature
+    target:
+      device_id: 2ac51dcf85e7a6faf2e6080a2b44b068
+  mode: single
+- id: '1718535786607'
+  alias: Reuben Hue Dimmer Switch
+  description: ''
+  use_blueprint:
+    path: codycodes/hue-remote-dimmer-december-2021.yaml
+    input:
+      dimmer_device: 1de0bf19715fc2caeffe3f6ef25928eb
+      on_short_action:
+      - type: turn_on
+        device_id: 9233e835156235aa3b24411e13487ccf
+        entity_id: ebecc732ac944d9d00bfebb4fa89b61b
+        domain: light
+        brightness_pct: 75
+      off_short_action:
+      - type: turn_off
+        device_id: 9233e835156235aa3b24411e13487ccf
+        entity_id: ebecc732ac944d9d00bfebb4fa89b61b
+        domain: light
+      brightness_up_short_action:
+      - device_id: 9233e835156235aa3b24411e13487ccf
+        domain: light
+        entity_id: ebecc732ac944d9d00bfebb4fa89b61b
+        type: brightness_increase
+      brightness_down_short_action:
+      - device_id: 9233e835156235aa3b24411e13487ccf
+        domain: light
+        entity_id: ebecc732ac944d9d00bfebb4fa89b61b
+        type: brightness_decrease
+- id: '1730144055808'
+  alias: Television Daily Schedule
+  description: Automation to decide when the television should power in each day,
+    by checking the St Andrews calendar in Google Calendar
+  triggers:
+  - at: 07:00:00
+    trigger: time
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.workday_sensor
+          state: 'off'
+        - condition: state
+          entity_id: calendar.st_andrews_school_calendar
+          state: 'off'
+      sequence:
+      - target:
+          entity_id: switch.rectangular_babysitter
+        data: {}
+        action: switch.turn_on
+    default:
+    - delay:
+        hours: 1
+        minutes: 30
+    - target:
+        entity_id: switch.rectangular_babysitter
+      data: {}
+      action: switch.turn_on
+  - device_id: 03b91a298e4acc602713e0b11e91246f
+    domain: mobile_app
+    type: notify
+    message: Television Daily Schedule has Run
+    title: Television Daily Schedule
+  mode: single
+- id: '1734537114919'
+  alias: Hot Water Issue Checker
+  description: A simple check to notify Conall if the hot water has failed to heat
+    by 07:30, but only when he is at home & can do something about it
+  triggers:
+  - trigger: time_pattern
+    hours: '7'
+    minutes: '30'
+  conditions:
+  - condition: state
+    entity_id: person.conall_o_brien
+    state: home
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+  - type: is_temperature
+    condition: device
+    device_id: 4083dc6a35662e04adfa685edaff48ce
+    entity_id: 46dc9779db8c7340bf609305e4585a33
+    domain: sensor
+    below: 20
+  actions:
+  - action: notify.mobile_app_conall_s_iphone_15_pro
+    metadata: {}
+    data:
+      message: Please investigate
+      title: Hot Water Scheduled Heating Failed
+      data: {}
+  mode: single
+- id: '1740330060251'
+  alias: Taku Bedtime
+  description: ''
+  triggers: []
+  conditions: []
+  actions:
+  - parallel:
+    - action: light.turn_off
+      metadata: {}
+      data: {}
+  mode: single
+- id: '1746886008844'
+  alias: Update Apple Watch
+  description: ''
+  triggers: []
+  conditions: []
+  actions:
+  - action: notify.mobile_app_conall_s_iphone_15_pro
+    metadata: {}
+    data:
+      data:
+        message: update_complications
+  mode: single
+- id: '1766944590387'
+  alias: Video Game Bonus Time - Turn On
+  description: ''
+  triggers:
+  - entity_id: input_boolean.video_game_bonus_time
+    to: 'on'
+    trigger: state
+  actions:
+  - target:
+      entity_id:
+      - switch.adguard_home_parental_control
+      - switch.adguard_home_filtering
+    action: switch.turn_off
+  - delay:
+      minutes: '{{ states(''input_number.video_game_bonus_time_duration'') | int }}'
+  - target:
+      entity_id: input_boolean.video_game_bonus_time
+    action: input_boolean.turn_off
+- id: '1766944642676'
+  alias: Video Game Bonus Time - Turn Off
+  description: ''
+  triggers:
+  - entity_id: input_boolean.video_game_bonus_time
+    to: 'on'
+    trigger: state
+  actions:
+  - target:
+      entity_id:
+      - switch.adguard_home_parental_control
+      - switch.adguard_home_filtering
+    action: switch.turn_on
+- id: '1766946519105'
+  alias: Control Zone Heating - Downstairs
+  description: ''
+  triggers:
+  - entity_id: binary_sensor.downstairs_heating_demand
+    trigger: state
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.downstairs_heating_demand
+        state: 'on'
+      sequence:
+      - target:
+          entity_id: climate.hall_thermostat
+        data:
+          hvac_mode: heat
+        action: climate.set_hvac_mode
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.downstairs_heating_demand
+        state: 'off'
+      sequence:
+      - target:
+          entity_id: climate.hall_thermostat
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+  mode: restart
+- id: '1766946619502'
+  alias: Control Zone Heating - Upstairs
+  description: ''
+  triggers:
+  - entity_id: binary_sensor.upstairs_heating_demand
+    trigger: state
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.upstairs_heating_demand
+        state: 'on'
+      sequence:
+      - target:
+          entity_id: climate.reuben_2
+        data:
+          hvac_mode: heat
+        action: climate.set_hvac_mode
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.downstairs_heating_demand
+        state: 'off'
+      sequence:
+      - target:
+          entity_id: climate.reuben_2
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+  mode: restart

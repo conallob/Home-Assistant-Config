@@ -1,0 +1,15 @@
+sensor:
+  - name: "Upstairs Sans Comms Rack 4PM Net Energy"
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    state: >
+      {% set upstairs=states('sensor.upstairs_energy')|float %}
+      {# TODO(conall): Iterate over integration_entities('Shelly: Comms Rack Pro 4PM')|endwith:"energy" #}
+      {% set comms_rack_1=states('sensor.unifi_switch_energy')|float %}
+      {% set comms_rack_2=states('sensor.unifi_dream_machine_energy')|float %}
+      {% set comms_rack_3=states('sensor.comms_rack_powerstrip_energy')|float %}
+      {% set comms_rack_4=states('sensor.megatron_energy')|float %}
+      {{ (upstairs - (comms_rack_1 + comms_rack_2 + comms_rack_3 + comms_rack_4))|float(default=0) }}
+
+

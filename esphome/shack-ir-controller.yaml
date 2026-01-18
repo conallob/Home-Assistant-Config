@@ -1,0 +1,417 @@
+esphome:
+  name: shack-ir-controller
+  friendly_name: Shack IR Controller
+
+esp32:
+  board: seeed_xiao_esp32c6
+  framework:
+    type: esp-idf
+
+# Enable IPv6
+network:
+    enable_ipv6: true
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key_shack_ir_controller
+
+ota:
+  - platform: esphome
+    password: !secret ota_password_shack_ir_controller
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# IR Campture:
+#remote_receiver:
+#  pin: GPIO18
+#  dump: all
+
+# Remote transmitter configuration (adjust pin based on your setup)
+remote_transmitter:
+  pin: GPIO18
+  carrier_duty_percent: 50%
+
+button:
+  # Q Acquistics Remote
+  - platform: template
+    name: "Q Acoustics USB"
+    id: q_acoustics_usb
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x1B
+          command: 0x46
+
+  - platform: template
+    name: "Q Acoustics BLU"
+    id: q_acoustics_blu
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x1B
+          command: 0x43
+
+  - platform: template
+    name: "Q Acoustics OPT"
+    id: q_acoustics_opt
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x1B
+          command: 0x44
+
+  - platform: template
+    name: "Q Acoustics ANA"
+    id: q_acoustics_ana
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x1B
+          command: 0x45
+
+  - platform: template
+    name: "Q Acoustics Mute"
+    id: q_acoustics_mute
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x10
+          command: 0x0D
+
+  - platform: template
+    name: "Q Acoustics Play Pause"
+    id: q_acoustics_play_pause
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x1B
+          command: 0x35
+
+  - platform: template
+    name: "Q Acoustics Volume Down"
+    id: q_acoustics_volume_down
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x10
+          command: 0x11
+
+  - platform: template
+    name: "Q Acoustics Volume Up"
+    id: q_acoustics_volume_up
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x10
+          command: 0x10
+
+  - platform: template
+    name: "Q Acoustics Previous"
+    id: q_acoustics_previous
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x1B
+          command: 0x21
+
+  - platform: template
+    name: "Q Acoustics Next"
+    id: q_acoustics_next
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x1B
+          command: 0x20
+
+  - platform: template
+    name: "Q Acoustics Power"
+    id: q_acoustics_power
+    on_press:
+      - remote_transmitter.transmit_rc5:
+          address: 0x10
+          command: 0x0C
+
+  # FiiO Remote
+  - platform: template
+    name: "FiiO Off"
+    id: fiio_off
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO On"
+    id: fiio_on
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Up"
+    id: fiio_up
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Left"
+    id: fiio_left
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Down"
+    id: fiio_down
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Right"
+    id: fiio_right
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO OK"
+    id: fiio_ok
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Mute"
+    id: fiio_mute
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Back"
+    id: fiio_back
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Down Arrow"
+    id: fiio_down_arrow
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Vol Up"
+    id: fiio_vol_up
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Vol Down"
+    id: fiio_vol_down
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Home"
+    id: fiio_home
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Fn3"
+    id: fiio_fn3
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Fn1"
+    id: fiio_fn1
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680]
+
+  - platform: template
+    name: "FiiO Fn2"
+    id: fiio_fn2
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9152, -4550, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -552, 605, -1680, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -552, 605, -552, 605, -1680, 605, -1680, 605, -1680, 605, -1680]  
+
+# Q Acquistics Remote:
+# USB
+# BLU
+# OPT
+# ANA
+# Mute
+# Play/Pause
+# -
+# +
+# <<
+# >>
+# On/Off
+
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000A 0000 0047 0042 0023 001F 001F 0025 0044 0043 0023 0020 0041 0026 0021 0022 0024 0042 0022 0021 0043 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x46
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000A 0000 0047 0042 0022 0021 001E 0024 0046 0042 0023 0020 0041 0024 0023 0022 0024 0042 0022 0020 0044 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x46
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000B 0000 0045 0021 0024 0043 0022 0020 0044 0044 0022 0021 0044 0021 0020 0024 0022 0022 0024 0042 0022 0021 0021 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x43
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000A 0000 0045 0044 0020 0022 0021 0022 0044 0044 0020 0023 0043 0023 0021 0023 0021 0044 0043 0022 0021 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x44
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0002 0000 0008 0015 0008 0180 
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000A 0000 0045 0044 0020 0023 0021 0021 0045 0043 0022 0021 0044 0022 0022 0022 0022 0044 0043 0023 0022 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x44
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000A 0000 0047 0021 0023 0042 001E 0025 0043 0045 0022 0020 0041 0026 0021 0023 0023 0042 0045 0042 001E 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x45
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000A 0000 0047 0021 0023 0042 001E 0025 0043 0044 0023 0020 0041 0026 0021 0022 0024 0042 0045 0041 001F 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x45
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000C 0000 0021 0023 0023 0021 0022 0020 0041 0026 0021 0023 0023 0021 0023 0021 0023 0021 0022 0044 0023 0020 0045 0042 0023 0180 
+#[remote.rc5:086]: Received RC5: address=0x10, command=0x0D
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000A 0000 0021 0023 0045 0042 0023 0020 0044 0044 0022 0021 0022 0021 001E 0023 0046 0042 0045 0042 001E 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x35
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000C 0000 0021 0023 0023 0021 0022 0020 0041 0026 0021 0023 0023 0020 0024 0021 0023 0042 0041 0025 0024 001F 0024 0042 0023 0180 
+#[remote.rc5:086]: Received RC5: address=0x10, command=0x11
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000B 0000 0021 0023 0045 0042 0041 0026 0020 0024 0023 0021 0023 0021 0023 0042 0041 0025 0024 0020 0024 0020 0022 0180 
+#[remote.rc5:086]: Received RC5: address=0x10, command=0x10
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000B 0000 0022 0023 0045 0042 0041 0025 0021 0023 0024 0020 0024 0020 0024 0041 0045 0020 0024 0020 0024 0021 0021 0180 
+#[remote.rc5:086]: Received RC5: address=0x10, command=0x10
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000C 0000 0021 0023 0023 0020 0023 0020 0023 0020 0044 0044 0022 0021 0022 0020 0044 0023 0023 0021 0023 0021 0023 0042 001E 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x21
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000B 0000 0022 0022 0045 0041 0023 0020 0044 0044 0022 0021 0022 0021 0044 0021 0023 0021 0023 0021 0023 0021 0020 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x20
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000B 0000 0021 0023 0045 0042 0023 0020 0044 0044 0022 0021 0022 0021 0043 0022 0024 0020 0024 0020 0024 0021 001F 0180 
+#[remote.rc5:086]: Received RC5: address=0x1B, command=0x20
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 000C 0000 0021 0022 0024 0021 0022 0020 0041 0025 0022 0023 0023 001F 0025 0021 0023 0021 0021 0044 0023 0020 0045 0021 0020 0180 
+#[remote.rc5:086]: Received RC5: address=0x10, command=0x0Ck
+
+
+# FiiO SR11 Remote:
+# Off
+# On
+# Up
+# Left
+# Down
+# Right
+# Ok
+# Mute
+# Back
+# Down Arrow Icon
+# Vol Up
+# Vol Down
+# Home
+# Fn3
+# Fn1
+# Fn2
+
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0015 0017 0015 0017 0015 
+#[remote.pronto:237]: 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0002 0000 015C 0056 0017 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0040 0016 0015 0017 0015 0017 0015 
+#[remote.pronto:237]: 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0015 
+#[remote.pronto:237]: 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0016 0040 0016 0015 0017 0040 0016 0016 0016 0040 0016 0040 0016 0040 0016 0016 0016 0040 0016 0040 0016 0040 0016 0016 0016 0015 
+#[remote.pronto:237]: 0016 0016 0016 0016 0016 0015 0016 0016 0016 0016 0016 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0002 0000 015C 0056 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0016 0016 0040 0016 0016 0016 0040 0016 0016 0016 0040 0016 0040 0016 0040 0016 0015 0016 0040 0016 0016 0016 0040 0016 0040 0016 0016 
+#[remote.pronto:237]: 0016 0015 0016 0015 0016 0015 0016 0015 0016 0040 0016 0015 0016 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0016 0016 0040 0016 0015 0016 0040 0016 0016 0016 0040 0016 0040 0016 0040 0016 0016 0016 0040 0016 0040 0016 0016 0016 0040 0016 0016 
+#[remote.pronto:237]: 0016 0016 0016 0015 0016 0015 0016 0016 0016 0016 0016 0040 0016 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0002 0000 015C 0056 0017 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0016 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0016 0040 0016 0016 0016 0040 0016 0015 0016 0040 0016 0040 0016 0040 0016 0016 0016 0040 0016 0016 0016 0016 0016 0040 0016 0015 
+#[remote.pronto:237]: 0016 0015 0016 0015 0016 0016 0016 0016 0016 0040 0016 0040 0016 0015 0016 0040 0016 0040 0016 003F 0017 0040 0016 003F 0017 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0015 
+#[remote.pronto:237]: 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0016 0016 0040 0016 0015 0016 0016 0016 0016 0016 0040 
+#[remote.pronto:237]: 0016 0015 0016 0016 0016 0015 0016 0016 0016 0040 0016 0040 0016 0040 0016 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0040 0016 0015 0017 0015 0017 0040 
+#[remote.pronto:237]: 0016 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0016 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0016 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0040 
+#[remote.pronto:237]: 0016 0015 0017 0015 0017 0015 0017 0015 0017 0040 0016 0016 0016 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0016 0016 0040 0016 0016 0016 0040 0016 0016 0016 0040 0016 0040 0016 0040 0016 0015 0016 0040 0016 0040 0016 0015 0016 0040 0016 0040 
+#[remote.pronto:237]: 0016 0015 0016 0016 0016 0016 0016 0015 0016 0016 0016 0040 0016 0016 0016 0016 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0002 0000 015C 0056 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0015 0017 0040 
+#[remote.pronto:237]: 0016 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 0016 0015 0017 0040 0016 0015 0017 0040 0016 0040 0016 0040 
+#[remote.pronto:237]: 0016 0015 0017 0015 0017 0015 0017 0015 0017 0040 0016 0015 0017 0015 0017 0015 0017 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0016 0040 0016 0016 0016 0040 0016 0015 0016 0040 0016 0040 0016 0040 0016 0015 0016 0040 0016 0015 0016 0016 0016 0040 0016 0040 
+#[remote.pronto:237]: 0016 0015 0016 0015 0016 0016 0016 0015 0016 0040 0016 0040 0016 0015 0016 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0002 0000 015C 0056 0017 0180 
+#[remote.beo4:086]: Beo4: n_sym=68
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0022 0000 015C 00AD 0017 0016 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 0016 0015 0016 0040 0016 0015 0016 0040 0016 0015 0016 0040 0016 0040 0016 0040 0016 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0040 
+#[remote.pronto:237]: 0016 0015 0016 0015 0016 0015 0016 0015 0016 0015 0016 0015 0016 0015 0016 0015 0016 0040 0016 0040 0016 0040 0016 0040 0016 0180 
+#[remote.pronto:229]: Received Pronto: data=
+#[remote.pronto:237]: 0000 006D 0002 0000 015C 0056 0016 0180 

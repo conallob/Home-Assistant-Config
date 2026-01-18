@@ -1,0 +1,13 @@
+sensor:
+  - name: "Workshop Net Energy"
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    state: >
+      {% set workshop_long=states('sensor.workshop_long_energy')|float %}
+      {% set washing_maching=states('sensor.washing_machine_today_s_consumption')|float %}
+      {% set freezer=states('sensor.chest_freezer_today_s_consumption')|float %}
+      {% set tumble_dryer=states('sensor.tumble_dryer_today_s_consumption')|float %}
+      {{ (workshop_long - (washing_machine + freezer + tumble_dryer))|float(default=0) }}
+
+

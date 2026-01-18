@@ -1,0 +1,17 @@
+# brewfather.app Data Upload
+# https://docs.brewfather.app/integrations/custom-stream
+
+  url: "https://log.brewfather.net/stream?id=EzKG3ra2Yp0oMM"
+  method: POST
+  headers:
+    Content-Type: "application/json"
+  payload: >-
+    {
+        "name":    "Purple",
+          #"ext_temp": {{ states('sensor.workshop_ruuvitag_temperature')|float }}, 
+        "ext_temp": {{ states('sensor.utility_room_sensor_temperature')|float }}, 
+        "temp":    {{ states('sensor.tilt_purple_temperature')|float }},
+        "temp_unit": "C",
+        "gravity": {{ states('sensor.tilt_purple_specific_gravity')|float }},
+        "gravity_unit": "G"
+     }
