@@ -55,18 +55,6 @@ logger:
     homeassistant.components.rest_command: debug
     homeassistant.components.tcp: debug
 
-# Home Connect, for Bosch Washing Machine
-#home_connect:
-#  client_id: 74A640F8DC51085AEF23CF5B7B245E248C91BE37C9D07E32480C2221F228D520
-#  client_secret: 18DFD7C8EFE4EE6417B0A3F24051C3E9AC2925CAB74404F96E1CF12913C4663A
-
-# Nest Integration
-#nest:
-#  nest_client_id: 39950549742-d6auejs17i4760ap7dar888s4cvnbitb.apps.googleusercontent.com
-#  nest_client_secret: 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
-  # "Project ID" in the Device Access Console (not Cloud Project ID!)
-  #  nest_project_id: 77994445-0676-419a-972b-04ce1ef0a271
-
 mqtt:
 
 # Utility Meter for Electricity Meter
