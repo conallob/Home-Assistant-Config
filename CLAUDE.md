@@ -45,11 +45,19 @@ The `configuration.yaml` file serves as the entry point and uses `!include` and 
 
 ### Validating Configuration
 
-Home Assistant doesn't provide a standalone CLI validator. To validate configuration changes:
+There are multiple ways to validate Home Assistant configuration:
 
-1. Use the Home Assistant UI: Developer Tools → YAML → "Check Configuration"
-2. Restart Home Assistant to apply changes
-3. Monitor `home-assistant.log` files for errors
+1. **CI/CD Pipeline**: A GitHub Actions workflow automatically validates configuration on pull requests
+2. **Home Assistant UI**: Developer Tools → YAML → "Check Configuration"
+3. **MCP Integration**: The live running Home Assistant system is accessible via MCP for real-time validation and interaction
+4. Monitor `home-assistant.log` files for errors
+
+### Automatic Deployment
+
+Changes merged to the `main` branch are automatically deployed:
+- A webhook triggers `git pull` on the live system when commits are merged to `main`
+- Valid configuration changes take effect within seconds
+- The system automatically reloads configuration where possible
 
 ### Working with ESPHome
 
