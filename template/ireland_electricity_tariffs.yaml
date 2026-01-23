@@ -21,7 +21,7 @@
     - name: "Current Electricity Rate"
       unit_of_measurement: "EUR/kWh"
       state: >
-        {% set tariff = states('select.daily_energy') %}
+        {% set tariff = states('select.current_electricity_tariff') %}
         {% set tariff_data = state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel') %}
         {% if tariff_data and tariff in ['day', 'night', 'peak'] %}
           {{ tariff_data['rates'][tariff] }}
