@@ -2,29 +2,28 @@
 # This configuration creates a REST sensor to download the tariff data
 # and then creates template sensors for each price component
 
+sensor:
+  # Electric Ireland Smart Duel Fuel tariff rates
+  - name: "Electric Ireland Smart Duel Fuel Day Rate"
+    unit_of_measurement: "EUR/kWh"
+    state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['day'] }}"
 
-- sensor:
-    # Electric Ireland Smart Duel Fuel tariff rates
-    - name: "Electric Ireland Smart Duel Fuel Day Rate"
-      unit_of_measurement: "EUR/kWh"
-      state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['day'] }}"
+  - name: "Electric Ireland Smart Duel Fuel Night Rate"
+    unit_of_measurement: "EUR/kWh"
+    state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['night'] }}"
 
-    - name: "Electric Ireland Smart Duel Fuel Night Rate"
-      unit_of_measurement: "EUR/kWh"
-      state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['night'] }}"
+  - name: "Electric Ireland Smart Duel Fuel Peak Rate"
+    unit_of_measurement: "EUR/kWh"
+    state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['peak'] }}"
 
-    - name: "Electric Ireland Smart Duel Fuel Peak Rate"
-      unit_of_measurement: "EUR/kWh"
-      state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['peak'] }}"
-
-    # Current active tariff rate - rotates based on utility meter tariff selection
-    - name: "Current Electricity Rate"
-      unit_of_measurement: "EUR/kWh"
-      state: >
-        {% set tariff = states('select.daily_energy') %}
-        {% set tariff_data = state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel') %}
-        {% if tariff_data and tariff in ['day', 'night', 'peak'] %}
-          {{ tariff_data['rates'][tariff] }}
-        {% else %}
-          unavailable
-        {% endif %}
+  # Current active tariff rate - rotates based on utility meter tariff selection
+  - name: "Current Electricity Rate"
+    unit_of_measurement: "EUR/kWh"
+    state: >
+      {% set tariff = states('select.daily_energy') %}
+      {% set tariff_data = state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel') %}
+      {% if tariff_data and tariff in ['day', 'night', 'peak'] %}
+        {{ tariff_data['rates'][tariff] }}
+      {% else %}
+        unavailable
+      {% endif %}
