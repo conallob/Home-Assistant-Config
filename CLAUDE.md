@@ -60,6 +60,20 @@ Changes merged to the `main` branch are automatically deployed:
 - Valid configuration changes take effect within seconds
 - The system automatically reloads configuration where possible
 
+### Contribution Guidelines
+
+**Use a Pull Request for:**
+- Non-trivial refactors (restructuring files, changing configuration patterns)
+- New features (new automations, sensors, integrations, etc.)
+- Changes that affect multiple files or components
+- Any changes you want reviewed before deployment
+
+**Direct merge to main is acceptable for:**
+- Small fixes to existing configurations
+- Typo corrections
+- Minor adjustments to thresholds, timings, or values
+- Must pass CI/CD configuration validation checks before merging
+
 ### Working with ESPHome
 
 ESPHome devices have their own configuration workflow:
