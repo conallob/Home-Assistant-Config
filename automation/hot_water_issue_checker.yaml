@@ -1,0 +1,30 @@
+id: '1734537114919'
+alias: Hot Water Issue Checker
+description: A simple check to notify Conall if the hot water has failed to heat
+  by 07:30, but only when he is at home & can do something about it
+triggers:
+- trigger: time_pattern
+  hours: '7'
+  minutes: '30'
+conditions:
+- condition: state
+  entity_id: person.conall_o_brien
+  state: home
+  for:
+    hours: 0
+    minutes: 15
+    seconds: 0
+- type: is_temperature
+  condition: device
+  device_id: 4083dc6a35662e04adfa685edaff48ce
+  entity_id: 46dc9779db8c7340bf609305e4585a33
+  domain: sensor
+  below: 20
+actions:
+- action: notify.mobile_app_conall_s_iphone_15_pro
+  metadata: {}
+  data:
+    message: Please investigate
+    title: Hot Water Scheduled Heating Failed
+    data: {}
+mode: single

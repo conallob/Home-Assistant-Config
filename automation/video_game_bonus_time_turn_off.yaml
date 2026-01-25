@@ -1,0 +1,13 @@
+id: '1766944642676'
+alias: Video Game Bonus Time - Turn Off
+description: ''
+triggers:
+- entity_id: input_boolean.video_game_bonus_time
+  to: 'on'
+  trigger: state
+actions:
+- target:
+    entity_id:
+    - switch.adguard_home_parental_control
+    - switch.adguard_home_filtering
+  action: switch.turn_on

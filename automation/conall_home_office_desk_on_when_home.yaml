@@ -1,0 +1,22 @@
+id: '1690366173344'
+alias: Conall Home Office Desk - On When Home
+description: ''
+trigger:
+- platform: device
+  device_id: 8317d0f450f43ebb047be73edaf49d32
+  domain: device_tracker
+  entity_id: a081a888b1fa427238e774f3ea9eb7f6
+  type: enters
+  zone: zone.home
+condition:
+- condition: device
+  type: is_off
+  device_id: 12634e07d254156525d63ef3e22d71bc
+  entity_id: 04c458c0259cf106627fb8cbb80584c7
+  domain: switch
+action:
+- type: turn_on
+  device_id: 12634e07d254156525d63ef3e22d71bc
+  entity_id: 04c458c0259cf106627fb8cbb80584c7
+  domain: switch
+mode: single

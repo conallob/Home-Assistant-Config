@@ -1,0 +1,38 @@
+id: '1730144055808'
+alias: Television Daily Schedule
+description: Automation to decide when the television should power in each day,
+  by checking the St Andrews calendar in Google Calendar
+triggers:
+- at: 07:00:00
+  trigger: time
+conditions: []
+actions:
+- choose:
+  - conditions:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: binary_sensor.workday_sensor
+        state: 'off'
+      - condition: state
+        entity_id: calendar.st_andrews_school_calendar
+        state: 'off'
+    sequence:
+    - target:
+        entity_id: switch.rectangular_babysitter
+      data: {}
+      action: switch.turn_on
+  default:
+  - delay:
+      hours: 1
+      minutes: 30
+  - target:
+      entity_id: switch.rectangular_babysitter
+    data: {}
+    action: switch.turn_on
+- device_id: 03b91a298e4acc602713e0b11e91246f
+  domain: mobile_app
+  type: notify
+  message: Television Daily Schedule has Run
+  title: Television Daily Schedule
+mode: single

@@ -1,0 +1,15 @@
+id: '1712936312301'
+alias: Home Assistant Auto-update
+description: ''
+use_blueprint:
+  path: edwardtfn/auto_update_scheduled.yaml
+  input:
+    verbose_logging_bool: true
+    restart_type: core
+    schedule_monthday: 6
+    actions_pre_update:
+    - action: notify.mobile_app_conall_s_iphone_15_pro
+      metadata: {}
+      data:
+        title: Home Assistant Updates Starting
+        message: '{{ updates_list }} have been updated'

@@ -1,0 +1,18 @@
+id: '1663330431179'
+alias: Home Office Busy Light - DND
+description: ''
+trigger:
+- platform: numeric_state
+  entity_id: sensor.timeular_current_activity
+  above: 835285
+  below: 835287
+condition:
+- condition: zone
+  entity_id: person.conall_o_brien
+  zone: zone.home
+action:
+- service: scene.turn_on
+  target:
+    entity_id: scene.home_office_working
+  metadata: {}
+mode: single

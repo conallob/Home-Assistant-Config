@@ -1,0 +1,29 @@
+id: '1766946519105'
+alias: Control Zone Heating - Downstairs
+description: ''
+triggers:
+- entity_id: binary_sensor.downstairs_heating_demand
+  trigger: state
+actions:
+- choose:
+  - conditions:
+    - condition: state
+      entity_id: binary_sensor.downstairs_heating_demand
+      state: 'on'
+    sequence:
+    - target:
+        entity_id: climate.hall_thermostat
+      data:
+        hvac_mode: heat
+      action: climate.set_hvac_mode
+  - conditions:
+    - condition: state
+      entity_id: binary_sensor.downstairs_heating_demand
+      state: 'off'
+    sequence:
+    - target:
+        entity_id: climate.hall_thermostat
+      data:
+        hvac_mode: 'off'
+      action: climate.set_hvac_mode
+mode: restart

@@ -1,0 +1,23 @@
+id: '1696432029004'
+alias: Check Batteries
+description: Notify Conall of batteries which need to be replaced
+use_blueprint:
+  path: gmlupatelli/low_battery_notification.yaml
+  input:
+    threshold: 10
+    actions:
+    - device_id: 34a445b8cb3b53dba77631c57276b85a
+      domain: mobile_app
+      type: notify
+      message: Replace Battery in {{sensors}}
+      title: Replace Batteries
+    tuesday_enabled: true
+    thursday_enabled: true
+    exclude:
+      device_id:
+      - 3296c245a6f7e5e397d227f9d3d20592
+      - 3de84723adf203df84a8cf7e0bebcdb8
+      - 38ba3540fd30adfb23dd2da2a63535f8
+      entity_id:
+      - sensor.solis_force_charge_soc
+      - sensor.solis_force_discharge_soc

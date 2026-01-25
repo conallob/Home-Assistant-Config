@@ -1,0 +1,17 @@
+id: '1647450171464'
+alias: Fermentation Too Cold
+description: ''
+triggers:
+- type: temperature
+  device_id: 8c37d522ec0bf45b89ab1bdc8c8f05e4
+  entity_id: sensor.tilt_purple_temperature
+  domain: sensor
+  below: 17
+  trigger: device
+conditions: []
+actions:
+- type: turn_off
+  device_id: 9f1143de79fc8e41307873d633503a96
+  entity_id: 60ddc4fb4c471de45af9c56d81903718
+  domain: switch
+mode: single

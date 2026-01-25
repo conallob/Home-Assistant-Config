@@ -1,0 +1,18 @@
+id: '1668898839563'
+alias: Brewfather - Multi Sensor Upload
+description: ''
+trigger:
+- platform: time_pattern
+  minutes: /15
+condition:
+- type: is_temperature
+  condition: device
+  device_id: 8c37d522ec0bf45b89ab1bdc8c8f05e4
+  entity_id: sensor.tilt_purple_temperature
+  domain: sensor
+  above: 0
+  below: 80
+action:
+- service: rest_command.brewfather_upload
+  data: {}
+mode: single

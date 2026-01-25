@@ -1,0 +1,36 @@
+id: '1707308311469'
+alias: Check TRV Batteries
+description: Notify Conall of TRV batteries which need to be replaced
+use_blueprint:
+  path: gmlupatelli/low_battery_notification.yaml
+  input:
+    threshold: 15
+    actions:
+    - device_id: 34a445b8cb3b53dba77631c57276b85a
+      domain: mobile_app
+      type: notify
+      message: Replace Battery in {{sensors}}
+      title: Replace TRV Batteries
+    tuesday_enabled: true
+    thursday_enabled: true
+    include:
+      entity_id:
+      - sensor.danfoss_eco_downstairs_proxy_hall_etrv_battery_level
+      - sensor.danfoss_eco_downstairs_proxy_kitchen_etrv_battery_level
+      - sensor.danfoss_eco_downstairs_proxy_sitting_room_etrv_battery_level
+      - sensor.danfoss_eco_upstairs_proxy_bedroom_etrv_battery_level
+      - sensor.danfoss_eco_upstairs_proxy_genevieve_etrv_battery_level
+      - sensor.danfoss_eco_upstairs_proxy_landing_etrv_battery_level
+      - sensor.danfoss_eco_multi_floor_proxy_reuben_etrv_battery_level
+      - sensor.danfoss_eco_multi_floor_proxy_family_room_etrv_battery_level
+    time: '11:00:00'
+    exclude:
+      entity_id:
+      - sensor.solis_force_charge_soc
+      - sensor.solis_force_discharge_soc
+      - binary_sensor.reuben_dimmer_battery
+      - sensor.bedroom_dimmer_battery_level
+      - sensor.reuben_dimmer_battery_level
+      - sensor.bathroom_dimmer_battery_level
+      - sensor.workshop_dimmer_battery_level
+      - sensor.genevieve_dimmer_battery_level
