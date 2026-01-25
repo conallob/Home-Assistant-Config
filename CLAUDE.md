@@ -72,6 +72,8 @@ Changes merged to the `main` branch are automatically deployed:
 - Small fixes to existing configurations
 - Typo corrections
 - Minor adjustments to thresholds, timings, or values
+- Documentation updates
+- Adding or editing annotations (comments, descriptions, aliases)
 - Must pass CI/CD configuration validation checks before merging
 
 ### Working with ESPHome
