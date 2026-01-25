@@ -145,6 +145,32 @@ Template sensors in the `template/` directory calculate derived values:
 - Binary sensors for custom logic (e.g., school day detection)
 - Tariff-related calculations for electricity pricing
 
+### Include Directory File Structure
+
+When using `!include_dir_list` (for `sensor/` and `template/` directories), each YAML file must contain exactly **one** sensor/entity definition. Do not put multiple sensors in the same file - this will cause validation errors like "expected a dictionary, got list".
+
+**Correct** - One sensor per file:
+```yaml
+# sensor/my_sensor.yaml
+- platform: history_stats
+  name: "My Sensor"
+  entity_id: binary_sensor.something
+  ...
+```
+
+**Incorrect** - Multiple sensors in one file:
+```yaml
+# sensor/my_sensors.yaml - THIS WILL FAIL
+- platform: history_stats
+  name: "Sensor One"
+  ...
+- platform: history_stats
+  name: "Sensor Two"
+  ...
+```
+
+If you need multiple related sensors, create separate files (e.g., `conall_wfh_annual_days.yaml` and `ciara_wfh_annual_days.yaml`).
+
 ## Configuration Best Practices
 
 1. **Organize by Function**: Keep related entities in their respective directories (`sensor/`, `template/`, `rest_command/`)
