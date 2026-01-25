@@ -1,7 +1,7 @@
 # Solar PV Inverter
-- platform: solis
-  name: "Solis Inverter"
-  portal_domain: "m.ginlong.com"
-  portal_username: !secret solis_portal_username
-  portal_password: !secret solis_portal_password
-  portal_plant_id: !secret solis_portal_plant_id
+platform: solis
+name: "Solis Inverter"
+portal_domain: "m.ginlong.com"
+portal_username: !secret solis_portal_username
+portal_password: !secret solis_portal_password
+portal_plant_id: !secret solis_portal_plant_id
