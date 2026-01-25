@@ -796,7 +796,7 @@
         action: climate.set_hvac_mode
     - conditions:
       - condition: state
-        entity_id: binary_sensor.downstairs_heating_demand
+        entity_id: binary_sensor.upstairs_heating_demand
         state: 'off'
       sequence:
       - target:
