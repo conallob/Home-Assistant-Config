@@ -8,7 +8,7 @@ use_blueprint:
     restart_type: core
     schedule_monthday: 6
     actions_pre_update:
-    - action: notify.mobile_app_conall_s_iphone_15_pro
+    - action: notify.mobile_app_conall_s_iphone_17_pro
       metadata: {}
       data:
         title: Home Assistant Updates Starting

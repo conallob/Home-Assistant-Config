@@ -4,7 +4,7 @@ description: ''
 triggers: []
 conditions: []
 actions:
-- action: notify.mobile_app_conall_s_iphone_15_pro
+- action: notify.mobile_app_conall_s_iphone_17_pro
   metadata: {}
   data:
     data:
