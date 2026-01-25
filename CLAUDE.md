@@ -165,23 +165,23 @@ Template sensors in the `template/` directory calculate derived values:
 
 When using `!include_dir_list` (for `sensor/` and `template/` directories), each YAML file must contain exactly **one** sensor/entity definition. Do not put multiple sensors in the same file - this will cause validation errors like "expected a dictionary, got list".
 
-**Correct** - One sensor per file:
+**Correct** - One sensor per file as a dictionary (no leading dash):
 ```yaml
 # sensor/my_sensor.yaml
-- platform: history_stats
-  name: "My Sensor"
-  entity_id: binary_sensor.something
-  ...
+platform: history_stats
+name: "My Sensor"
+entity_id: binary_sensor.something
+state: "on"
+type: time
+start: "{{ now().replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0) }}"
+end: "{{ now() }}"
 ```
 
-**Incorrect** - Multiple sensors in one file:
+**Incorrect** - Using list syntax (with dash) will fail:
 ```yaml
-# sensor/my_sensors.yaml - THIS WILL FAIL
+# sensor/my_sensor.yaml - THIS WILL FAIL
 - platform: history_stats
-  name: "Sensor One"
-  ...
-- platform: history_stats
-  name: "Sensor Two"
+  name: "My Sensor"
   ...
 ```
 
