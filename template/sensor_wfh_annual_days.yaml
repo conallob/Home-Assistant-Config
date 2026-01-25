@@ -1,18 +1,18 @@
-- sensor:
-    - name: "Conall WFH Annual Days"
-      unique_id: conall_wfh_annual_days
-      unit_of_measurement: "days"
-      state_class: total_increasing
-      state: >
-        {% set hours = states('sensor.conall_wfh_annual_hours') | float(0) %}
-        {{ (hours / 24) | round(1) }}
-      icon: mdi:calendar-account
+sensor:
+  - name: "Conall WFH Annual Days"
+    unique_id: conall_wfh_annual_days
+    unit_of_measurement: "days"
+    state_class: total_increasing
+    state: >
+      {% set hours = states('sensor.conall_wfh_annual_hours') | float(0) %}
+      {{ (hours / 24) | round(1) }}
+    icon: mdi:calendar-account
 
-    - name: "Ciara WFH Annual Days"
-      unique_id: ciara_wfh_annual_days
-      unit_of_measurement: "days"
-      state_class: total_increasing
-      state: >
-        {% set hours = states('sensor.ciara_wfh_annual_hours') | float(0) %}
-        {{ (hours / 24) | round(1) }}
-      icon: mdi:calendar-account
+  - name: "Ciara WFH Annual Days"
+    unique_id: ciara_wfh_annual_days
+    unit_of_measurement: "days"
+    state_class: total_increasing
+    state: >
+      {% set hours = states('sensor.ciara_wfh_annual_hours') | float(0) %}
+      {{ (hours / 24) | round(1) }}
+    icon: mdi:calendar-account
