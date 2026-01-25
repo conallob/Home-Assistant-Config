@@ -6,7 +6,7 @@ frontend:
 
 # Git pull integration
 shell_command:
-  git_pull_config: cd /config && git pull
+  git_pull_config: git config --global --add safe.directory /homeassistant && cd /homeassistant && git pull
 
 # Text to speech
 tts:
