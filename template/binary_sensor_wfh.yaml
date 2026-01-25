@@ -1,0 +1,26 @@
+- binary_sensor:
+    - name: "Conall WFH"
+      unique_id: conall_wfh
+      state: >
+        {% set calendar_state = states('calendar.taku_working_from') %}
+        {% set event_message = state_attr('calendar.taku_working_from', 'message') | default('', true) %}
+        {{ calendar_state == 'on' and 'Conall' in event_message }}
+      icon: >
+        {% if is_state('binary_sensor.conall_wfh', 'on') %}
+          mdi:briefcase-account
+        {% else %}
+          mdi:briefcase-off
+        {% endif %}
+
+    - name: "Ciara WFH"
+      unique_id: ciara_wfh
+      state: >
+        {% set calendar_state = states('calendar.taku_working_from') %}
+        {% set event_message = state_attr('calendar.taku_working_from', 'message') | default('', true) %}
+        {{ calendar_state == 'on' and 'Ciara' in event_message }}
+      icon: >
+        {% if is_state('binary_sensor.ciara_wfh', 'on') %}
+          mdi:briefcase-account
+        {% else %}
+          mdi:briefcase-off
+        {% endif %}

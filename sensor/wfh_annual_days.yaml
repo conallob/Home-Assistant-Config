@@ -1,0 +1,19 @@
+# Annual WFH Day Counters using history_stats
+# These sensors count the total hours each binary sensor has been 'on' since Jan 1
+# The value is then divided by 24 to get the number of days
+
+- platform: history_stats
+  name: "Conall WFH Annual Hours"
+  entity_id: binary_sensor.conall_wfh
+  state: "on"
+  type: time
+  start: "{{ now().replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0) }}"
+  end: "{{ now() }}"
+
+- platform: history_stats
+  name: "Ciara WFH Annual Hours"
+  entity_id: binary_sensor.ciara_wfh
+  state: "on"
+  type: time
+  start: "{{ now().replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0) }}"
+  end: "{{ now() }}"
