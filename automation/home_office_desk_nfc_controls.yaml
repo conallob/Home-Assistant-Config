@@ -1,0 +1,18 @@
+id: '1698609501546'
+alias: Home Office Desk NFC Controls
+description: ''
+trigger:
+- platform: tag
+  tag_id: e8be9cbd-bf88-408b-bf49-3303b5e1f2d5
+condition:
+- condition: device
+  type: is_off
+  device_id: 12634e07d254156525d63ef3e22d71bc
+  entity_id: 04c458c0259cf106627fb8cbb80584c7
+  domain: switch
+action:
+- type: toggle
+  device_id: 12634e07d254156525d63ef3e22d71bc
+  entity_id: 04c458c0259cf106627fb8cbb80584c7
+  domain: switch
+mode: single

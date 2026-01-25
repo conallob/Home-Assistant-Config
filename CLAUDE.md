@@ -12,9 +12,9 @@ This is a Home Assistant configuration repository. Home Assistant uses YAML-base
 
 The `configuration.yaml` file serves as the entry point and uses `!include` and `!include_dir_*` directives to load configuration from organized directories:
 
-- **Automations**: Two types are used
-  - `automation ui: !include automations.yaml` - GUI-maintained automations in a single file
-  - `automation manual: !include_dir_named /config/automation` - Manually coded automations in separate files (currently empty directory)
+- **Automations**: Two types are used with a prototyping workflow
+  - `automation ui: !include automations.yaml` - **Prototyping area** for automations being developed via the Home Assistant UI. These may deviate from git as they are works-in-progress.
+  - `automation manual: !include_dir_named /config/automation` - **Production automations** stored as individual YAML files (one automation per file). Once an automation has been prototyped and tested via the UI, it should be moved here.
 - **Templates**: `!include_dir_list /config/template` - Template entities loaded from individual YAML files
 - **Sensors**: `!include_dir_list /config/sensor` - Sensor definitions loaded from individual YAML files
 - **REST Commands**: `!include_dir_named /config/rest_command` - RESTful command definitions for external API calls
@@ -22,6 +22,7 @@ The `configuration.yaml` file serves as the entry point and uses `!include` and 
 
 ### Key Directories
 
+- `automation/` - Production automations stored as individual YAML files (one per automation)
 - `custom_components/` - Custom integrations installed via HACS or manually (e.g., hacs, frigate, anker_solix, spook, mass, icloud3)
 - `esphome/` - ESPHome device configurations for ESP32/ESP8266 devices (Bluetooth proxies, sensors, etc.)
   - `esphome/archive/` - Old/deprecated device configurations
@@ -101,6 +102,29 @@ The system tracks electricity usage with tariff-based utility meters:
 - Integration with Solis solar inverter via custom component
 - PVOutput.org integration for solar generation data upload
 - Powercalc integration for virtual power sensors with tariff support
+
+### Automation Workflow
+
+Automations follow a two-stage workflow:
+
+1. **Prototyping Stage** (`automations.yaml`)
+   - New automations are created and tested via the Home Assistant UI
+   - The UI writes to `automations.yaml` which may diverge from the git repository
+   - This allows rapid iteration without git commits for every tweak
+   - Automations here are considered works-in-progress
+
+2. **Production Stage** (`automation/` directory)
+   - Once an automation is stable and tested, move it to `automation/` as its own file
+   - Use descriptive filenames with lowercase and underscores: `my_automation_name.yaml`
+   - Each file contains a single automation definition
+   - These files are version-controlled and deployed via git
+
+**Moving an automation from prototype to production:**
+1. Copy the automation from `automations.yaml`
+2. Create a new file in `automation/` (e.g., `automation/my_new_automation.yaml`)
+3. Paste the automation content (remove the leading `- ` since it's no longer a list item)
+4. Delete the automation from `automations.yaml` via the Home Assistant UI
+5. Commit and push the new file
 
 ### Automation Patterns
 

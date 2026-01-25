@@ -1,0 +1,25 @@
+id: '1687543507543'
+alias: Dishwasher - Avoid Peak Grid Electricity
+description: ''
+trigger:
+- platform: time_pattern
+  hours: '15'
+condition:
+- condition: numeric_state
+  entity_id: sensor.solis_remaining_battery_capacity
+  below: 25
+action:
+- type: turn_off
+  device_id: eeb3b1f4e1ef032a8f0023ff13d38061
+  entity_id: switch.shellyplus1pm_3c610572b334_switch_0
+  domain: switch
+- delay:
+    hours: 4
+    minutes: 0
+    seconds: 0
+    milliseconds: 0
+- type: turn_on
+  device_id: eeb3b1f4e1ef032a8f0023ff13d38061
+  entity_id: switch.shellyplus1pm_3c610572b334_switch_0
+  domain: switch
+mode: single

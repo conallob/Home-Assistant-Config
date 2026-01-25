@@ -1,0 +1,39 @@
+id: '1713310093674'
+alias: Family Room Heating, When in Use
+description: ''
+triggers:
+- type: temperature
+  device_id: 13efc89c3b059a5ad64f7286aee6d5f0
+  entity_id: a8dde629505d82f1b1b2acef3be31c2f
+  domain: sensor
+  below: 17
+  for:
+    hours: 0
+    minutes: 15
+    seconds: 0
+  trigger: device
+conditions:
+- type: is_occupied
+  condition: device
+  device_id: cfe7b7642e0cbc6ec3b1e7ff6297c4e9
+  entity_id: a96327b7af0aec4371e284d158b9398a
+  domain: binary_sensor
+- condition: time
+  after: 09:00:00
+  before: '21:00:00'
+  weekday:
+  - mon
+  - tue
+  - wed
+  - thu
+  - fri
+  - sat
+  - sun
+actions:
+- metadata: {}
+  data:
+    temperature: 19
+  action: climate.set_temperature
+  target:
+    device_id: 2ac51dcf85e7a6faf2e6080a2b44b068
+mode: single

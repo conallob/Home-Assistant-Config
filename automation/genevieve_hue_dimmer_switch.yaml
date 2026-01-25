@@ -1,0 +1,38 @@
+id: '1710640529898'
+alias: Genevieve Hue Dimmer Switch
+description: ''
+use_blueprint:
+  path: mertodinlo/foh4bbp.yaml
+  input:
+    hue-switch-button1:
+    - event.genevieve_dimmer_button_1
+    hue-switch-button2:
+    - event.genevieve_dimmer_button_2
+    hue-switch-button3:
+    - event.genevieve_dimmer_button_3
+    hue-switch-button4:
+    - event.genevieve_dimmer_button_4
+    button_1_short_release: []
+    button_4_short_release: []
+    button_2_short_release: []
+    button_3_short_release: []
+    button_1_press:
+    - type: turn_on
+      device_id: e354b73952d92f0f0f0435c385b48817
+      entity_id: 4c6c7fd2a823542883b9d0c38dbc62d5
+      domain: light
+    button_2_press:
+    - device_id: e354b73952d92f0f0f0435c385b48817
+      domain: light
+      entity_id: 4c6c7fd2a823542883b9d0c38dbc62d5
+      type: brightness_increase
+    button_3_press:
+    - device_id: e354b73952d92f0f0f0435c385b48817
+      domain: light
+      entity_id: 4c6c7fd2a823542883b9d0c38dbc62d5
+      type: brightness_decrease
+    button_4_press:
+    - type: turn_off
+      device_id: e354b73952d92f0f0f0435c385b48817
+      entity_id: 4c6c7fd2a823542883b9d0c38dbc62d5
+      domain: light

@@ -1,0 +1,25 @@
+id: '1707386701519'
+alias: Conall Work-From Office
+description: 'Turn off the home office if Conall is out and planning to work from
+  the office '
+trigger:
+- platform: zone
+  entity_id: person.conall_o_brien
+  zone: zone.home
+  event: leave
+condition:
+- condition: state
+  entity_id: calendar.conall_working_from
+  attribute: message
+  state: Office
+  for:
+    hours: 0
+    minutes: 10
+    seconds: 0
+action:
+- service: switch.turn_off
+  metadata: {}
+  data: {}
+  target:
+    entity_id: switch.home_office_master_switch
+mode: single

@@ -1,0 +1,14 @@
+id: '1651352180757'
+alias: PVOutout Upload
+description: ''
+trigger:
+- platform: time_pattern
+  minutes: /5
+condition:
+- condition: numeric_state
+  entity_id: sensor.solis_dc_current_pv2
+  above: 0
+action:
+- service: rest_command.pvoutput_upload
+  data: {}
+mode: single

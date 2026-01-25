@@ -1,0 +1,48 @@
+id: '1677159641371'
+alias: Solar Smart Immersion
+description: 'If the Solar PV battery is approaching capacity and we are feeding
+  100W+ back to the grid consistently, then turn on the immersion for 90 min.
+
+
+  This will use surplus electricity, which is more valuable than being paid to feed
+  the grid.'
+trigger:
+- type: power
+  platform: device
+  device_id: caa2889d639b75b5d5ff10d750f5eb02
+  entity_id: sensor.grid_em_channel_1_power
+  domain: sensor
+  below: -100
+  for:
+    hours: 0
+    minutes: 10
+    seconds: 0
+condition:
+- condition: numeric_state
+  entity_id: sensor.solis_remaining_battery_capacity
+  above: 92
+- condition: numeric_state
+  entity_id: sensor.appliance_em_channel_2_power
+  above: 100
+  below: 10
+  enabled: false
+action:
+- type: turn_on
+  device_id: 4083dc6a35662e04adfa685edaff48ce
+  entity_id: switch.immersion
+  domain: switch
+- device_id: 34a445b8cb3b53dba77631c57276b85a
+  domain: mobile_app
+  type: notify
+  message: Solar Smart Immersion Triggered
+  title: Solar Smart Immersion
+- delay:
+    hours: 1
+    minutes: 30
+    seconds: 0
+    milliseconds: 0
+- type: turn_off
+  device_id: 4083dc6a35662e04adfa685edaff48ce
+  entity_id: switch.immersion
+  domain: switch
+mode: single

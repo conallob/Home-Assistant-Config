@@ -1,0 +1,11 @@
+id: '1740330060251'
+alias: Taku Bedtime Placeholder
+description: ''
+triggers: []
+conditions: []
+actions:
+- parallel:
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+mode: single

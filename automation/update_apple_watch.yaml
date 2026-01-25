@@ -1,0 +1,12 @@
+id: '1746886008844'
+alias: Update Apple Watch
+description: ''
+triggers: []
+conditions: []
+actions:
+- action: notify.mobile_app_conall_s_iphone_17_pro
+  metadata: {}
+  data:
+    data:
+      message: update_complications
+mode: single

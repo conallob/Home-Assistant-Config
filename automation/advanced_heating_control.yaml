@@ -1,0 +1,22 @@
+id: '1712160574560'
+alias: "Advanced Heating Control"
+description: ''
+use_blueprint:
+  path: panhans/heating_control.yaml
+  input:
+    input_trvs:
+    - climate.bedroomtrv
+    - climate.family_room_trv
+    - climate.genevieve_trv
+    - climate.hall_trv
+    - climate.kitchen_trv
+    - climate.landing_trv
+    - climate.reuben_trv
+    - climate.sitting_room_trv
+    input_temperature_minimum_static: 17
+    input_temperature_comfort_static: 18
+    input_scheduler_offset: 14
+    input_mode_outside_temperature: weather.home
+    input_tweaks: []
+    input_hvac_mode: auto
+    input_presence_sensor: binary_sensor.presence_sensor_fp2_ciara_desk
