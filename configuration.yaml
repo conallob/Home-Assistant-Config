@@ -34,7 +34,7 @@ media_player: !include media_player.yaml
 http:
   server_port: 8123
   use_x_forwarded_for: true
-  trusted_proxies: 
+  trusted_proxies:
     - 192.168.1.2  # Megatron
     - 192.168.2.2  # Megatron
 
@@ -122,10 +122,10 @@ notify:
 
 keyboard_remote:
   # Green 8Bitdo Micro
-- device_descriptor: '/dev/input/event0'
-  type:
-    - 'key_up'
-    - 'key_down'
+  - device_descriptor: '/dev/input/event0'
+    type:
+      - 'key_up'
+      - 'key_down'
 
 go2rtc:
   url: http://ratchet.int.taku.ie:1984
