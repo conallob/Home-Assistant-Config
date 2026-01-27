@@ -120,12 +120,12 @@ notify:
 #api_key: !secret timeular_api_key
 #api_secret: !secret timeular_api_secret
 
-keyboard_remote:
+#keyboard_remote:
   # Green 8Bitdo Micro
-  - device_descriptor: '/dev/input/event0'
-    type:
-      - 'key_up'
-      - 'key_down'
+#  - device_descriptor: '/dev/input/event0'
+#    type:
+#      - 'key_up'
+#      - 'key_down'
 
 go2rtc:
   url: http://ratchet.int.taku.ie:1984
