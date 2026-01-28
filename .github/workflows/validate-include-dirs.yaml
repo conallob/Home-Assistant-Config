@@ -1,0 +1,237 @@
+name: Validate Include Directory Structure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'configuration.yaml'
+      - 'automation/**'
+      - 'template/**'
+      - 'sensor/**'
+      - 'rest/**'
+      - 'rest_command/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'configuration.yaml'
+      - 'automation/**'
+      - 'template/**'
+      - 'sensor/**'
+      - 'rest/**'
+      - 'rest_command/**'
+
+jobs:
+  validate-include-dirs:
+    name: Validate YAML Include Directory Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate include directory structure
+        run: |
+          python3 << 'PYTHON_SCRIPT'
+          import os
+          import sys
+          import yaml
+
+          # ANSI color codes for output
+          RED = '\033[0;31m'
+          GREEN = '\033[0;32m'
+          YELLOW = '\033[0;33m'
+          NC = '\033[0m'  # No Color
+
+          errors = []
+          warnings = []
+
+          # Custom YAML loader that handles Home Assistant tags
+          class HALoader(yaml.SafeLoader):
+              pass
+
+          def ha_tag_constructor(loader, tag_suffix, node):
+              """Handle Home Assistant custom tags like !secret, !include, etc."""
+              if isinstance(node, yaml.ScalarNode):
+                  return loader.construct_scalar(node)
+              elif isinstance(node, yaml.SequenceNode):
+                  return loader.construct_sequence(node)
+              elif isinstance(node, yaml.MappingNode):
+                  return loader.construct_mapping(node)
+              return None
+
+          # Register handlers for common Home Assistant tags
+          ha_tags = ['!secret', 'include', '!include', '!include_dir_list',
+                     '!include_dir_named', '!include_dir_merge_list',
+                     '!include_dir_merge_named', '!env_var', '!input']
+          for tag in ha_tags:
+              HALoader.add_constructor(tag, lambda l, n, t=tag: ha_tag_constructor(l, t, n))
+
+          # Also handle any unknown tags gracefully
+          HALoader.add_multi_constructor('!', ha_tag_constructor)
+
+          def check_file_starts_with_list(filepath):
+              """Check if a YAML file starts with list syntax (leading dash)."""
+              try:
+                  with open(filepath, 'r') as f:
+                      content = f.read()
+                      # Skip empty files
+                      if not content.strip():
+                          return None
+                      # Check for leading whitespace + dash pattern at start of content
+                      lines = content.split('\n')
+                      for line in lines:
+                          stripped = line.lstrip()
+                          if stripped and not stripped.startswith('#'):
+                              # First non-comment, non-empty line
+                              if stripped.startswith('- '):
+                                  return True
+                              return False
+                      return False
+              except Exception as e:
+                  return None
+
+          def check_yaml_is_dict(filepath):
+              """Check if a YAML file parses to a dictionary at root level."""
+              try:
+                  with open(filepath, 'r') as f:
+                      content = yaml.load(f, Loader=HALoader)
+                      if content is None:
+                          return None  # Empty file
+                      return isinstance(content, dict)
+              except yaml.YAMLError as e:
+                  errors.append(f"{filepath}: YAML parse error - {e}")
+                  return None
+
+          def validate_include_dir_list(directory, description):
+              """
+              Validate files in an !include_dir_list directory.
+              Each file should contain a dictionary (not a list).
+              """
+              if not os.path.isdir(directory):
+                  warnings.append(f"{directory}: Directory does not exist (skipping)")
+                  return
+
+              yaml_files = [f for f in os.listdir(directory)
+                           if f.endswith('.yaml') and not f.endswith('.disabled')]
+
+              if not yaml_files:
+                  warnings.append(f"{directory}: No YAML files found")
+                  return
+
+              for filename in sorted(yaml_files):
+                  filepath = os.path.join(directory, filename)
+
+                  # Check if file starts with list syntax (common mistake)
+                  if check_file_starts_with_list(filepath):
+                      errors.append(
+                          f"{filepath}: File starts with list syntax '- ' but {description} "
+                          f"uses !include_dir_list which expects dictionary format. "
+                          f"Remove the leading '- ' and adjust indentation."
+                      )
+                      continue
+
+                  # Verify it parses as a dict
+                  is_dict = check_yaml_is_dict(filepath)
+                  if is_dict is False:
+                      errors.append(
+                          f"{filepath}: Root element is not a dictionary. "
+                          f"Files in {description} (!include_dir_list) must be dictionaries."
+                      )
+
+          def validate_include_dir_named(directory, description):
+              """
+              Validate files in an !include_dir_named directory.
+              Each file should contain the entity definition directly (filename becomes key).
+              Files should NOT have a root key that duplicates the filename.
+              """
+              if not os.path.isdir(directory):
+                  warnings.append(f"{directory}: Directory does not exist (skipping)")
+                  return
+
+              yaml_files = [f for f in os.listdir(directory)
+                           if f.endswith('.yaml') and not f.endswith('.disabled')]
+
+              if not yaml_files:
+                  warnings.append(f"{directory}: No YAML files found")
+                  return
+
+              for filename in sorted(yaml_files):
+                  filepath = os.path.join(directory, filename)
+                  name_without_ext = os.path.splitext(filename)[0]
+
+                  # Parse the file
+                  try:
+                      with open(filepath, 'r') as f:
+                          content = yaml.load(f, Loader=HALoader)
+                  except yaml.YAMLError as e:
+                      errors.append(f"{filepath}: YAML parse error - {e}")
+                      continue
+
+                  if content is None:
+                      warnings.append(f"{filepath}: Empty file")
+                      continue
+
+                  # Check if root key matches filename (common mistake)
+                  if isinstance(content, dict) and len(content) == 1:
+                      root_key = list(content.keys())[0]
+                      if root_key == name_without_ext:
+                          errors.append(
+                              f"{filepath}: File has root key '{root_key}' matching filename. "
+                              f"With !include_dir_named, the filename becomes the key, so the "
+                              f"file content should be the value directly without this wrapper key."
+                          )
+
+          # Define the directories to validate based on configuration.yaml
+          # !include_dir_list directories - files should be dictionaries
+          include_dir_list = [
+              ('automation', 'automation manual'),
+              ('template', 'template'),
+              ('sensor', 'sensor'),
+              ('rest', 'rest'),
+          ]
+
+          # !include_dir_named directories - files should be direct definitions
+          include_dir_named = [
+              ('rest_command', 'rest_command'),
+          ]
+
+          print(f"{GREEN}Validating !include_dir_list directories...{NC}")
+          for directory, description in include_dir_list:
+              if os.path.isdir(directory):
+                  print(f"  Checking {directory}/")
+                  validate_include_dir_list(directory, description)
+
+          print(f"\n{GREEN}Validating !include_dir_named directories...{NC}")
+          for directory, description in include_dir_named:
+              if os.path.isdir(directory):
+                  print(f"  Checking {directory}/")
+                  validate_include_dir_named(directory, description)
+
+          # Print results
+          print()
+          if warnings:
+              print(f"{YELLOW}Warnings:{NC}")
+              for warning in warnings:
+                  print(f"  {YELLOW}WARNING:{NC} {warning}")
+              print()
+
+          if errors:
+              print(f"{RED}Errors:{NC}")
+              for error in errors:
+                  print(f"  {RED}ERROR:{NC} {error}")
+              print()
+              print(f"{RED}Validation failed with {len(errors)} error(s){NC}")
+              sys.exit(1)
+          else:
+              print(f"{GREEN}All include directory validations passed!{NC}")
+              sys.exit(0)
+          PYTHON_SCRIPT
