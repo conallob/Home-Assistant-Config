@@ -18,7 +18,7 @@ group: !include groups.yaml
 automation ui: !include automations.yaml
 
 # Config Maintained Automations
-automation manual: !include_dir_named /config/automation
+automation manual: !include_dir_list /config/automation
 
 script: !include scripts.yaml
 scene: !include scenes.yaml

@@ -1,23 +1,23 @@
-  - binary_sensor:
-      - name: "School Day"
-        unique_id: school_day
-        state: >
-          {% set today = now().date() %}
-          {% set event_start = state_attr('calendar.st_andrews_school_calendar', 'start_time') %}
-          {% set event_message = state_attr('calendar.st_andrews_school_calendar', 'message') %}
-          {% if event_start and event_message %}
-            {% set event_date = event_start | as_datetime | as_local %}
-            {% if event_date.date() == today %}
-              {{ 'No School' not in event_message and 'Holiday' not in event_message }}
-            {% else %}
-              false
-            {% endif %}
-          {% else %}
-            false
-          {% endif %}
-        icon: >
-          {% if is_state('binary_sensor.school_day', 'on') %}
-            mdi:school
-          {% else %}
-            mdi:home
-          {% endif %}
+binary_sensor:
+  - name: "School Day"
+    unique_id: school_day
+    state: >
+      {% set today = now().date() %}
+      {% set event_start = state_attr('calendar.st_andrews_school_calendar', 'start_time') %}
+      {% set event_message = state_attr('calendar.st_andrews_school_calendar', 'message') %}
+      {% if event_start and event_message %}
+        {% set event_date = event_start | as_datetime | as_local %}
+        {% if event_date.date() == today %}
+          {{ 'No School' not in event_message and 'Holiday' not in event_message }}
+        {% else %}
+          false
+        {% endif %}
+      {% else %}
+        false
+      {% endif %}
+    icon: >
+      {% if is_state('binary_sensor.school_day', 'on') %}
+        mdi:school
+      {% else %}
+        mdi:home
+      {% endif %}
