@@ -62,6 +62,9 @@ ota:
   - platform: esphome
     password: !secret ota_password_e_ink_frame_downstairs
 
+web_server:
+  port: 80
+
 # SPI Configuration for e-ink display
 spi:
   clk_pin: ${pin_clk}
