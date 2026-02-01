@@ -35,43 +35,48 @@ jobs:
             const headSha = context.payload.workflow_run.head_sha;
             console.log(`Checking workflows for commit: ${headSha}`);
 
-            // Get all workflow runs for this commit
+            // Get ALL workflow runs for this commit (not just completed)
+            // This avoids a race condition where in-progress workflows would be missed
             const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              head_sha: headSha,
-              status: 'completed'
+              head_sha: headSha
             });
 
             // Check each required workflow
             for (const workflowName of requiredWorkflows) {
-              const workflowRun = runs.workflow_runs.find(
-                run => run.name === workflowName && run.conclusion === 'success'
-              );
+              // Find any run for this workflow
+              const workflowRuns = runs.workflow_runs.filter(run => run.name === workflowName);
 
-              if (!workflowRun) {
-                // Check if workflow was skipped (no matching files changed)
-                const skippedRun = runs.workflow_runs.find(
-                  run => run.name === workflowName && run.conclusion === 'skipped'
-                );
+              if (workflowRuns.length === 0) {
+                // Workflow was not triggered (no matching path filters)
+                console.log(`✓ ${workflowName}: not triggered (no matching files changed)`);
+                continue;
+              }
 
-                if (skippedRun) {
-                  console.log(`✓ ${workflowName}: skipped (no matching files changed)`);
-                  continue;
-                }
+              // Get the most recent run for this workflow
+              const latestRun = workflowRuns[0];
 
-                // Check if workflow hasn't run yet (might not have matching path filters)
-                const anyRun = runs.workflow_runs.find(run => run.name === workflowName);
-                if (!anyRun) {
-                  console.log(`✓ ${workflowName}: not triggered (no matching files changed)`);
-                  continue;
-                }
-
-                core.setFailed(`${workflowName} has not succeeded yet. Status: ${anyRun?.conclusion || 'unknown'}`);
+              // Check if workflow is still running
+              if (latestRun.status !== 'completed') {
+                core.setFailed(`${workflowName} is still running (status: ${latestRun.status}). Cannot deploy until all workflows complete.`);
                 return;
               }
 
-              console.log(`✓ ${workflowName}: passed`);
+              // Check conclusion
+              if (latestRun.conclusion === 'success') {
+                console.log(`✓ ${workflowName}: passed`);
+                continue;
+              }
+
+              if (latestRun.conclusion === 'skipped') {
+                console.log(`✓ ${workflowName}: skipped (no matching files changed)`);
+                continue;
+              }
+
+              // Workflow completed but did not succeed
+              core.setFailed(`${workflowName} did not succeed. Conclusion: ${latestRun.conclusion}`);
+              return;
             }
 
             console.log('All required workflows have passed!');
