@@ -3,30 +3,44 @@ substitutions:
   # Device Info
   device_name: "e-ink-frame-downstairs"
   friendly_name: "E-Ink Frame Downstairs"
-  
-  # Pin Assignments
-  pin_clk: "GPIO0"    # aka D0
-  pin_mosi: "GPIO1"   # aka D1
-  pin_cs: "GPIO2"     # aka D2
-  pin_dc: "GPIO21"    # aka D3
-  pin_busy: "GPIO23"  # aka D4
-  pin_reset: "GPIO22" # aka D5
-  
+
+  # Pin Assignments for XIAO ESP32C6 to Waveshare 7.3" e-Paper HAT (F)
+  # Using hardware SPI pins for reliable communication
+  # XIAO ESP32C6 pinout: https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/
+  # Waveshare HAT connector directly to XIAO expansion board
+  pin_clk: "GPIO19"   # D8 - SPI SCK (hardware SPI)
+  pin_mosi: "GPIO18"  # D10 - SPI MOSI (hardware SPI)
+  pin_cs: "GPIO2"     # D2 - Chip Select
+  pin_dc: "GPIO21"    # D3 - Data/Command
+  pin_busy: "GPIO23"  # D5 - Busy signal (ACTIVE LOW - must be inverted!)
+  pin_reset: "GPIO22" # D4 - Reset
+
   # Deep Sleep
-  gpio_deep_sleep_wake_up: "GPIO04"
+  gpio_deep_sleep_wake_up: "GPIO4"
   sleep_duration: "30min"
-  
+
   # Location
   latitude: "53.1935777"
   longitude: "-6.120645"
   timezone: "Europe/Dublin"
-  
-  # Display
+
+  # Display - Waveshare 7.3" e-Paper HAT (G) 4-Color (800x480)
+  # Actual display: HAT (G) with Black, White, Red, Yellow
+  # Using 7.30in-f driver (no native HAT G support yet)
+  # Color mapping applied in color: section to correct for driver differences
   waveshare_model: "7.30in-f"
 
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
+  # Display refresh strategy:
+  # - Initial refresh once after first time sync (ensures HA data is available)
+  # - Scheduled refresh every ~7.5 minutes (8 times per hour)
+  # - Refresh disabled when:
+  #   - After 23:00 (11 PM)
+  #   - Alarm is armed away
+  #   - Nobody is home (zone.home has no persons)
+  # - Manual refresh available via button in Home Assistant
 
 esp32:
   board: seeed_xiao_esp32c6
@@ -54,84 +68,174 @@ ota:
   - platform: esphome
     password: !secret ota_password_e_ink_frame_downstairs
 
+web_server:
+  port: 80
+
 # SPI Configuration for e-ink display
 spi:
   clk_pin: ${pin_clk}
   mosi_pin: ${pin_mosi}
   id: spi_bus
 
+# Global to track if initial refresh has happened
+globals:
+  - id: initial_refresh_done
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
 # Time component
 time:
   - platform: homeassistant
     id: homeassistant_time
     timezone: ${timezone}
+    on_time_sync:
+      then:
+        # Only refresh on first time sync after boot
+        - if:
+            condition:
+              lambda: 'return !id(initial_refresh_done);'
+            then:
+              - logger.log: "Initial time sync - triggering first display refresh..."
+              - delay: 3s  # Give sensors time to receive their initial values
+              - component.update: eink_display
+              - globals.set:
+                  id: initial_refresh_done
+                  value: 'true'
+            else:
+              - logger.log: "Time re-synced, skipping refresh (use scheduled refresh)"
+    # Scheduled refresh every ~7.5 minutes
+    # Disabled when: after 23:00, alarm armed away, or nobody home
+    on_time:
+      # First set: :00, :15, :30, :45
+      - seconds: 0
+        minutes: /15
+        then:
+          - script.execute: scheduled_refresh
+      # Second set: :08, :23, :38, :53 (offset by ~7.5 min)
+      - seconds: 0
+        minutes: 8,23,38,53
+        then:
+          - script.execute: scheduled_refresh
+
+# Script to handle conditional refresh
+script:
+  - id: scheduled_refresh
+    then:
+      - if:
+          condition:
+            lambda: |-
+              auto time = id(homeassistant_time).now();
+
+              // Skip refresh after 23:00 (11 PM)
+              if (time.hour >= 23) {
+                ESP_LOGI("display", "Skipping refresh: after 23:00");
+                return false;
+              }
+
+              // Skip refresh if alarm is armed away
+              if (id(alarm_state).has_state()) {
+                std::string alarm = id(alarm_state).state;
+                if (alarm == "armed_away") {
+                  ESP_LOGI("display", "Skipping refresh: alarm armed away");
+                  return false;
+                }
+              }
+
+              // Skip refresh if nobody is home (zone.home persons is empty)
+              if (id(zone_home_persons).has_state()) {
+                std::string persons = id(zone_home_persons).state;
+                // Empty list is "[]" or just empty
+                if (persons == "[]" || persons.empty()) {
+                  ESP_LOGI("display", "Skipping refresh: nobody home");
+                  return false;
+                }
+              }
+
+              ESP_LOGI("display", "Scheduled refresh: conditions met, updating display");
+              return true;
+          then:
+            - component.update: eink_display
 
 # Sun component for sunrise/sunset
 sun:
   latitude: ${latitude}
   longitude: ${longitude}
 
-# Define colors for 7-color display
+# Define colors for Waveshare 7.3" e-Paper HAT (G) 4-Color display
+# The display supports: Black, White, Red, Yellow
+# Using 7.30in-f (7-color) driver with color mapping adjustments:
+#   - What the driver calls "green" displays as Yellow on HAT (G)
+#   - What the driver calls "blue" displays as Red on HAT (G)
+#
+# Color mapping for HAT (G):
+#   Driver Color  -> HAT (G) Display
+#   Black         -> Black
+#   White         -> White
+#   Green         -> Yellow
+#   Blue          -> Red
+#
 color:
   - id: color_black
     red: 0%
     green: 0%
     blue: 0%
     white: 0%
-    
+
   - id: color_white
     red: 100%
     green: 100%
     blue: 100%
     white: 100%
-    
-  - id: color_green
+
+  # For HAT (G): Use driver's "green" channel to display YELLOW
+  - id: color_yellow
     red: 0%
     green: 100%
     blue: 0%
-    
-  - id: color_blue
+
+  # For HAT (G): Use driver's "blue" channel to display RED
+  - id: color_red
     red: 0%
     green: 0%
     blue: 100%
-    
-  - id: color_red
-    red: 100%
-    green: 0%
-    blue: 0%
-    
-  - id: color_yellow
-    red: 100%
-    green: 100%
-    blue: 0%
-    
-  - id: color_orange
-    red: 100%
-    green: 50%
-    blue: 0%
 
-# Fonts
+# Fonts - TRMNL-inspired typography
 font:
+  # Small text for labels and secondary info
   - file: "gfonts://Roboto"
     id: font_small
-    size: 20
-    
+    size: 18
+
+  # Regular body text
+  - file: "gfonts://Roboto"
+    id: font_body
+    size: 22
+
+  # Medium for section content
   - file: "gfonts://Roboto"
     id: font_medium
-    size: 30
-    
-  - file: "gfonts://Roboto"
-    id: font_large
-    size: 60
-    
-  - file: "gfonts://Roboto@700"
-    id: font_bold
-    size: 40
+    size: 28
 
-# Material Design Icons
+  # Large for time display
+  - file: "gfonts://Roboto@700"
+    id: font_time
+    size: 72
+
+  # Bold for section headers
+  - file: "gfonts://Roboto@700"
+    id: font_header
+    size: 24
+
+  # Extra large for temperature
+  - file: "gfonts://Roboto@700"
+    id: font_temp_large
+    size: 56
+
+  # Material Design Icons - Large (weather)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf'
-    id: font_icons
-    size: 50
+    id: font_icons_large
+    size: 64
     glyphs:
       - "\U000F0590" # mdi:weather-cloudy
       - "\U000F0591" # mdi:weather-fog
@@ -147,32 +251,107 @@ font:
       - "\U000F0599" # mdi:weather-sunny
       - "\U000F059D" # mdi:weather-windy
       - "\U000F059E" # mdi:weather-windy-variant
+      - "\U000F0F31" # mdi:weather-night-partly-cloudy
+
+  # Material Design Icons - Medium (UI elements)
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf'
+    id: font_icons_medium
+    size: 32
+    glyphs:
+      - "\U000F050F" # mdi:thermometer
+      - "\U000F058E" # mdi:water-percent (humidity)
+      - "\U000F0F54" # mdi:home-thermometer
+      - "\U000F0A02" # mdi:calendar-today
+      - "\U000F0954" # mdi:calendar-clock
+      - "\U000F05CE" # mdi:wifi
+      - "\U000F091F" # mdi:wifi-strength-1
+      - "\U000F0922" # mdi:wifi-strength-4
+      - "\U000F059B" # mdi:weather-sunset-down
+      - "\U000F059C" # mdi:weather-sunset-up
+      - "\U000F0238" # mdi:fire (heating)
+      - "\U000F18D6" # mdi:sun-thermometer-outline
+      - "\U000F0A72" # mdi:transmission-tower (grid)
+      - "\U000F05A8" # mdi:white-balance-sunny (solar)
+      - "\U000F140B" # mdi:solar-power
 
 # Text sensors for Home Assistant data
 text_sensor:
+  # Weather condition
   - platform: homeassistant
     id: weather_condition
     entity_id: weather.home
-    
-  - platform: homeassistant
-    id: calendar_event
-    entity_id: calendar.personal
-    attribute: message
 
-# Sensors for Home Assistant data  
+  # Alarm state for refresh suppression
+  - platform: homeassistant
+    id: alarm_state
+    entity_id: alarm_control_panel.hkc_alarm_system
+
+  # Zone home person count (0 = nobody home)
+  - platform: homeassistant
+    id: zone_home_persons
+    entity_id: zone.home
+    attribute: persons
+
+# Sensors for Home Assistant data
 sensor:
+  # Weather data
   - platform: homeassistant
     id: weather_temperature
     entity_id: weather.home
     attribute: temperature
-    
+
   - platform: homeassistant
     id: weather_humidity
     entity_id: weather.home
     attribute: humidity
 
+  # Outside temperature (OpenWeatherMap)
+  - platform: homeassistant
+    id: outside_temperature
+    entity_id: sensor.openweathermap_temperature
+
+  - platform: homeassistant
+    id: outside_feels_like
+    entity_id: sensor.openweathermap_apparent_temperature
+
+  # Indoor temperatures - key rooms
+  - platform: homeassistant
+    id: hall_temperature
+    entity_id: sensor.hall_sensor_temperature
+
+  - platform: homeassistant
+    id: sitting_room_temperature
+    entity_id: sensor.sitting_room_sensor_temperature
+
+  - platform: homeassistant
+    id: kitchen_temperature
+    entity_id: sensor.kitchen_sensor_temperature
+
+  - platform: homeassistant
+    id: bedroom_temperature
+    entity_id: sensor.bedroom_sensor_temperature
+
+  # Hall thermostat target
+  - platform: homeassistant
+    id: thermostat_target
+    entity_id: sensor.hall_thermostat_target_temperature
+
+  - platform: homeassistant
+    id: thermostat_current
+    entity_id: sensor.hall_thermostat_current_temperature
+
+  # Utilities - Grid and Solar
+  - platform: homeassistant
+    id: grid_power
+    entity_id: sensor.grid_em_channel_1_power
+
+  - platform: homeassistant
+    id: solar_today
+    entity_id: sensor.solis_energy_today
+
   # WiFi Signal Sensor
   - platform: wifi_signal
+    id: wifi_signal_strength
     name: "${friendly_name} WiFi Signal"
     update_interval: 60s
 
@@ -184,60 +363,238 @@ display:
     dc_pin: ${pin_dc}
     busy_pin:
       number: ${pin_busy}
-      inverted: false
+      inverted: true  # REQUIRED for 7.30in-f to prevent display damage!
     reset_pin: ${pin_reset}
     model: ${waveshare_model}
     update_interval: never
     rotation: 0°
     
     lambda: |-
-      // Clear display with white
+      // ===========================================
+      // TRMNL-INSPIRED INFO DASHBOARD
+      // Waveshare 7.3" e-Paper HAT (G) 4-Color (800x480)
+      // Layout: Header | Weather + Utilities | Home Temps
+      // ===========================================
+
+      // Display dimensions
+      const int SCREEN_WIDTH = 800;
+      const int SCREEN_HEIGHT = 480;
+      const int MARGIN = 12;
+      const int SECTION_GAP = 12;
+
+      // Clear display with white background
       it.fill(id(color_white));
-      
+
       // Get current time
       auto time = id(homeassistant_time).now();
-      
+
       if (!time.is_valid()) {
-        it.printf(400, 300, id(font_medium), id(color_black), TextAlign::CENTER,
-                  "Waiting for time...");
+        it.printf(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, id(font_header), id(color_black), TextAlign::CENTER,
+                  "Waiting for Home Assistant...");
         return;
       }
-      
-      // Draw time in large font (black)
-      it.printf(400, 50, id(font_large), id(color_black), TextAlign::TOP_CENTER,
+
+      // ===== HEADER SECTION (Time & Date) =====
+      // Black header bar
+      it.filled_rectangle(0, 0, SCREEN_WIDTH, 90, id(color_black));
+
+      // Time (large, white on black)
+      it.printf(MARGIN + 10, 8, id(font_time), id(color_white), TextAlign::TOP_LEFT,
                 "%02d:%02d", time.hour, time.minute);
-      
-      // Draw date (black)
-      it.strftime(400, 130, id(font_medium), id(color_black), TextAlign::TOP_CENTER,
-                  "%A, %B %d, %Y", time);
-      
-      // Draw weather info if available
-      if (id(weather_temperature).has_state()) {
-        it.printf(400, 250, id(font_bold), id(color_red), TextAlign::TOP_CENTER,
-                  "%.1f°C", id(weather_temperature).state);
-      }
-      
+
+      // Date (right side of header)
+      it.strftime(SCREEN_WIDTH - MARGIN - 10, 12, id(font_header), id(color_white), TextAlign::TOP_RIGHT,
+                  "%A", time);  // Day name
+      it.strftime(SCREEN_WIDTH - MARGIN - 10, 40, id(font_medium), id(color_white), TextAlign::TOP_RIGHT,
+                  "%d %B %Y", time);  // Full date
+
+      // ===== LEFT COLUMN (Weather) =====
+      int left_col_x = MARGIN;
+      int left_col_width = 250;
+      int content_y = 100;
+
+      // Weather section header
+      it.printf(left_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
+      it.line(left_col_x, content_y + 26, left_col_x + left_col_width, content_y + 26, id(color_red));
+
+      // Weather icon mapping
+      std::string weather_icon = "\U000F0599"; // default: sunny
       if (id(weather_condition).has_state()) {
-        it.printf(400, 310, id(font_medium), id(color_blue), TextAlign::TOP_CENTER,
-                  "%s", id(weather_condition).state.c_str());
-      }
-      
-      // Draw a decorative line (orange)
-      it.line(100, 400, 700, 400, id(color_orange));
-      
-      // Draw calendar event if available (green)
-      if (id(calendar_event).has_state()) {
-        it.printf(400, 430, id(font_small), id(color_green), TextAlign::TOP_CENTER,
-                  "Next: %s", id(calendar_event).state.c_str());
+        std::string condition = id(weather_condition).state;
+        if (condition == "cloudy") weather_icon = "\U000F0590";
+        else if (condition == "fog") weather_icon = "\U000F0591";
+        else if (condition == "hail") weather_icon = "\U000F0592";
+        else if (condition == "lightning") weather_icon = "\U000F0593";
+        else if (condition == "lightning-rainy") weather_icon = "\U000F067E";
+        else if (condition == "clear-night") weather_icon = "\U000F0594";
+        else if (condition == "partlycloudy") weather_icon = "\U000F0595";
+        else if (condition == "pouring") weather_icon = "\U000F0596";
+        else if (condition == "rainy") weather_icon = "\U000F0597";
+        else if (condition == "snowy") weather_icon = "\U000F0598";
+        else if (condition == "snowy-rainy") weather_icon = "\U000F067F";
+        else if (condition == "sunny") weather_icon = "\U000F0599";
+        else if (condition == "windy") weather_icon = "\U000F059D";
+        else if (condition == "windy-variant") weather_icon = "\U000F059E";
       }
 
-# Deep Sleep Configuration
-deep_sleep:
-  id: deep_sleep_control
-  run_duration: 30s
-  sleep_duration: ${sleep_duration}
-  wakeup_pin: ${gpio_deep_sleep_wake_up}
-  wakeup_pin_mode: KEEP_AWAKE
+      // Weather icon and temperature
+      int weather_y = content_y + 35;
+      it.printf(left_col_x + 5, weather_y, id(font_icons_large), id(color_black), TextAlign::TOP_LEFT,
+                "%s", weather_icon.c_str());
+
+      // Current temperature (large) - next to icon
+      if (id(outside_temperature).has_state()) {
+        it.printf(left_col_x + 75, weather_y - 5, id(font_temp_large), id(color_black), TextAlign::TOP_LEFT,
+                  "%.0f°C", id(outside_temperature).state);
+      } else {
+        it.printf(left_col_x + 75, weather_y + 10, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "--°C");
+      }
+
+      // Feels like
+      if (id(outside_feels_like).has_state()) {
+        it.printf(left_col_x + 5, weather_y + 70, id(font_body), id(color_black), TextAlign::TOP_LEFT,
+                  "Feels %.0f°C", id(outside_feels_like).state);
+      }
+
+      // Humidity
+      if (id(weather_humidity).has_state()) {
+        it.printf(left_col_x + 130, weather_y + 70, id(font_body), id(color_black), TextAlign::TOP_LEFT,
+                  "%.0f%% RH", id(weather_humidity).state);
+      }
+
+      // Weather condition text
+      if (id(weather_condition).has_state()) {
+        // Capitalize first letter
+        std::string cond = id(weather_condition).state;
+        if (cond.length() > 0) {
+          cond[0] = toupper(cond[0]);
+        }
+        it.printf(left_col_x + 5, weather_y + 98, id(font_body), id(color_black), TextAlign::TOP_LEFT,
+                  "%s", cond.c_str());
+      }
+
+      // ===== CENTER COLUMN (Utilities) =====
+      int center_col_x = left_col_x + left_col_width + SECTION_GAP;
+      int center_col_width = 250;
+
+      // Utilities section header
+      it.printf(center_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "UTILITIES");
+      it.line(center_col_x, content_y + 26, center_col_x + center_col_width, content_y + 26, id(color_red));
+
+      int util_y = content_y + 40;
+      int util_row = 38;
+
+      // Grid Power
+      it.printf(center_col_x, util_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0A72");
+      it.printf(center_col_x + 40, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Grid");
+      if (id(grid_power).has_state()) {
+        float power = id(grid_power).state;
+        // Show import/export with color
+        if (power > 0) {
+          it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_red), TextAlign::TOP_RIGHT,
+                    "%.0fW", power);
+        } else if (power < 0) {
+          it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_yellow), TextAlign::TOP_RIGHT,
+                    "%.0fW", power);
+        } else {
+          it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                    "0W");
+        }
+      } else {
+        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--W");
+      }
+
+      util_y += util_row;
+
+      // Solar Yield Today
+      it.printf(center_col_x, util_y, id(font_icons_medium), id(color_yellow), TextAlign::TOP_LEFT, "\U000F05A8");
+      it.printf(center_col_x + 40, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Solar Today");
+      if (id(solar_today).has_state()) {
+        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f kWh", id(solar_today).state);
+      } else {
+        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
+      }
+
+      // ===== RIGHT COLUMN (Home Sensors) =====
+      int right_col_x = center_col_x + center_col_width + SECTION_GAP;
+      int right_col_width = SCREEN_WIDTH - right_col_x - MARGIN;
+
+      // Home section header
+      it.printf(right_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "HOME");
+      it.line(right_col_x, content_y + 26, SCREEN_WIDTH - MARGIN, content_y + 26, id(color_red));
+
+      int home_y = content_y + 35;
+      int row_height = 30;
+
+      // Heating status with icon and label
+      it.printf(right_col_x, home_y, id(font_icons_medium), id(color_red), TextAlign::TOP_LEFT, "\U000F0238");
+      it.printf(right_col_x + 38, home_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Heating");
+      if (id(thermostat_current).has_state() && id(thermostat_target).has_state()) {
+        it.printf(right_col_x + right_col_width, home_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.0f\u00B0\u2192%.0f\u00B0", id(thermostat_current).state, id(thermostat_target).state);
+      }
+
+      // Room temperatures
+      home_y += row_height + 8;
+
+      // Hall
+      if (id(hall_temperature).has_state()) {
+        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Hall");
+        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f\u00B0", id(hall_temperature).state);
+      }
+      home_y += row_height;
+
+      // Sitting Room
+      if (id(sitting_room_temperature).has_state()) {
+        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Sitting Room");
+        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f\u00B0", id(sitting_room_temperature).state);
+      }
+      home_y += row_height;
+
+      // Kitchen
+      if (id(kitchen_temperature).has_state()) {
+        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Kitchen");
+        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f\u00B0", id(kitchen_temperature).state);
+      }
+      home_y += row_height;
+
+      // Bedroom
+      if (id(bedroom_temperature).has_state()) {
+        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Bedroom");
+        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f\u00B0", id(bedroom_temperature).state);
+      }
+
+      // ===== FOOTER =====
+      int footer_y = SCREEN_HEIGHT - 35;
+      it.line(MARGIN, footer_y, SCREEN_WIDTH - MARGIN, footer_y, id(color_black));
+
+      // Last updated time
+      it.strftime(MARGIN, footer_y + 8, id(font_small), id(color_black), TextAlign::TOP_LEFT,
+                  "Updated %H:%M", time);
+
+      // WiFi signal indicator
+      if (id(wifi_signal_strength).has_state()) {
+        float rssi = id(wifi_signal_strength).state;
+        std::string wifi_icon = "\U000F091F"; // weak
+        if (rssi > -50) wifi_icon = "\U000F0922"; // strong
+        else if (rssi > -70) wifi_icon = "\U000F05CE"; // medium
+        it.printf(SCREEN_WIDTH - MARGIN, footer_y + 5, id(font_icons_medium), id(color_black), TextAlign::TOP_RIGHT,
+                  "%s", wifi_icon.c_str());
+      }
+
+# Deep Sleep Configuration (DISABLED FOR TESTING)
+# Uncomment when ready for production use
+# deep_sleep:
+#   id: deep_sleep_control
+#   run_duration: 30s
+#   sleep_duration: ${sleep_duration}
+#   wakeup_pin: ${gpio_deep_sleep_wake_up}
+#   wakeup_pin_mode: KEEP_AWAKE
 
 # Buttons to control display update
 button:
@@ -246,14 +603,16 @@ button:
     icon: "mdi:refresh"
     on_press:
       then:
+        - logger.log: "Manual display refresh triggered"
         - component.update: eink_display
-        
-  - platform: template
-    name: "${friendly_name} Deep Sleep"
-    icon: "mdi:sleep"
-    on_press:
-      then:
-        - deep_sleep.enter: deep_sleep_control
+
+  # Deep sleep button disabled during testing
+  # - platform: template
+  #   name: "${friendly_name} Deep Sleep"
+  #   icon: "mdi:sleep"
+  #   on_press:
+  #     then:
+  #       - deep_sleep.enter: deep_sleep_control
 
   - platform: restart
     name: "${friendly_name} Restart"

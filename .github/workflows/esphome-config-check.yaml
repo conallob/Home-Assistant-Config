@@ -1,0 +1,59 @@
+name: ESPHome Configuration Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'esphome/**'
+      - '.github/workflows/esphome-config-check.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'esphome/**'
+      - '.github/workflows/esphome-config-check.yaml'
+
+jobs:
+  validate:
+    name: ESPHome Configuration Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ESPHome
+        run: pip install esphome
+
+      - name: Replace secrets with fake secrets
+        run: |
+          # Use fake secrets for CI validation
+          cp esphome/fakesecrets.yaml esphome/secrets.yaml
+
+      - name: Validate ESPHome configurations
+        run: |
+          # Find all YAML files in esphome/ directory (excluding secrets and archive)
+          # and validate each one
+          exit_code=0
+          for file in esphome/*.yaml; do
+            # Skip secrets files
+            if [[ "$file" == *"secrets.yaml"* ]] || [[ "$file" == *"fakesecrets.yaml"* ]]; then
+              echo "Skipping $file (secrets file)"
+              continue
+            fi
+
+            echo "Validating $file..."
+            if ! esphome config "$file"; then
+              echo "❌ Validation failed for $file"
+              exit_code=1
+            else
+              echo "✅ $file is valid"
+            fi
+          done
+
+          exit $exit_code
