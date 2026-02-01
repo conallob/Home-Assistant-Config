@@ -33,13 +33,8 @@ substitutions:
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
-  on_boot:
-    priority: -100  # Run after everything else is initialized
-    then:
-      - logger.log: "Boot complete, waiting for display to initialize..."
-      - delay: 5s
-      - logger.log: "Triggering initial display refresh..."
-      - component.update: eink_display
+  # Note: Display refresh is now triggered by time sync, not on_boot
+  # This ensures Home Assistant data is available before first render
 
 esp32:
   board: seeed_xiao_esp32c6
@@ -78,6 +73,11 @@ time:
   - platform: homeassistant
     id: homeassistant_time
     timezone: ${timezone}
+    on_time_sync:
+      then:
+        - logger.log: "Time synced from Home Assistant, triggering display refresh..."
+        - delay: 2s  # Give sensors a moment to receive their initial values
+        - component.update: eink_display
 
 # Sun component for sunrise/sunset
 sun:
