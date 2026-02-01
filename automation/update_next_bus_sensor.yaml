@@ -1,0 +1,23 @@
+alias: "Update Next Bus Sensor"
+description: >-
+  Updates the Transit App next bus sensor every 5 minutes during active windows
+  to conserve the monthly API quota (1500 calls/month).
+  Active windows:
+    - Workdays: 07:50 - 09:30 when Conall is home
+    - Non-workdays: 10:30 - 15:00 when Conall is home
+mode: single
+
+trigger:
+  # Trigger every 5 minutes during potential active hours
+  - platform: time_pattern
+    minutes: "/5"
+
+condition:
+  - condition: state
+    entity_id: binary_sensor.next_bus_fetch_active
+    state: "on"
+
+action:
+  - service: homeassistant.update_entity
+    target:
+      entity_id: sensor.next_bus_departures
