@@ -35,7 +35,11 @@ esphome:
   friendly_name: ${friendly_name}
   # Display refresh strategy:
   # - Initial refresh once after first time sync (ensures HA data is available)
-  # - Scheduled refresh every 15 minutes
+  # - Scheduled refresh every ~7.5 minutes (8 times per hour)
+  # - Refresh disabled when:
+  #   - After 23:00 (11 PM)
+  #   - Alarm is armed away
+  #   - Nobody is home (zone.home has no persons)
   # - Manual refresh available via button in Home Assistant
 
 esp32:
@@ -100,13 +104,58 @@ time:
                   value: 'true'
             else:
               - logger.log: "Time re-synced, skipping refresh (use scheduled refresh)"
-    # Scheduled refresh every 15 minutes (at :00, :15, :30, :45)
+    # Scheduled refresh every ~7.5 minutes
+    # Disabled when: after 23:00, alarm armed away, or nobody home
     on_time:
+      # First set: :00, :15, :30, :45
       - seconds: 0
         minutes: /15
         then:
-          - logger.log: "Scheduled 15-minute display refresh..."
-          - component.update: eink_display
+          - script.execute: scheduled_refresh
+      # Second set: :08, :23, :38, :53 (offset by ~7.5 min)
+      - seconds: 0
+        minutes: 8,23,38,53
+        then:
+          - script.execute: scheduled_refresh
+
+# Script to handle conditional refresh
+script:
+  - id: scheduled_refresh
+    then:
+      - if:
+          condition:
+            lambda: |-
+              auto time = id(homeassistant_time).now();
+
+              // Skip refresh after 23:00 (11 PM)
+              if (time.hour >= 23) {
+                ESP_LOGI("display", "Skipping refresh: after 23:00");
+                return false;
+              }
+
+              // Skip refresh if alarm is armed away
+              if (id(alarm_state).has_state()) {
+                std::string alarm = id(alarm_state).state;
+                if (alarm == "armed_away") {
+                  ESP_LOGI("display", "Skipping refresh: alarm armed away");
+                  return false;
+                }
+              }
+
+              // Skip refresh if nobody is home (zone.home persons is empty)
+              if (id(zone_home_persons).has_state()) {
+                std::string persons = id(zone_home_persons).state;
+                // Empty list is "[]" or just empty
+                if (persons == "[]" || persons.empty()) {
+                  ESP_LOGI("display", "Skipping refresh: nobody home");
+                  return false;
+                }
+              }
+
+              ESP_LOGI("display", "Scheduled refresh: conditions met, updating display");
+              return true;
+          then:
+            - component.update: eink_display
 
 # Sun component for sunrise/sunset
 sun:
@@ -231,6 +280,17 @@ text_sensor:
   - platform: homeassistant
     id: weather_condition
     entity_id: weather.home
+
+  # Alarm state for refresh suppression
+  - platform: homeassistant
+    id: alarm_state
+    entity_id: alarm_control_panel.hkc_alarm_system
+
+  # Zone home person count (0 = nobody home)
+  - platform: homeassistant
+    id: zone_home_persons
+    entity_id: zone.home
+    attribute: persons
 
 # Sensors for Home Assistant data
 sensor:
