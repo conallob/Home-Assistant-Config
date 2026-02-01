@@ -206,12 +206,6 @@ text_sensor:
     id: weather_condition
     entity_id: weather.home
 
-  # School calendar for kids info
-  - platform: homeassistant
-    id: school_calendar
-    entity_id: calendar.st_andrews_school_calendar
-    attribute: message
-
 # Sensors for Home Assistant data
 sensor:
   # Weather data
@@ -275,12 +269,6 @@ sensor:
     name: "${friendly_name} WiFi Signal"
     update_interval: 60s
 
-# Binary sensors
-binary_sensor:
-  - platform: homeassistant
-    id: is_school_day
-    entity_id: binary_sensor.school_day
-
 # E-Ink Display
 display:
   - platform: waveshare_epaper
@@ -333,12 +321,6 @@ display:
                   "%A", time);  // Day name
       it.strftime(SCREEN_WIDTH - MARGIN - 10, 40, id(font_medium), id(color_white), TextAlign::TOP_RIGHT,
                   "%d %B %Y", time);  // Full date
-
-      // School day indicator (yellow badge if school day)
-      if (id(is_school_day).has_state() && id(is_school_day).state) {
-        it.filled_rectangle(SCREEN_WIDTH - 180, 68, 70, 20, id(color_yellow));
-        it.printf(SCREEN_WIDTH - 145, 70, id(font_small), id(color_black), TextAlign::TOP_CENTER, "SCHOOL");
-      }
 
       // ===== LEFT COLUMN (Weather) =====
       int left_col_x = MARGIN;
@@ -446,19 +428,6 @@ display:
                   "%.1f kWh", id(solar_today).state);
       } else {
         it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
-      }
-
-      // School info (if school day) - below utilities
-      util_y += util_row + 10;
-      if (id(is_school_day).has_state() && id(is_school_day).state) {
-        if (id(school_calendar).has_state() && id(school_calendar).state.length() > 0) {
-          std::string school = id(school_calendar).state;
-          if (school.length() > 24) {
-            school = school.substr(0, 21) + "...";
-          }
-          it.printf(center_col_x, util_y, id(font_small), id(color_black), TextAlign::TOP_LEFT,
-                    "School: %s", school.c_str());
-        }
       }
 
       // ===== RIGHT COLUMN (Home Sensors) =====
