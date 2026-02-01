@@ -24,8 +24,10 @@ substitutions:
   longitude: "-6.120645"
   timezone: "Europe/Dublin"
 
-  # Display - Waveshare 7.3" ACeP 7-Color e-Paper (800x480)
-  # Model F = 7-color, Model G = 4-color (RYBY)
+  # Display - Waveshare 7.3" e-Paper HAT (G) 4-Color (800x480)
+  # Actual display: HAT (G) with Black, White, Red, Yellow
+  # Using 7.30in-f driver (no native HAT G support yet)
+  # Color mapping applied in color: section to correct for driver differences
   waveshare_model: "7.30in-f"
 
 esphome:
@@ -82,44 +84,43 @@ sun:
   latitude: ${latitude}
   longitude: ${longitude}
 
-# Define colors for 7-color display
+# Define colors for Waveshare 7.3" e-Paper HAT (G) 4-Color display
+# The display supports: Black, White, Red, Yellow
+# Using 7.30in-f (7-color) driver with color mapping adjustments:
+#   - What the driver calls "green" displays as Yellow on HAT (G)
+#   - What the driver calls "blue" displays as Red on HAT (G)
+#
+# Color mapping for HAT (G):
+#   Driver Color  -> HAT (G) Display
+#   Black         -> Black
+#   White         -> White
+#   Green         -> Yellow
+#   Blue          -> Red
+#
 color:
   - id: color_black
     red: 0%
     green: 0%
     blue: 0%
     white: 0%
-    
+
   - id: color_white
     red: 100%
     green: 100%
     blue: 100%
     white: 100%
-    
-  - id: color_green
+
+  # For HAT (G): Use driver's "green" channel to display YELLOW
+  - id: color_yellow
     red: 0%
     green: 100%
     blue: 0%
-    
-  - id: color_blue
+
+  # For HAT (G): Use driver's "blue" channel to display RED
+  - id: color_red
     red: 0%
     green: 0%
     blue: 100%
-    
-  - id: color_red
-    red: 100%
-    green: 0%
-    blue: 0%
-    
-  - id: color_yellow
-    red: 100%
-    green: 100%
-    blue: 0%
-    
-  - id: color_orange
-    red: 100%
-    green: 50%
-    blue: 0%
 
 # Fonts
 font:
@@ -204,7 +205,8 @@ display:
     lambda: |-
       // ===========================================
       // E-INK DISPLAY TEST PATTERN
-      // Waveshare 7.3" ACeP 7-Color (800x480)
+      // Waveshare 7.3" e-Paper HAT (G) 4-Color (800x480)
+      // Colors: Black, White, Red, Yellow
       // ===========================================
 
       // Clear display with white background
@@ -214,53 +216,44 @@ display:
       it.printf(400, 20, id(font_bold), id(color_black), TextAlign::TOP_CENTER,
                 "E-Ink Display Test");
 
-      // Draw 7 color bars to test all colors
-      // Display is 800x480, divide into 7 vertical bars of ~114px each
-      int bar_width = 114;
+      it.printf(400, 70, id(font_small), id(color_black), TextAlign::TOP_CENTER,
+                "Waveshare 7.3\" HAT (G) - 4 Color");
+
+      // Draw 4 color bars to test all available colors
+      // Display is 800x480, divide into 4 vertical bars of 200px each
+      int bar_width = 200;
       int bar_height = 200;
-      int bar_y = 80;
+      int bar_y = 100;
 
       // Black bar
       it.filled_rectangle(0, bar_y, bar_width, bar_height, id(color_black));
-      it.printf(57, bar_y + bar_height + 10, id(font_small), id(color_black), TextAlign::TOP_CENTER, "Black");
+      it.printf(100, bar_y + bar_height + 10, id(font_medium), id(color_black), TextAlign::TOP_CENTER, "Black");
 
       // White bar (with black border)
       it.rectangle(bar_width, bar_y, bar_width, bar_height, id(color_black));
-      it.printf(bar_width + 57, bar_y + bar_height + 10, id(font_small), id(color_black), TextAlign::TOP_CENTER, "White");
-
-      // Green bar
-      it.filled_rectangle(bar_width * 2, bar_y, bar_width, bar_height, id(color_green));
-      it.printf(bar_width * 2 + 57, bar_y + bar_height + 10, id(font_small), id(color_green), TextAlign::TOP_CENTER, "Green");
-
-      // Blue bar
-      it.filled_rectangle(bar_width * 3, bar_y, bar_width, bar_height, id(color_blue));
-      it.printf(bar_width * 3 + 57, bar_y + bar_height + 10, id(font_small), id(color_blue), TextAlign::TOP_CENTER, "Blue");
+      it.printf(bar_width + 100, bar_y + bar_height + 10, id(font_medium), id(color_black), TextAlign::TOP_CENTER, "White");
 
       // Red bar
-      it.filled_rectangle(bar_width * 4, bar_y, bar_width, bar_height, id(color_red));
-      it.printf(bar_width * 4 + 57, bar_y + bar_height + 10, id(font_small), id(color_red), TextAlign::TOP_CENTER, "Red");
+      it.filled_rectangle(bar_width * 2, bar_y, bar_width, bar_height, id(color_red));
+      it.printf(bar_width * 2 + 100, bar_y + bar_height + 10, id(font_medium), id(color_red), TextAlign::TOP_CENTER, "Red");
 
       // Yellow bar
-      it.filled_rectangle(bar_width * 5, bar_y, bar_width, bar_height, id(color_yellow));
-      it.printf(bar_width * 5 + 57, bar_y + bar_height + 10, id(font_small), id(color_yellow), TextAlign::TOP_CENTER, "Yellow");
-
-      // Orange bar
-      it.filled_rectangle(bar_width * 6, bar_y, bar_width, bar_height, id(color_orange));
-      it.printf(bar_width * 6 + 57, bar_y + bar_height + 10, id(font_small), id(color_orange), TextAlign::TOP_CENTER, "Orange");
+      it.filled_rectangle(bar_width * 3, bar_y, bar_width, bar_height, id(color_yellow));
+      it.printf(bar_width * 3 + 100, bar_y + bar_height + 10, id(font_medium), id(color_yellow), TextAlign::TOP_CENTER, "Yellow");
 
       // Display resolution info
-      it.printf(400, 350, id(font_medium), id(color_black), TextAlign::TOP_CENTER,
+      it.printf(400, 380, id(font_medium), id(color_black), TextAlign::TOP_CENTER,
                 "Resolution: 800 x 480");
 
       // Show time if available (confirms Home Assistant connection)
       auto time = id(homeassistant_time).now();
       if (time.is_valid()) {
-        it.printf(400, 400, id(font_medium), id(color_blue), TextAlign::TOP_CENTER,
+        it.printf(400, 420, id(font_medium), id(color_red), TextAlign::TOP_CENTER,
                   "Time: %02d:%02d:%02d", time.hour, time.minute, time.second);
-        it.printf(400, 440, id(font_small), id(color_green), TextAlign::TOP_CENTER,
+        it.printf(400, 460, id(font_small), id(color_yellow), TextAlign::TOP_CENTER,
                   "Home Assistant Connected!");
       } else {
-        it.printf(400, 400, id(font_medium), id(color_red), TextAlign::TOP_CENTER,
+        it.printf(400, 420, id(font_medium), id(color_red), TextAlign::TOP_CENTER,
                   "Waiting for Home Assistant...");
       }
 
