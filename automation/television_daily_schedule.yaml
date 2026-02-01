@@ -1,7 +1,7 @@
 id: '1730144055808'
 alias: Television Daily Schedule
-description: Automation to decide when the television should power in each day,
-  by checking the St Andrews calendar in Google Calendar
+description: Automation to decide when the television should power on each day,
+  based on whether it's a school day
 triggers:
 - at: 07:00:00
   trigger: time
@@ -11,11 +11,12 @@ actions:
   - conditions:
     - condition: or
       conditions:
+      - condition: time
+        weekday:
+        - sat
+        - sun
       - condition: state
-        entity_id: binary_sensor.workday_sensor
-        state: 'off'
-      - condition: state
-        entity_id: calendar.st_andrews_school_calendar
+        entity_id: binary_sensor.school_day
         state: 'off'
     sequence:
     - target:
