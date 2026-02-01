@@ -35,7 +35,7 @@ sensor:
   - name: "Next Bus Stop 4180"
     unique_id: transit_app_next_bus_stop_4180
     value_template: >-
-      {% set departures = [] %}
+      {% set ns = namespace(departures=[]) %}
       {% if value_json.route_departures is defined %}
         {% for route in value_json.route_departures %}
           {% if route.itineraries is defined %}
@@ -43,7 +43,7 @@ sensor:
               {% if itinerary.schedule_items is defined %}
                 {% for item in itinerary.schedule_items %}
                   {% if 'Dublin:4180' in (item.global_stop_id | default('')) or route.global_route_id is search('4180') %}
-                    {% set departures = departures + [item.departure_time] %}
+                    {% set ns.departures = ns.departures + [item.departure_time] %}
                   {% endif %}
                 {% endfor %}
               {% endif %}
@@ -51,8 +51,8 @@ sensor:
           {% endif %}
         {% endfor %}
       {% endif %}
-      {% if departures | length > 0 %}
-        {{ (departures | first | as_datetime).strftime('%H:%M') if departures | first is defined else 'No data' }}
+      {% if ns.departures | length > 0 %}
+        {{ (ns.departures | first | as_datetime).strftime('%H:%M') if ns.departures | first is defined else 'No data' }}
       {% else %}
         No departures
       {% endif %}
@@ -63,7 +63,7 @@ sensor:
   - name: "Next Bus Stop 8270"
     unique_id: transit_app_next_bus_stop_8270
     value_template: >-
-      {% set departures = [] %}
+      {% set ns = namespace(departures=[]) %}
       {% if value_json.route_departures is defined %}
         {% for route in value_json.route_departures %}
           {% if route.itineraries is defined %}
@@ -71,7 +71,7 @@ sensor:
               {% if itinerary.schedule_items is defined %}
                 {% for item in itinerary.schedule_items %}
                   {% if 'Dublin:8270' in (item.global_stop_id | default('')) or route.global_route_id is search('8270') %}
-                    {% set departures = departures + [item.departure_time] %}
+                    {% set ns.departures = ns.departures + [item.departure_time] %}
                   {% endif %}
                 {% endfor %}
               {% endif %}
@@ -79,8 +79,8 @@ sensor:
           {% endif %}
         {% endfor %}
       {% endif %}
-      {% if departures | length > 0 %}
-        {{ (departures | first | as_datetime).strftime('%H:%M') if departures | first is defined else 'No data' }}
+      {% if ns.departures | length > 0 %}
+        {{ (ns.departures | first | as_datetime).strftime('%H:%M') if ns.departures | first is defined else 'No data' }}
       {% else %}
         No departures
       {% endif %}
@@ -91,7 +91,7 @@ sensor:
   - name: "Next Bus Stop 4142"
     unique_id: transit_app_next_bus_stop_4142
     value_template: >-
-      {% set departures = [] %}
+      {% set ns = namespace(departures=[]) %}
       {% if value_json.route_departures is defined %}
         {% for route in value_json.route_departures %}
           {% if route.itineraries is defined %}
@@ -99,7 +99,7 @@ sensor:
               {% if itinerary.schedule_items is defined %}
                 {% for item in itinerary.schedule_items %}
                   {% if 'Dublin:4142' in (item.global_stop_id | default('')) or route.global_route_id is search('4142') %}
-                    {% set departures = departures + [item.departure_time] %}
+                    {% set ns.departures = ns.departures + [item.departure_time] %}
                   {% endif %}
                 {% endfor %}
               {% endif %}
@@ -107,8 +107,8 @@ sensor:
           {% endif %}
         {% endfor %}
       {% endif %}
-      {% if departures | length > 0 %}
-        {{ (departures | first | as_datetime).strftime('%H:%M') if departures | first is defined else 'No data' }}
+      {% if ns.departures | length > 0 %}
+        {{ (ns.departures | first | as_datetime).strftime('%H:%M') if ns.departures | first is defined else 'No data' }}
       {% else %}
         No departures
       {% endif %}
