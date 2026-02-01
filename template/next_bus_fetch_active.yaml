@@ -1,0 +1,27 @@
+# Binary sensor to determine when next bus data should be fetched
+# Conditions:
+#   - person.conall_o_brien must be home
+#   - Workday (binary_sensor.workday_sensor on): 07:50 - 09:30
+#   - Non-workday (binary_sensor.workday_sensor off): 10:30 - 15:00
+
+binary_sensor:
+  - name: "Next Bus Fetch Active"
+    unique_id: next_bus_fetch_active
+    state: >-
+      {% set is_home = is_state('person.conall_o_brien', 'home') %}
+      {% set is_workday = is_state('binary_sensor.workday_sensor', 'on') %}
+      {% set current_time = now().strftime('%H:%M') %}
+
+      {% if not is_home %}
+        false
+      {% elif is_workday %}
+        {{ '07:50' <= current_time <= '09:30' }}
+      {% else %}
+        {{ '10:30' <= current_time <= '15:00' }}
+      {% endif %}
+    icon: >-
+      {% if this.state == 'on' %}
+        mdi:bus-clock
+      {% else %}
+        mdi:bus-stop
+      {% endif %}

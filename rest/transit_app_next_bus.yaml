@@ -1,0 +1,117 @@
+# Transit App - Next Bus Departures
+# Fetches real-time departure information for specific bus stops
+# API Documentation: https://api-doc.transitapp.com/v3.html
+#
+# Note: global_stop_id format is "AGENCY:STOPNUMBER"
+# To find your stop's global_stop_id, use the nearby_stops endpoint:
+#   curl -H "apiKey:YOUR_KEY" "https://external.transitapp.com/v3/public/nearby_stops?lat=LAT&lon=LON&max_distance=200"
+#
+# Configured stops:
+#   - Stop 4180: E1, L12 routes
+#   - Stop 8270: E1 route
+#   - Stop 4142: 45A route
+
+resource: "https://external.transitapp.com/v3/public/stop_departures"
+scan_interval: 3600  # Default 1 hour; automation triggers more frequent updates during active windows
+headers:
+  apiKey: !secret transit_api_token
+  Accept-Language: "en"
+params:
+  global_stop_ids: "Dublin:4180,Dublin:8270,Dublin:4142"
+  remove_cancelled: "true"
+sensor:
+  - name: "Next Bus Departures"
+    unique_id: transit_app_next_bus_departures
+    value_template: >-
+      {% if value_json.route_departures is defined %}
+        {{ value_json.route_departures | length }} routes
+      {% else %}
+        unavailable
+      {% endif %}
+    json_attributes:
+      - route_departures
+    json_attributes_path: "$"
+
+  - name: "Next Bus Stop 4180"
+    unique_id: transit_app_next_bus_stop_4180
+    value_template: >-
+      {% set ns = namespace(departures=[]) %}
+      {% if value_json.route_departures is defined %}
+        {% for route in value_json.route_departures %}
+          {% if route.itineraries is defined %}
+            {% for itinerary in route.itineraries %}
+              {% if itinerary.schedule_items is defined %}
+                {% for item in itinerary.schedule_items %}
+                  {% if 'Dublin:4180' in (item.global_stop_id | default('')) or route.global_route_id is search('4180') %}
+                    {% set ns.departures = ns.departures + [item.departure_time] %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% if ns.departures | length > 0 %}
+        {{ (ns.departures | first | as_datetime).strftime('%H:%M') if ns.departures | first is defined else 'No data' }}
+      {% else %}
+        No departures
+      {% endif %}
+    json_attributes_path: "$"
+    json_attributes:
+      - route_departures
+
+  - name: "Next Bus Stop 8270"
+    unique_id: transit_app_next_bus_stop_8270
+    value_template: >-
+      {% set ns = namespace(departures=[]) %}
+      {% if value_json.route_departures is defined %}
+        {% for route in value_json.route_departures %}
+          {% if route.itineraries is defined %}
+            {% for itinerary in route.itineraries %}
+              {% if itinerary.schedule_items is defined %}
+                {% for item in itinerary.schedule_items %}
+                  {% if 'Dublin:8270' in (item.global_stop_id | default('')) or route.global_route_id is search('8270') %}
+                    {% set ns.departures = ns.departures + [item.departure_time] %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% if ns.departures | length > 0 %}
+        {{ (ns.departures | first | as_datetime).strftime('%H:%M') if ns.departures | first is defined else 'No data' }}
+      {% else %}
+        No departures
+      {% endif %}
+    json_attributes_path: "$"
+    json_attributes:
+      - route_departures
+
+  - name: "Next Bus Stop 4142"
+    unique_id: transit_app_next_bus_stop_4142
+    value_template: >-
+      {% set ns = namespace(departures=[]) %}
+      {% if value_json.route_departures is defined %}
+        {% for route in value_json.route_departures %}
+          {% if route.itineraries is defined %}
+            {% for itinerary in route.itineraries %}
+              {% if itinerary.schedule_items is defined %}
+                {% for item in itinerary.schedule_items %}
+                  {% if 'Dublin:4142' in (item.global_stop_id | default('')) or route.global_route_id is search('4142') %}
+                    {% set ns.departures = ns.departures + [item.departure_time] %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% if ns.departures | length > 0 %}
+        {{ (ns.departures | first | as_datetime).strftime('%H:%M') if ns.departures | first is defined else 'No data' }}
+      {% else %}
+        No departures
+      {% endif %}
+    json_attributes_path: "$"
+    json_attributes:
+      - route_departures
