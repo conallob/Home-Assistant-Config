@@ -31,8 +31,6 @@ web_server:
   port: 80
 
 psram:
-  mode: quad
-  speed: 80MHz
 
 external_components:
   - source: github://martydingo/esphome-axp192
@@ -92,23 +90,25 @@ sensor:
       name: "Home Cinema Artwork Battery Level"
       id: "home_cinema_artwork_batterylevel"
 
-  - platform: mpu6886
-    address: 0x68
-    update_interval: 1s
-    accel_x:
-      name: "MPU6886 Accel X"
-    accel_y:
-      name: "MPU6886 Accel Y"
-    accel_z:
-      name: "MPU6886 Accel Z"
-    gyro_x:
-      name: "MPU6886 Gyro X"
-    gyro_y:
-      name: "MPU6886 Gyro Y"
-    gyro_z:
-      name: "MPU6886 Gyro Z"
-    temperature:
-      name: "MPU6886 Temperature"
+  # MPU6886 IMU - commented out as Core Metal may have different IMU
+  # Uncomment if your device has MPU6886
+  # - platform: mpu6886
+  #   address: 0x68
+  #   update_interval: 1s
+  #   accel_x:
+  #     name: "MPU6886 Accel X"
+  #   accel_y:
+  #     name: "MPU6886 Accel Y"
+  #   accel_z:
+  #     name: "MPU6886 Accel Z"
+  #   gyro_x:
+  #     name: "MPU6886 Gyro X"
+  #   gyro_y:
+  #     name: "MPU6886 Gyro Y"
+  #   gyro_z:
+  #     name: "MPU6886 Gyro Z"
+  #   temperature:
+  #     name: "MPU6886 Temperature"
 
 spi:
   clk_pin: GPIO18
@@ -193,10 +193,11 @@ display:
     dc_pin: GPIO15
     data_rate: 40MHz
     invert_colors: true
-    pixel_mode: 18bit
+    pixel_mode: 16bit
     dimensions:
       width: 320
       height: 240
+    buffer_size: 25%  # Use partial buffer to reduce RAM usage
     transform: # must be explicitly set until bug is fixed
       swap_xy: false
       mirror_x: false
