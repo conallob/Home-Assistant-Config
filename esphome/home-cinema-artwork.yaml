@@ -38,6 +38,49 @@ external_components:
   - source: github://martydingo/esphome-axp192
     components: [axp192]
 
+# Text sensors to import media player state and attributes from Home Assistant
+text_sensor:
+  - platform: homeassistant
+    name: "Media Player State"
+    entity_id: media_player.home_cinema
+    id: media_player_state
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Title"
+    entity_id: media_player.home_cinema
+    attribute: media_title
+    id: media_title
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Artist"
+    entity_id: media_player.home_cinema
+    attribute: media_artist
+    id: media_artist
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Album"
+    entity_id: media_player.home_cinema
+    attribute: media_album_name
+    id: media_album
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Content Type"
+    entity_id: media_player.home_cinema
+    attribute: media_content_type
+    id: media_content_type
+
 sensor:
   - platform: axp192
     model: M5CORE2
@@ -77,6 +120,71 @@ i2c:
     scl: GPIO22
     scan: true
 
+# Fonts for the display
+font:
+  - file: "gfonts://Roboto"
+    id: font_title
+    size: 24
+    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+  - file: "gfonts://Roboto"
+    id: font_artist
+    size: 20
+    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+  - file: "gfonts://Roboto"
+    id: font_album
+    size: 16
+    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+  - file: "gfonts://Roboto"
+    id: font_status
+    size: 14
+    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 12
+    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+  # Icon font for playback status symbols
+  - file: "gfonts://Material+Symbols+Outlined"
+    id: font_icons
+    size: 16
+    glyphs:
+      - "\U0000E037"  # play_arrow
+      - "\U0000E034"  # pause
+      - "\U0000E047"  # stop
+      - "\U0000E002"  # error
+
+# Colors for the display
+color:
+  - id: color_white
+    white: 100%
+  - id: color_title
+    red: 100%
+    green: 100%
+    blue: 100%
+  - id: color_artist
+    red: 80%
+    green: 80%
+    blue: 100%
+  - id: color_album
+    red: 70%
+    green: 70%
+    blue: 70%
+  - id: color_status_playing
+    red: 50%
+    green: 100%
+    blue: 50%
+  - id: color_status_paused
+    red: 100%
+    green: 100%
+    blue: 50%
+  - id: color_status_idle
+    red: 60%
+    green: 60%
+    blue: 60%
+  - id: color_background
+    red: 0%
+    green: 0%
+    blue: 0%
+
 display:
   - platform: mipi_spi
     model: ILI9341
@@ -93,7 +201,85 @@ display:
       swap_xy: false
       mirror_x: false
       mirror_y: false
-    show_test_card: true
+    update_interval: 1s
+    lambda: |-
+      // Fill background
+      it.fill(id(color_background));
+
+      // Get media player state
+      std::string state = id(media_player_state).state;
+
+      // Display header with status indicator
+      int status_y = 10;
+      int icon_offset = 22;  // Width of icon plus spacing
+      if (state == "playing") {
+        it.print(10, status_y, id(font_icons), id(color_status_playing), "\U0000E037");  // play_arrow
+        it.printf(10 + icon_offset, status_y, id(font_status), id(color_status_playing), "Now Playing");
+      } else if (state == "paused") {
+        it.print(10, status_y, id(font_icons), id(color_status_paused), "\U0000E034");  // pause
+        it.printf(10 + icon_offset, status_y, id(font_status), id(color_status_paused), "Paused");
+      } else if (state == "idle" || state == "off" || state == "standby") {
+        it.print(10, status_y, id(font_icons), id(color_status_idle), "\U0000E047");  // stop
+        it.printf(10 + icon_offset, status_y, id(font_status), id(color_status_idle), "Idle");
+        // Show idle message centered
+        it.printf(160, 120, id(font_artist), id(color_album), TextAlign::CENTER, "Nothing Playing");
+        return;
+      } else if (state.empty() || state == "unavailable") {
+        it.print(10, status_y, id(font_icons), id(color_status_idle), "\U0000E002");  // error
+        it.printf(10 + icon_offset, status_y, id(font_status), id(color_status_idle), "Unavailable");
+        it.printf(160, 120, id(font_artist), id(color_album), TextAlign::CENTER, "Media Player Unavailable");
+        return;
+      } else {
+        it.printf(10, status_y, id(font_status), id(color_status_idle), "%s", state.c_str());
+      }
+
+      // Draw separator line
+      it.horizontal_line(10, 30, 300, id(color_album));
+
+      // Display media title (with word wrap if needed)
+      int title_y = 50;
+      std::string title = id(media_title).state;
+      if (!title.empty()) {
+        // Truncate long titles
+        if (title.length() > 28) {
+          title = title.substr(0, 25) + "...";
+        }
+        it.printf(10, title_y, id(font_title), id(color_title), "%s", title.c_str());
+      } else {
+        it.printf(10, title_y, id(font_title), id(color_title), "Unknown Title");
+      }
+
+      // Display artist
+      int artist_y = 90;
+      std::string artist = id(media_artist).state;
+      if (!artist.empty()) {
+        if (artist.length() > 32) {
+          artist = artist.substr(0, 29) + "...";
+        }
+        it.printf(10, artist_y, id(font_artist), id(color_artist), "%s", artist.c_str());
+      }
+
+      // Display album
+      int album_y = 125;
+      std::string album = id(media_album).state;
+      if (!album.empty()) {
+        if (album.length() > 38) {
+          album = album.substr(0, 35) + "...";
+        }
+        it.printf(10, album_y, id(font_album), id(color_album), "%s", album.c_str());
+      }
+
+      // Draw bottom separator
+      it.horizontal_line(10, 200, 300, id(color_album));
+
+      // Display content type at bottom
+      std::string content_type = id(media_content_type).state;
+      if (!content_type.empty()) {
+        it.printf(10, 210, id(font_small), id(color_album), "%s", content_type.c_str());
+      }
+
+      // Display device name
+      it.printf(310, 210, id(font_small), id(color_album), TextAlign::TOP_RIGHT, "Home Cinema");
 
 touchscreen:
   - platform: ft63x6
