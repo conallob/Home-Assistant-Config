@@ -192,30 +192,16 @@ font:
       - "\U000F059C" # mdi:weather-sunset-up
       - "\U000F0238" # mdi:fire (heating)
       - "\U000F18D6" # mdi:sun-thermometer-outline
+      - "\U000F0A72" # mdi:transmission-tower (grid)
+      - "\U000F05A8" # mdi:white-balance-sunny (solar)
+      - "\U000F140B" # mdi:solar-power
 
 # Text sensors for Home Assistant data
 text_sensor:
-  # Weather
+  # Weather condition
   - platform: homeassistant
     id: weather_condition
     entity_id: weather.home
-
-  # Calendar - Family calendar event
-  - platform: homeassistant
-    id: calendar_event_1
-    entity_id: calendar.family
-    attribute: message
-
-  - platform: homeassistant
-    id: calendar_event_1_start
-    entity_id: calendar.family
-    attribute: start_time
-
-  # Calendar - Personal calendar
-  - platform: homeassistant
-    id: calendar_event_2
-    entity_id: calendar.personal
-    attribute: message
 
   # School calendar for kids info
   - platform: homeassistant
@@ -271,6 +257,15 @@ sensor:
     id: thermostat_current
     entity_id: sensor.hall_thermostat_current_temperature
 
+  # Utilities - Grid and Solar
+  - platform: homeassistant
+    id: grid_power
+    entity_id: sensor.grid_em_channel_1_power
+
+  - platform: homeassistant
+    id: solar_today
+    entity_id: sensor.solis_energy_today
+
   # WiFi Signal Sensor
   - platform: wifi_signal
     id: wifi_signal_strength
@@ -301,14 +296,14 @@ display:
       // ===========================================
       // TRMNL-INSPIRED INFO DASHBOARD
       // Waveshare 7.3" e-Paper HAT (G) 4-Color (800x480)
-      // Layout: Time/Date | Weather | Calendar | Home Sensors
+      // Layout: Header | Weather + Utilities | Home Temps
       // ===========================================
 
       // Display dimensions
       const int SCREEN_WIDTH = 800;
       const int SCREEN_HEIGHT = 480;
       const int MARGIN = 12;
-      const int SECTION_GAP = 8;
+      const int SECTION_GAP = 12;
 
       // Clear display with white background
       it.fill(id(color_white));
@@ -338,13 +333,13 @@ display:
 
       // School day indicator (yellow badge if school day)
       if (id(is_school_day).has_state() && id(is_school_day).state) {
-        it.filled_rectangle(SCREEN_WIDTH - 180, 70, 70, 18, id(color_yellow));
-        it.printf(SCREEN_WIDTH - 145, 71, id(font_small), id(color_black), TextAlign::TOP_CENTER, "SCHOOL");
+        it.filled_rectangle(SCREEN_WIDTH - 180, 68, 70, 20, id(color_yellow));
+        it.printf(SCREEN_WIDTH - 145, 70, id(font_small), id(color_black), TextAlign::TOP_CENTER, "SCHOOL");
       }
 
       // ===== LEFT COLUMN (Weather) =====
       int left_col_x = MARGIN;
-      int left_col_width = 260;
+      int left_col_width = 250;
       int content_y = 100;
 
       // Weather section header
@@ -376,76 +371,89 @@ display:
       it.printf(left_col_x + 5, weather_y, id(font_icons_large), id(color_black), TextAlign::TOP_LEFT,
                 "%s", weather_icon.c_str());
 
-      // Current temperature (large)
+      // Current temperature (large) - next to icon
       if (id(outside_temperature).has_state()) {
-        it.printf(left_col_x + 80, weather_y - 5, id(font_temp_large), id(color_black), TextAlign::TOP_LEFT,
-                  "%.0f°", id(outside_temperature).state);
+        it.printf(left_col_x + 75, weather_y - 5, id(font_temp_large), id(color_black), TextAlign::TOP_LEFT,
+                  "%.0f°C", id(outside_temperature).state);
+      } else {
+        it.printf(left_col_x + 75, weather_y + 10, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "--°C");
       }
 
       // Feels like
       if (id(outside_feels_like).has_state()) {
         it.printf(left_col_x + 5, weather_y + 70, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "Feels like %.0f°", id(outside_feels_like).state);
+                  "Feels %.0f°C", id(outside_feels_like).state);
       }
 
       // Humidity
       if (id(weather_humidity).has_state()) {
-        it.printf(left_col_x + 5, weather_y + 95, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "Humidity %.0f%%", id(weather_humidity).state);
+        it.printf(left_col_x + 130, weather_y + 70, id(font_body), id(color_black), TextAlign::TOP_LEFT,
+                  "%.0f%% RH", id(weather_humidity).state);
       }
 
       // Weather condition text
       if (id(weather_condition).has_state()) {
-        it.printf(left_col_x + 5, weather_y + 120, id(font_small), id(color_black), TextAlign::TOP_LEFT,
-                  "%s", id(weather_condition).state.c_str());
+        // Capitalize first letter
+        std::string cond = id(weather_condition).state;
+        if (cond.length() > 0) {
+          cond[0] = toupper(cond[0]);
+        }
+        it.printf(left_col_x + 5, weather_y + 98, id(font_body), id(color_black), TextAlign::TOP_LEFT,
+                  "%s", cond.c_str());
       }
 
-      // ===== CENTER COLUMN (Calendar/Agenda) =====
+      // ===== CENTER COLUMN (Utilities) =====
       int center_col_x = left_col_x + left_col_width + SECTION_GAP;
-      int center_col_width = 270;
+      int center_col_width = 250;
 
-      // Calendar section header
-      it.printf(center_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "TODAY");
+      // Utilities section header
+      it.printf(center_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "UTILITIES");
       it.line(center_col_x, content_y + 26, center_col_x + center_col_width, content_y + 26, id(color_red));
 
-      int cal_y = content_y + 35;
+      int util_y = content_y + 40;
+      int util_row = 38;
 
-      // Calendar icon
-      it.printf(center_col_x, cal_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0A02");
-
-      // Family calendar event
-      if (id(calendar_event_1).has_state() && id(calendar_event_1).state.length() > 0) {
-        std::string event = id(calendar_event_1).state;
-        // Truncate if too long
-        if (event.length() > 28) {
-          event = event.substr(0, 25) + "...";
+      // Grid Power
+      it.printf(center_col_x, util_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0A72");
+      it.printf(center_col_x + 40, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Grid");
+      if (id(grid_power).has_state()) {
+        float power = id(grid_power).state;
+        // Show import/export with color
+        if (power > 0) {
+          it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_red), TextAlign::TOP_RIGHT,
+                    "%.0fW", power);
+        } else if (power < 0) {
+          it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_yellow), TextAlign::TOP_RIGHT,
+                    "%.0fW", power);
+        } else {
+          it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                    "0W");
         }
-        it.printf(center_col_x + 38, cal_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "%s", event.c_str());
       } else {
-        it.printf(center_col_x + 38, cal_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "No events today");
+        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--W");
       }
 
-      // Personal calendar event (if different)
-      if (id(calendar_event_2).has_state() && id(calendar_event_2).state.length() > 0) {
-        std::string event2 = id(calendar_event_2).state;
-        if (event2.length() > 28) {
-          event2 = event2.substr(0, 25) + "...";
-        }
-        it.printf(center_col_x, cal_y + 35, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0954");
-        it.printf(center_col_x + 38, cal_y + 37, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "%s", event2.c_str());
+      util_y += util_row;
+
+      // Solar Yield Today
+      it.printf(center_col_x, util_y, id(font_icons_medium), id(color_yellow), TextAlign::TOP_LEFT, "\U000F05A8");
+      it.printf(center_col_x + 40, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Solar Today");
+      if (id(solar_today).has_state()) {
+        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f kWh", id(solar_today).state);
+      } else {
+        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
       }
 
-      // School info (if school day)
+      // School info (if school day) - below utilities
+      util_y += util_row + 10;
       if (id(is_school_day).has_state() && id(is_school_day).state) {
         if (id(school_calendar).has_state() && id(school_calendar).state.length() > 0) {
           std::string school = id(school_calendar).state;
-          if (school.length() > 28) {
-            school = school.substr(0, 25) + "...";
+          if (school.length() > 24) {
+            school = school.substr(0, 21) + "...";
           }
-          it.printf(center_col_x, cal_y + 75, id(font_small), id(color_yellow), TextAlign::TOP_LEFT,
+          it.printf(center_col_x, util_y, id(font_small), id(color_black), TextAlign::TOP_LEFT,
                     "School: %s", school.c_str());
         }
       }
@@ -459,51 +467,48 @@ display:
       it.line(right_col_x, content_y + 26, SCREEN_WIDTH - MARGIN, content_y + 26, id(color_red));
 
       int home_y = content_y + 35;
-      int row_height = 28;
+      int row_height = 30;
 
-      // Thermostat status with icon
+      // Heating status with icon and label
       it.printf(right_col_x, home_y, id(font_icons_medium), id(color_red), TextAlign::TOP_LEFT, "\U000F0238");
+      it.printf(right_col_x + 38, home_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Heating");
       if (id(thermostat_current).has_state() && id(thermostat_target).has_state()) {
-        it.printf(right_col_x + 38, home_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "%.0f° → %.0f°", id(thermostat_current).state, id(thermostat_target).state);
+        it.printf(right_col_x + right_col_width, home_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.0f\u00B0\u2192%.0f\u00B0", id(thermostat_current).state, id(thermostat_target).state);
       }
 
       // Room temperatures
-      home_y += row_height + 12;
+      home_y += row_height + 8;
 
       // Hall
       if (id(hall_temperature).has_state()) {
-        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "Hall");
+        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Hall");
         it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f°", id(hall_temperature).state);
+                  "%.1f\u00B0", id(hall_temperature).state);
       }
       home_y += row_height;
 
       // Sitting Room
       if (id(sitting_room_temperature).has_state()) {
-        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "Sitting Room");
+        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Sitting Room");
         it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f°", id(sitting_room_temperature).state);
+                  "%.1f\u00B0", id(sitting_room_temperature).state);
       }
       home_y += row_height;
 
       // Kitchen
       if (id(kitchen_temperature).has_state()) {
-        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "Kitchen");
+        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Kitchen");
         it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f°", id(kitchen_temperature).state);
+                  "%.1f\u00B0", id(kitchen_temperature).state);
       }
       home_y += row_height;
 
       // Bedroom
       if (id(bedroom_temperature).has_state()) {
-        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "Bedroom");
+        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Bedroom");
         it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f°", id(bedroom_temperature).state);
+                  "%.1f\u00B0", id(bedroom_temperature).state);
       }
 
       // ===== FOOTER =====
