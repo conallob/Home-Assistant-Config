@@ -33,8 +33,10 @@ substitutions:
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
-  # Note: Display refresh is now triggered by time sync, not on_boot
-  # This ensures Home Assistant data is available before first render
+  # Display refresh strategy:
+  # - Initial refresh once after first time sync (ensures HA data is available)
+  # - Scheduled refresh every 15 minutes
+  # - Manual refresh available via button in Home Assistant
 
 esp32:
   board: seeed_xiao_esp32c6
@@ -71,6 +73,13 @@ spi:
   mosi_pin: ${pin_mosi}
   id: spi_bus
 
+# Global to track if initial refresh has happened
+globals:
+  - id: initial_refresh_done
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
 # Time component
 time:
   - platform: homeassistant
@@ -78,9 +87,26 @@ time:
     timezone: ${timezone}
     on_time_sync:
       then:
-        - logger.log: "Time synced from Home Assistant, triggering display refresh..."
-        - delay: 2s  # Give sensors a moment to receive their initial values
-        - component.update: eink_display
+        # Only refresh on first time sync after boot
+        - if:
+            condition:
+              lambda: 'return !id(initial_refresh_done);'
+            then:
+              - logger.log: "Initial time sync - triggering first display refresh..."
+              - delay: 3s  # Give sensors time to receive their initial values
+              - component.update: eink_display
+              - globals.set:
+                  id: initial_refresh_done
+                  value: 'true'
+            else:
+              - logger.log: "Time re-synced, skipping refresh (use scheduled refresh)"
+    # Scheduled refresh every 15 minutes (at :00, :15, :30, :45)
+    on_time:
+      - seconds: 0
+        minutes: /15
+        then:
+          - logger.log: "Scheduled 15-minute display refresh..."
+          - component.update: eink_display
 
 # Sun component for sunrise/sunset
 sun:
