@@ -1,5 +1,6 @@
 - platform: universal
   name: home_cinema
+  unique_id: multi_device_home_cinema
   friendly_name: "Home Cinema"
   children:
     - media_player.pioneer_vsx_934
