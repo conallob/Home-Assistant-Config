@@ -121,27 +121,28 @@ i2c:
     scan: true
 
 # Fonts for the display
+# The sanitize lambda in the display code filters unsupported characters at runtime
 font:
   - file: "gfonts://Roboto"
     id: font_title
     size: 24
-    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
   - file: "gfonts://Roboto"
     id: font_artist
     size: 20
-    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
   - file: "gfonts://Roboto"
     id: font_album
     size: 16
-    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
   - file: "gfonts://Roboto"
     id: font_status
     size: 14
-    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
   - file: "gfonts://Roboto"
     id: font_small
     size: 12
-    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïç ''&'
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
   # Icon font for playback status symbols
   - file: "gfonts://Material+Symbols+Outlined"
     id: font_icons
@@ -204,6 +205,43 @@ display:
       mirror_y: false
     update_interval: 1s
     lambda: |-
+      // Helper lambda to sanitize strings - removes characters outside basic printable ASCII + common accented chars
+      auto sanitize = [](std::string s) -> std::string {
+        std::string result;
+        for (size_t i = 0; i < s.length(); i++) {
+          unsigned char c = s[i];
+          // Keep printable ASCII (space to tilde)
+          if (c >= 0x20 && c <= 0x7E) {
+            result += c;
+          }
+          // Keep common Latin-1 supplement characters (accented letters, etc.)
+          else if (c >= 0xC0 && c <= 0xFF) {
+            result += c;
+          }
+          // Skip multi-byte UTF-8 sequences that might cause issues
+          else if ((c & 0xE0) == 0xC0) {
+            // 2-byte UTF-8 sequence - keep common accented chars
+            if (i + 1 < s.length()) {
+              result += c;
+              result += s[++i];
+            }
+          }
+          else if ((c & 0xF0) == 0xE0) {
+            // 3-byte UTF-8 sequence - skip (includes box drawing chars at U+2500-U+257F)
+            i += 2;
+          }
+          else if ((c & 0xF8) == 0xF0) {
+            // 4-byte UTF-8 sequence - skip
+            i += 3;
+          }
+          // Replace anything else with space
+          else if (c >= 0x80) {
+            // Skip other high-byte chars
+          }
+        }
+        return result;
+      };
+
       // Fill background
       it.fill(id(color_background));
 
@@ -239,7 +277,7 @@ display:
 
       // Display media title (with word wrap if needed)
       int title_y = 50;
-      std::string title = id(media_title).state;
+      std::string title = sanitize(id(media_title).state);
       if (!title.empty()) {
         // Truncate long titles
         if (title.length() > 28) {
@@ -252,7 +290,7 @@ display:
 
       // Display artist
       int artist_y = 90;
-      std::string artist = id(media_artist).state;
+      std::string artist = sanitize(id(media_artist).state);
       if (!artist.empty()) {
         if (artist.length() > 32) {
           artist = artist.substr(0, 29) + "...";
@@ -262,7 +300,7 @@ display:
 
       // Display album
       int album_y = 125;
-      std::string album = id(media_album).state;
+      std::string album = sanitize(id(media_album).state);
       if (!album.empty()) {
         if (album.length() > 38) {
           album = album.substr(0, 35) + "...";
@@ -274,7 +312,7 @@ display:
       it.horizontal_line(10, 200, 300, id(color_album));
 
       // Display content type at bottom
-      std::string content_type = id(media_content_type).state;
+      std::string content_type = sanitize(id(media_content_type).state);
       if (!content_type.empty()) {
         it.printf(10, 210, id(font_small), id(color_album), "%s", content_type.c_str());
       }
