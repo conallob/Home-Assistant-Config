@@ -80,19 +80,16 @@ Changes merged to the `main` branch are automatically deployed:
 
 ESPHome devices have their own configuration workflow:
 
+**Validation** can be done locally or via GitHub Actions:
 ```bash
-# Validate an ESPHome configuration
+# Validate an ESPHome configuration locally
 esphome config esphome/device-name.yaml
-
-# Compile firmware
-esphome compile esphome/device-name.yaml
-
-# Upload firmware over-the-air
-esphome upload esphome/device-name.yaml
-
-# View device logs
-esphome logs esphome/device-name.yaml
 ```
+
+**Compiling and installing firmware** should be done via the ESPHome Add-on in Home Assistant, not locally. The add-on handles OTA updates to devices on the network:
+1. Open the ESPHome Add-on in Home Assistant
+2. Select the device configuration
+3. Click "Install" to compile and upload OTA
 
 ESPHome secrets are stored separately in `esphome/secrets.yaml`.
 
