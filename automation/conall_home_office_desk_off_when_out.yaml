@@ -1,0 +1,42 @@
+id: '1689766786526'
+alias: Conall Home Office Desk - Off When Out
+description: If Conall is out, with his laptop, then turn off his home office desk
+trigger:
+- platform: state
+  entity_id:
+  - person.conall_o_brien
+  from: home
+  to: not_home
+  for:
+    hours: 0
+    minutes: 10
+    seconds: 0
+- platform: device
+  device_id: 8317d0f450f43ebb047be73edaf49d32
+  domain: device_tracker
+  entity_id: a081a888b1fa427238e774f3ea9eb7f6
+  type: leaves
+  zone: zone.home
+condition:
+- condition: time
+  after: 09:00:00
+  before: '19:00:00'
+  weekday:
+  - mon
+  - tue
+  - wed
+  - thu
+  - fri
+  - sat
+  - sun
+- condition: device
+  device_id: 8317d0f450f43ebb047be73edaf49d32
+  domain: device_tracker
+  entity_id: a081a888b1fa427238e774f3ea9eb7f6
+  type: is_not_home
+action:
+- type: turn_off
+  device_id: 12634e07d254156525d63ef3e22d71bc
+  entity_id: 04c458c0259cf106627fb8cbb80584c7
+  domain: switch
+mode: single

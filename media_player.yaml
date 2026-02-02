@@ -1,11 +1,12 @@
 - platform: universal
   name: home_cinema
+  unique_id: multi_device_home_cinema
   friendly_name: "Home Cinema"
   children:
     - media_player.pioneer_vsx_934
     - media_player.50pus8555_12
-    - media_player.sitting_room
-    - media_player.apple_tv
+    - media_player.sitting_room  # Sonos Port
+    - media_player.sitting_room_appletv
   commands:
     turn_on:
       service: switch.home_cinema_turn_on

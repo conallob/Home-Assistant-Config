@@ -1,0 +1,29 @@
+id: '1766946619502'
+alias: Control Zone Heating - Upstairs
+description: ''
+triggers:
+- entity_id: binary_sensor.upstairs_heating_demand
+  trigger: state
+actions:
+- choose:
+  - conditions:
+    - condition: state
+      entity_id: binary_sensor.upstairs_heating_demand
+      state: 'on'
+    sequence:
+    - target:
+        entity_id: climate.reuben_2
+      data:
+        hvac_mode: heat
+      action: climate.set_hvac_mode
+  - conditions:
+    - condition: state
+      entity_id: binary_sensor.upstairs_heating_demand
+      state: 'off'
+    sequence:
+    - target:
+        entity_id: climate.reuben_2
+      data:
+        hvac_mode: 'off'
+      action: climate.set_hvac_mode
+mode: restart

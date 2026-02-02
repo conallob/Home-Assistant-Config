@@ -1,0 +1,9 @@
+# Annual WFH Day Counter for Conall using history_stats
+# Counts total hours the binary sensor has been 'on' since Jan 1
+platform: history_stats
+name: "Conall WFH Annual Hours"
+entity_id: binary_sensor.conall_wfh
+state: "on"
+type: time
+start: "{{ now().replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0) }}"
+end: "{{ now() }}"

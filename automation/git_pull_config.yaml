@@ -1,0 +1,17 @@
+id: '1768775775753'
+alias: Git Pull Configs from Github Actions
+description: Update Configuration on Github Push Event
+triggers:
+- webhook_id: github_git_pull_config
+  local_only: false
+  trigger: webhook
+  allowed_methods:
+  - POST
+  - PUT
+conditions: []
+actions:
+- action: shell_command.git_pull_config
+  data: {}
+- action: rest.reload
+  data: {}
+mode: single

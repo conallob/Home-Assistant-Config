@@ -1,0 +1,37 @@
+id: '1678108862995'
+alias: Rotate Electricity Meter Counter
+description: Home Assistant respresentation of the ESB Networks Smart Meter Counters
+trigger:
+- platform: time
+  at: 08:00:00
+  variables:
+    tariff: day
+- platform: time
+  at: '17:00:00'
+  variables:
+    tariff: peak
+- platform: time
+  at: '19:00:00'
+  variables:
+    tariff: day
+- platform: time
+  at: '23:00:00'
+  variables:
+    tariff: night
+action:
+- target:
+    entity_id: select.daily_electricity_energy
+  data:
+    option: '{{ tariff }}'
+  action: select.select_option
+- target:
+    entity_id: select.monthly_electricity_energy
+  data:
+    option: '{{ tariff }}'
+  action: select.select_option
+- target:
+    entity_id: select.current_electricity_tariff
+  data:
+    option: '{{ tariff }}'
+  action: select.select_option
+mode: single

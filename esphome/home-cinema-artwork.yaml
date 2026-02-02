@@ -31,12 +31,53 @@ web_server:
   port: 80
 
 psram:
-  mode: quad
-  speed: 80MHz
 
 external_components:
   - source: github://martydingo/esphome-axp192
     components: [axp192]
+
+# Text sensors to import media player state and attributes from Home Assistant
+text_sensor:
+  - platform: homeassistant
+    name: "Media Player State"
+    entity_id: media_player.home_cinema
+    id: media_player_state
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Title"
+    entity_id: media_player.home_cinema
+    attribute: media_title
+    id: media_title
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Artist"
+    entity_id: media_player.home_cinema
+    attribute: media_artist
+    id: media_artist
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Album"
+    entity_id: media_player.home_cinema
+    attribute: media_album_name
+    id: media_album
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Content Type"
+    entity_id: media_player.home_cinema
+    attribute: media_content_type
+    id: media_content_type
 
 sensor:
   - platform: axp192
@@ -49,23 +90,25 @@ sensor:
       name: "Home Cinema Artwork Battery Level"
       id: "home_cinema_artwork_batterylevel"
 
-  - platform: mpu6886
-    address: 0x68
-    update_interval: 1s
-    accel_x:
-      name: "MPU6886 Accel X"
-    accel_y:
-      name: "MPU6886 Accel Y"
-    accel_z:
-      name: "MPU6886 Accel Z"
-    gyro_x:
-      name: "MPU6886 Gyro X"
-    gyro_y:
-      name: "MPU6886 Gyro Y"
-    gyro_z:
-      name: "MPU6886 Gyro Z"
-    temperature:
-      name: "MPU6886 Temperature"
+  # MPU6886 IMU - commented out as Core Metal may have different IMU
+  # Uncomment if your device has MPU6886
+  # - platform: mpu6886
+  #   address: 0x68
+  #   update_interval: 1s
+  #   accel_x:
+  #     name: "MPU6886 Accel X"
+  #   accel_y:
+  #     name: "MPU6886 Accel Y"
+  #   accel_z:
+  #     name: "MPU6886 Accel Z"
+  #   gyro_x:
+  #     name: "MPU6886 Gyro X"
+  #   gyro_y:
+  #     name: "MPU6886 Gyro Y"
+  #   gyro_z:
+  #     name: "MPU6886 Gyro Z"
+  #   temperature:
+  #     name: "MPU6886 Temperature"
 
 spi:
   clk_pin: GPIO18
@@ -77,6 +120,72 @@ i2c:
     scl: GPIO22
     scan: true
 
+# Fonts for the display
+# The sanitize lambda in the display code filters unsupported characters at runtime
+font:
+  - file: "gfonts://Roboto"
+    id: font_title
+    size: 24
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
+  - file: "gfonts://Roboto"
+    id: font_artist
+    size: 20
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
+  - file: "gfonts://Roboto"
+    id: font_album
+    size: 16
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
+  - file: "gfonts://Roboto"
+    id: font_status
+    size: 14
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 12
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
+  # Icon font for playback status symbols
+  - file: "gfonts://Material+Symbols+Outlined"
+    id: font_icons
+    size: 16
+    glyphs:
+      - "\U0000E037"  # play_arrow
+      - "\U0000E034"  # pause
+      - "\U0000E047"  # stop
+      - "\U0000E002"  # error
+
+# Colors for the display
+color:
+  - id: color_white
+    white: 100%
+  - id: color_title
+    red: 100%
+    green: 100%
+    blue: 100%
+  - id: color_artist
+    red: 80%
+    green: 80%
+    blue: 100%
+  - id: color_album
+    red: 70%
+    green: 70%
+    blue: 70%
+  - id: color_status_playing
+    red: 50%
+    green: 100%
+    blue: 50%
+  - id: color_status_paused
+    red: 100%
+    green: 100%
+    blue: 50%
+  - id: color_status_idle
+    red: 60%
+    green: 60%
+    blue: 60%
+  - id: color_background
+    red: 0%
+    green: 0%
+    blue: 0%
+
 display:
   - platform: mipi_spi
     model: ILI9341
@@ -85,15 +194,131 @@ display:
     dc_pin: GPIO15
     data_rate: 40MHz
     invert_colors: true
-    pixel_mode: 18bit
+    pixel_mode: 16bit
     dimensions:
       width: 320
       height: 240
+    buffer_size: 25%  # Use partial buffer to reduce RAM usage
     transform: # must be explicitly set until bug is fixed
       swap_xy: false
       mirror_x: false
       mirror_y: false
-    show_test_card: true
+    update_interval: 1s
+    lambda: |-
+      // Helper lambda to sanitize strings - removes characters outside basic printable ASCII + common accented chars
+      auto sanitize = [](std::string s) -> std::string {
+        std::string result;
+        for (size_t i = 0; i < s.length(); i++) {
+          unsigned char c = s[i];
+          // Keep printable ASCII (space to tilde)
+          if (c >= 0x20 && c <= 0x7E) {
+            result += c;
+          }
+          // Keep common Latin-1 supplement characters (accented letters, etc.)
+          else if (c >= 0xC0 && c <= 0xFF) {
+            result += c;
+          }
+          // Skip multi-byte UTF-8 sequences that might cause issues
+          else if ((c & 0xE0) == 0xC0) {
+            // 2-byte UTF-8 sequence - keep common accented chars
+            if (i + 1 < s.length()) {
+              result += c;
+              result += s[++i];
+            }
+          }
+          else if ((c & 0xF0) == 0xE0) {
+            // 3-byte UTF-8 sequence - skip (includes box drawing chars at U+2500-U+257F)
+            i += 2;
+          }
+          else if ((c & 0xF8) == 0xF0) {
+            // 4-byte UTF-8 sequence - skip
+            i += 3;
+          }
+          // Replace anything else with space
+          else if (c >= 0x80) {
+            // Skip other high-byte chars
+          }
+        }
+        return result;
+      };
+
+      // Fill background
+      it.fill(id(color_background));
+
+      // Get media player state
+      std::string state = id(media_player_state).state;
+
+      // Display header with status indicator
+      int status_y = 10;
+      int icon_offset = 22;  // Width of icon plus spacing
+      if (state == "playing") {
+        it.print(10, status_y, id(font_icons), id(color_status_playing), "\U0000E037");  // play_arrow
+        it.printf(10 + icon_offset, status_y, id(font_status), id(color_status_playing), "Now Playing");
+      } else if (state == "paused") {
+        it.print(10, status_y, id(font_icons), id(color_status_paused), "\U0000E034");  // pause
+        it.printf(10 + icon_offset, status_y, id(font_status), id(color_status_paused), "Paused");
+      } else if (state == "idle" || state == "off" || state == "standby") {
+        it.print(10, status_y, id(font_icons), id(color_status_idle), "\U0000E047");  // stop
+        it.printf(10 + icon_offset, status_y, id(font_status), id(color_status_idle), "Idle");
+        // Show idle message centered
+        it.printf(160, 120, id(font_artist), id(color_album), TextAlign::CENTER, "Nothing Playing");
+        return;
+      } else if (state.empty() || state == "unavailable") {
+        it.print(10, status_y, id(font_icons), id(color_status_idle), "\U0000E002");  // error
+        it.printf(10 + icon_offset, status_y, id(font_status), id(color_status_idle), "Unavailable");
+        it.printf(160, 120, id(font_artist), id(color_album), TextAlign::CENTER, "Media Player Unavailable");
+        return;
+      } else {
+        it.printf(10, status_y, id(font_status), id(color_status_idle), "%s", state.c_str());
+      }
+
+      // Draw separator line
+      it.horizontal_line(10, 30, 300, id(color_album));
+
+      // Display media title (with word wrap if needed)
+      int title_y = 50;
+      std::string title = sanitize(id(media_title).state);
+      if (!title.empty()) {
+        // Truncate long titles
+        if (title.length() > 28) {
+          title = title.substr(0, 25) + "...";
+        }
+        it.printf(10, title_y, id(font_title), id(color_title), "%s", title.c_str());
+      } else {
+        it.printf(10, title_y, id(font_title), id(color_title), "Unknown Title");
+      }
+
+      // Display artist
+      int artist_y = 90;
+      std::string artist = sanitize(id(media_artist).state);
+      if (!artist.empty()) {
+        if (artist.length() > 32) {
+          artist = artist.substr(0, 29) + "...";
+        }
+        it.printf(10, artist_y, id(font_artist), id(color_artist), "%s", artist.c_str());
+      }
+
+      // Display album
+      int album_y = 125;
+      std::string album = sanitize(id(media_album).state);
+      if (!album.empty()) {
+        if (album.length() > 38) {
+          album = album.substr(0, 35) + "...";
+        }
+        it.printf(10, album_y, id(font_album), id(color_album), "%s", album.c_str());
+      }
+
+      // Draw bottom separator
+      it.horizontal_line(10, 200, 300, id(color_album));
+
+      // Display content type at bottom
+      std::string content_type = sanitize(id(media_content_type).state);
+      if (!content_type.empty()) {
+        it.printf(10, 210, id(font_small), id(color_album), "%s", content_type.c_str());
+      }
+
+      // Display device name
+      it.printf(310, 210, id(font_small), id(color_album), TextAlign::TOP_RIGHT, "Home Cinema");
 
 touchscreen:
   - platform: ft63x6

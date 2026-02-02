@@ -1,0 +1,25 @@
+id: '1707413226583'
+alias: Conall Work-From Home
+description: Turn on the home office if Conall is home and planning to work from
+  home
+trigger:
+- platform: zone
+  entity_id: person.conall_o_brien
+  zone: zone.home
+  event: enter
+condition:
+- condition: state
+  entity_id: calendar.conall_working_from
+  attribute: all_day
+  state: WFH
+  for:
+    hours: 0
+    minutes: 10
+    seconds: 0
+action:
+- service: switch.turn_on
+  target:
+    entity_id:
+    - switch.home_office_master_switch
+  data: {}
+mode: single

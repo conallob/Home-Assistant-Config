@@ -1,0 +1,32 @@
+binary_sensor:
+  - name: "Upstairs Heating Demand"
+    unique_id: upstairs_heating_demand
+    state: >
+      {{
+        is_state('climate.bedroomtrv', 'heat') or
+        is_state('climate.genevieve_trv', 'heat') or
+        is_state('climate.landing_trv', 'heat') or
+        is_state('climate.reuben_trv', 'heat')
+      }}
+    icon: >
+      {% if is_state('binary_sensor.upstairs_heating_demand', 'on') %}
+        mdi:radiator
+      {% else %}
+        mdi:radiator-off
+      {% endif %}
+
+  - name: "Downstairs Heating Demand"
+    unique_id: downstairs_heating_demand
+    state: >
+      {{
+        is_state('climate.hall_trv', 'heat') or
+        is_state('climate.kitchen_trv', 'heat') or
+        is_state('climate.sitting_room_trv', 'heat') or
+        is_state('climate.family_room_trv', 'heat')
+      }}
+    icon: >
+      {% if is_state('binary_sensor.downstairs_heating_demand', 'on') %}
+        mdi:radiator
+      {% else %}
+        mdi:radiator-off
+      {% endif %}

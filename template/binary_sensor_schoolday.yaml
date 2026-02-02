@@ -1,23 +1,31 @@
-  - binary_sensor:
-      - name: "School Day"
-        unique_id: school_day
-        state: >
-          {% set today = now().date() %}
-          {% set event_start = state_attr('calendar.st_andrews_school_calendar', 'start_time') %}
-          {% set event_message = state_attr('calendar.st_andrews_school_calendar', 'message') %}
-          {% if event_start and event_message %}
-            {% set event_date = event_start[:10] | as_datetime | as_local %}
-            {% if event_date.date() == today %}
-              {{ 'No School' not in event_message and 'Holiday' not in event_message }}
-            {% else %}
-              false
-            {% endif %}
-          {% else %}
-            false
-          {% endif %}
-        icon: >
-          {% if is_state('binary_sensor.school_day', 'on') %}
-            mdi:school
-          {% else %}
-            mdi:home
-          {% endif %}
+binary_sensor:
+  - name: "School Day"
+    unique_id: school_day
+    state: >
+      {# School days are weekdays (Mon-Fri) unless there's a holiday/closure event #}
+      {% set today = now().date() %}
+      {% set weekday = now().weekday() %}
+      {# Weekends are never school days (Saturday=5, Sunday=6) #}
+      {% if weekday >= 5 %}
+        false
+      {% else %}
+        {# Check if calendar shows a holiday or closure for today #}
+        {% set calendar_state = states('calendar.st_andrews_school_calendar') %}
+        {% set event_message = state_attr('calendar.st_andrews_school_calendar', 'message') | default('', true) %}
+        {% if calendar_state == 'on' %}
+          {# There's an active event - check if it indicates no school #}
+          {% set no_school_keywords = ['no school', 'holiday', 'break', 'closed', 'closure', 'half term', 'mid-term', 'bank holiday', 'inset', 'staff day'] %}
+          {% set message_lower = event_message | lower %}
+          {% set is_closure = no_school_keywords | select('in', message_lower) | list | length > 0 %}
+          {{ not is_closure }}
+        {% else %}
+          {# No active calendar event on a weekday = school day #}
+          true
+        {% endif %}
+      {% endif %}
+    icon: >
+      {% if is_state('binary_sensor.school_day', 'on') %}
+        mdi:school
+      {% else %}
+        mdi:home
+      {% endif %}

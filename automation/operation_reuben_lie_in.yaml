@@ -1,0 +1,21 @@
+id: '1664193605389'
+alias: Operation Reuben Lie In
+description: ''
+triggers:
+- at: 04:00:00
+  trigger: time
+conditions: []
+actions:
+- metadata: {}
+  data:
+    temperature: 14
+  action: climate.set_temperature
+  target:
+    label_id: heating
+- metadata: {}
+  data:
+    temperature: 20
+  action: climate.set_temperature
+  target:
+    entity_id: climate.reuben_trv
+mode: single

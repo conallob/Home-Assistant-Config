@@ -1,1 +1,4 @@
 secrets.yaml
+
+# Ingore the home-assistant DB file
+home-assistant_v2.db

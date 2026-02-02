@@ -1,0 +1,28 @@
+id: '1718535786607'
+alias: Reuben Hue Dimmer Switch
+description: ''
+use_blueprint:
+  path: codycodes/hue-remote-dimmer-december-2021.yaml
+  input:
+    dimmer_device: 1de0bf19715fc2caeffe3f6ef25928eb
+    on_short_action:
+    - type: turn_on
+      device_id: 9233e835156235aa3b24411e13487ccf
+      entity_id: ebecc732ac944d9d00bfebb4fa89b61b
+      domain: light
+      brightness_pct: 75
+    off_short_action:
+    - type: turn_off
+      device_id: 9233e835156235aa3b24411e13487ccf
+      entity_id: ebecc732ac944d9d00bfebb4fa89b61b
+      domain: light
+    brightness_up_short_action:
+    - device_id: 9233e835156235aa3b24411e13487ccf
+      domain: light
+      entity_id: ebecc732ac944d9d00bfebb4fa89b61b
+      type: brightness_increase
+    brightness_down_short_action:
+    - device_id: 9233e835156235aa3b24411e13487ccf
+      domain: light
+      entity_id: ebecc732ac944d9d00bfebb4fa89b61b
+      type: brightness_decrease

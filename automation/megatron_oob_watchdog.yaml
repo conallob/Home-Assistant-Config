@@ -1,0 +1,36 @@
+id: '1679084552949'
+alias: Megatron OOB Watchdog
+description: Out of Band ICMP+plex probe, connected into a watchdog to whackamole
+  hung system via Redfish RestAPI on the BMC
+trigger:
+- platform: state
+  entity_id:
+  - binary_sensor.megatron_ping
+  from: 'on'
+  to: 'off'
+  for:
+    hours: 0
+    minutes: 3
+    seconds: 0
+condition:
+- condition: state
+  entity_id: sensor.plex_megatron
+  state: unavailable
+  for:
+    hours: 0
+    minutes: 3
+    seconds: 0
+  enabled: false
+action:
+- data: {}
+  action: rest_command.megatron_redfish_reset
+- device_id: 34a445b8cb3b53dba77631c57276b85a
+  domain: mobile_app
+  type: notify
+  message: Megatron Reset
+  title: Megatron OOB Reset
+- device_id: 2eb30aa066a4ed1b6dbfa6e19447e755
+  domain: mobile_app
+  type: notify
+  message: Megatron Reset
+mode: single

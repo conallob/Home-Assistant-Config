@@ -12,9 +12,9 @@ This is a Home Assistant configuration repository. Home Assistant uses YAML-base
 
 The `configuration.yaml` file serves as the entry point and uses `!include` and `!include_dir_*` directives to load configuration from organized directories:
 
-- **Automations**: Two types are used
-  - `automation ui: !include automations.yaml` - GUI-maintained automations in a single file
-  - `automation manual: !include_dir_named /config/automation` - Manually coded automations in separate files (currently empty directory)
+- **Automations**: Two types are used with a prototyping workflow
+  - `automation ui: !include automations.yaml` - **Prototyping area** for automations being developed via the Home Assistant UI. These may deviate from git as they are works-in-progress.
+  - `automation manual: !include_dir_named /config/automation` - **Production automations** stored as individual YAML files (one automation per file). Once an automation has been prototyped and tested via the UI, it should be moved here.
 - **Templates**: `!include_dir_list /config/template` - Template entities loaded from individual YAML files
 - **Sensors**: `!include_dir_list /config/sensor` - Sensor definitions loaded from individual YAML files
 - **REST Commands**: `!include_dir_named /config/rest_command` - RESTful command definitions for external API calls
@@ -22,6 +22,7 @@ The `configuration.yaml` file serves as the entry point and uses `!include` and 
 
 ### Key Directories
 
+- `automation/` - Production automations stored as individual YAML files (one per automation)
 - `custom_components/` - Custom integrations installed via HACS or manually (e.g., hacs, frigate, anker_solix, spook, mass, icloud3)
 - `esphome/` - ESPHome device configurations for ESP32/ESP8266 devices (Bluetooth proxies, sensors, etc.)
   - `esphome/archive/` - Old/deprecated device configurations
@@ -59,23 +60,36 @@ Changes merged to the `main` branch are automatically deployed:
 - Valid configuration changes take effect within seconds
 - The system automatically reloads configuration where possible
 
+### Contribution Guidelines
+
+**Use a Pull Request for:**
+- Non-trivial refactors (restructuring files, changing configuration patterns)
+- New features (new automations, sensors, integrations, etc.)
+- Changes that affect multiple files or components
+- Any changes you want reviewed before deployment
+
+**Direct merge to main is acceptable for:**
+- Small fixes to existing configurations
+- Typo corrections
+- Minor adjustments to thresholds, timings, or values
+- Documentation updates
+- Adding or editing annotations (comments, descriptions, aliases)
+- Must pass CI/CD configuration validation checks before merging
+
 ### Working with ESPHome
 
 ESPHome devices have their own configuration workflow:
 
+**Validation** can be done locally or via GitHub Actions:
 ```bash
-# Validate an ESPHome configuration
+# Validate an ESPHome configuration locally
 esphome config esphome/device-name.yaml
-
-# Compile firmware
-esphome compile esphome/device-name.yaml
-
-# Upload firmware over-the-air
-esphome upload esphome/device-name.yaml
-
-# View device logs
-esphome logs esphome/device-name.yaml
 ```
+
+**Compiling and installing firmware** should be done via the ESPHome Add-on in Home Assistant, not locally. The add-on handles OTA updates to devices on the network:
+1. Open the ESPHome Add-on in Home Assistant
+2. Select the device configuration
+3. Click "Install" to compile and upload OTA
 
 ESPHome secrets are stored separately in `esphome/secrets.yaml`.
 
@@ -102,6 +116,29 @@ The system tracks electricity usage with tariff-based utility meters:
 - PVOutput.org integration for solar generation data upload
 - Powercalc integration for virtual power sensors with tariff support
 
+### Automation Workflow
+
+Automations follow a two-stage workflow:
+
+1. **Prototyping Stage** (`automations.yaml`)
+   - New automations are created and tested via the Home Assistant UI
+   - The UI writes to `automations.yaml` which may diverge from the git repository
+   - This allows rapid iteration without git commits for every tweak
+   - Automations here are considered works-in-progress
+
+2. **Production Stage** (`automation/` directory)
+   - Once an automation is stable and tested, move it to `automation/` as its own file
+   - Use descriptive filenames with lowercase and underscores: `my_automation_name.yaml`
+   - Each file contains a single automation definition
+   - These files are version-controlled and deployed via git
+
+**Moving an automation from prototype to production:**
+1. Copy the automation from `automations.yaml`
+2. Create a new file in `automation/` (e.g., `automation/my_new_automation.yaml`)
+3. Paste the automation content (remove the leading `- ` since it's no longer a list item)
+4. Delete the automation from `automations.yaml` via the Home Assistant UI
+5. Commit and push the new file
+
 ### Automation Patterns
 
 Automations use a mix of:
@@ -120,6 +157,32 @@ Template sensors in the `template/` directory calculate derived values:
 - Net power/energy calculations (solar generation - consumption)
 - Binary sensors for custom logic (e.g., school day detection)
 - Tariff-related calculations for electricity pricing
+
+### Include Directory File Structure
+
+When using `!include_dir_list` (for `sensor/` and `template/` directories), each YAML file must contain exactly **one** sensor/entity definition. Do not put multiple sensors in the same file - this will cause validation errors like "expected a dictionary, got list".
+
+**Correct** - One sensor per file as a dictionary (no leading dash):
+```yaml
+# sensor/my_sensor.yaml
+platform: history_stats
+name: "My Sensor"
+entity_id: binary_sensor.something
+state: "on"
+type: time
+start: "{{ now().replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0) }}"
+end: "{{ now() }}"
+```
+
+**Incorrect** - Using list syntax (with dash) will fail:
+```yaml
+# sensor/my_sensor.yaml - THIS WILL FAIL
+- platform: history_stats
+  name: "My Sensor"
+  ...
+```
+
+If you need multiple related sensors, create separate files (e.g., `conall_wfh_annual_days.yaml` and `ciara_wfh_annual_days.yaml`).
 
 ## Configuration Best Practices
 
