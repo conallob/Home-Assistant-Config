@@ -1,0 +1,12 @@
+id: taku_sleep_mode_disable
+alias: Taku Sleep Mode - Disable at 07:00
+description: Automatically turns off sleep mode every morning at 07:00
+triggers:
+  - trigger: time
+    at: "07:00:00"
+conditions: []
+actions:
+  - action: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.taku_sleep_mode
+mode: single

@@ -1,0 +1,37 @@
+id: taku_sleep_mode_enable
+alias: Taku Sleep Mode - Enable
+description: >
+  Enables sleep mode and prepares the house for bedtime.
+  Triggered manually via mobile app action or can be called as a service.
+  Turns off lights in Front Garden, Back Garden, Shack, and Bathroom,
+  then turns on bathroom sink light at 50% brightness.
+triggers:
+  - trigger: event
+    event_type: ios.action_fired
+    event_data:
+      actionName: taku_sleep_mode
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: taku_sleep_mode
+conditions: []
+actions:
+  # Enable sleep mode
+  - action: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.taku_sleep_mode
+  # Turn off lights in specified areas
+  - action: light.turn_off
+    target:
+      area_id:
+        - front_garden
+        - back_garden
+        - shack
+        - bathroom
+  # Turn on bathroom sink light at 50% brightness
+  - action: light.turn_on
+    target:
+      entity_id: light.bathroom_sink
+    data:
+      brightness_pct: 50
+mode: single
