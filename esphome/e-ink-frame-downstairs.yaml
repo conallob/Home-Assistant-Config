@@ -40,7 +40,19 @@ esphome:
   #   - After 23:00 (11 PM)
   #   - Alarm is armed away
   #   - Nobody is home (zone.home has no persons)
+  #   - Taku Sleep Mode is active (device enters deep sleep)
   # - Manual refresh available via button in Home Assistant
+  on_boot:
+    priority: -100  # Run after everything is initialized
+    then:
+      - delay: 5s  # Wait for HA connection and sensor updates
+      - if:
+          condition:
+            binary_sensor.is_on: taku_sleep_mode
+          then:
+            - logger.log: "Woke from deep sleep but Taku Sleep Mode still active - going back to sleep"
+            - delay: 2s
+            - deep_sleep.enter: deep_sleep_control
 
 esp32:
   board: seeed_xiao_esp32c6
@@ -273,6 +285,22 @@ font:
       - "\U000F0A72" # mdi:transmission-tower (grid)
       - "\U000F05A8" # mdi:white-balance-sunny (solar)
       - "\U000F140B" # mdi:solar-power
+
+# Binary sensors for Home Assistant data
+binary_sensor:
+  # Taku Sleep Mode - triggers deep sleep when on
+  - platform: homeassistant
+    id: taku_sleep_mode
+    entity_id: binary_sensor.taku_sleep_mode
+    on_state:
+      then:
+        - if:
+            condition:
+              binary_sensor.is_on: taku_sleep_mode
+            then:
+              - logger.log: "Taku Sleep Mode activated - entering deep sleep"
+              - delay: 2s  # Allow log message to be sent
+              - deep_sleep.enter: deep_sleep_control
 
 # Text sensors for Home Assistant data
 text_sensor:
@@ -587,14 +615,19 @@ display:
                   "%s", wifi_icon.c_str());
       }
 
-# Deep Sleep Configuration (DISABLED FOR TESTING)
-# Uncomment when ready for production use
-# deep_sleep:
-#   id: deep_sleep_control
-#   run_duration: 30s
-#   sleep_duration: ${sleep_duration}
-#   wakeup_pin: ${gpio_deep_sleep_wake_up}
-#   wakeup_pin_mode: KEEP_AWAKE
+# Deep Sleep Configuration
+# Controlled by binary_sensor.taku_sleep_mode from Home Assistant
+# When sleep mode is enabled, the device enters deep sleep until morning (07:00)
+# when the automation disables sleep mode and the device wakes up
+deep_sleep:
+  id: deep_sleep_control
+  # Sleep until woken by Home Assistant turning off sleep mode
+  # The device will wake periodically to check if sleep mode is still on
+  sleep_duration: ${sleep_duration}
+  wakeup_pin:
+    number: ${gpio_deep_sleep_wake_up}
+    allow_other_uses: true
+  wakeup_pin_mode: KEEP_AWAKE
 
 # Buttons to control display update
 button:
@@ -606,13 +639,13 @@ button:
         - logger.log: "Manual display refresh triggered"
         - component.update: eink_display
 
-  # Deep sleep button disabled during testing
-  # - platform: template
-  #   name: "${friendly_name} Deep Sleep"
-  #   icon: "mdi:sleep"
-  #   on_press:
-  #     then:
-  #       - deep_sleep.enter: deep_sleep_control
+  - platform: template
+    name: "${friendly_name} Deep Sleep"
+    icon: "mdi:sleep"
+    on_press:
+      then:
+        - logger.log: "Manual deep sleep triggered"
+        - deep_sleep.enter: deep_sleep_control
 
   - platform: restart
     name: "${friendly_name} Restart"
