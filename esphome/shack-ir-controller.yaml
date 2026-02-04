@@ -127,6 +127,25 @@ button:
           address: 0x10
           command: 0x0C
 
+  - platform: template
+    name: "Q Acoustics Ready for Work"
+    id: q_acoustics_ready_for_work
+    on_press:
+      # Power On
+      - remote_transmitter.transmit_rc5:
+          address: 0x10
+          command: 0x0C
+      - delay: 500ms
+      # Analog input
+      - remote_transmitter.transmit_rc5:
+          address: 0x1B
+          command: 0x45
+      - delay: 500ms
+      # USB input
+      - remote_transmitter.transmit_rc5:
+          address: 0x1B
+          command: 0x46
+
   # FiiO Remote
   - platform: template
     name: "FiiO Off"
