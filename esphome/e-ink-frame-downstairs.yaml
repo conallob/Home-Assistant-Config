@@ -626,7 +626,6 @@ deep_sleep:
   sleep_duration: ${sleep_duration}
   wakeup_pin:
     number: ${gpio_deep_sleep_wake_up}
-    allow_other_uses: true
   wakeup_pin_mode: KEEP_AWAKE
 
 # Buttons to control display update
