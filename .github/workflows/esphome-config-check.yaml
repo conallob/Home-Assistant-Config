@@ -33,7 +33,7 @@ jobs:
       - name: Replace secrets with fake secrets
         run: |
           # Use fake secrets for CI validation
-          cp esphome/fakesecrets.yaml esphome/secrets.yaml
+          cp esphome/fakesecrets.testdata esphome/secrets.yaml
 
       - name: Validate ESPHome configurations
         run: |
