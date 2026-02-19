@@ -7,6 +7,27 @@ input_boolean:
     name: "Taku Sleep Mode"
     icon: mdi:sleep
 
+input_select:
+  house_mode:
+    name: "House Mode"
+    options:
+      - Home
+      - Away
+      - Holiday
+      - Night
+    initial: Home
+    icon: mdi:home
+
+input_number:
+  holiday_duration:
+    name: "Holiday Duration"
+    min: 1
+    max: 90
+    step: 1
+    initial: 7
+    unit_of_measurement: days
+    icon: mdi:calendar-range
+
 frontend:
   themes: !include_dir_merge_named themes
 

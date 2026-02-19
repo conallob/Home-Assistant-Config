@@ -1,0 +1,14 @@
+id: holiday_mode_sitting_room_hue
+alias: Holiday Mode - Enable Sitting Room Hue Automation
+description: >
+  When house mode is set to Holiday, enable the sitting room Hue automation
+  to simulate occupancy for the duration set in holiday_duration.
+trigger:
+  - platform: state
+    entity_id: input_select.house_mode
+    to: Holiday
+action:
+  - action: automation.turn_on
+    target:
+      entity_id: automation.sitting_room
+mode: single
