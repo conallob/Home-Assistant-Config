@@ -1,11 +1,10 @@
 substitutions:
   name: "upsy-desky"
 packages:
-  tj_horner.upsy_desky: github://tjhorner/upsy-desky/firmware/stock.yaml@v4.0.2
+  tj_horner.upsy_desky: github://tjhorner/upsy-desky/firmware/stock.yaml@v5.0.0
 esphome:
   name: ${name}
   name_add_mac_suffix: false
-
 
 # Enable IPv6
 network:
@@ -14,3 +13,11 @@ network:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+
+sensor:
+  - id: !extend desk_height
+    unit_of_measurement: "cm"
+
+number:
+  - id: !extend target_desk_height
+    unit_of_measurement: "cm"
