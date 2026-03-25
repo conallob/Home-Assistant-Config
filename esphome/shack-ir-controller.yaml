@@ -27,11 +27,10 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
-# I2C bus for ENS160 air quality sensor (SDA=GPIO22/D4, SCL=GPIO20/D7)
-# D5/GPIO23 is unavailable (used by IR), so SCL is on D7/GPIO20 (RX)
+# I2C bus for ENS160 air quality sensor (SDA=GPIO22/D4, SCL=GPIO23/D5)
 i2c:
   sda: GPIO22
-  scl: GPIO20
+  scl: GPIO23
   scan: true
 
 # BLE scanning to discover Sandsara v2 BLE services
