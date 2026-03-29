@@ -2,7 +2,8 @@ id: '1698610029172'
 alias: Taku Bedtime
 description: >
   Bedtime routine replacing Apple Shortcuts "Taku Bedtime".
-  Turns off Front Garden, Back Garden, Bathroom, and all remaining lights.
+  Turns off Front Garden, Back Garden, Bathroom, and all remaining lights,
+  then leaves bathroom sink on as a nightlight at 33%.
   Triggered by Hue button long-press (after sunset) or mobile app action.
 triggers:
   - trigger: device
@@ -41,4 +42,9 @@ actions:
         - bathroom
   - action: light.turn_off
     data: {}
+  - action: light.turn_on
+    target:
+      entity_id: light.bathroom_sink
+    data:
+      brightness_pct: 33
 mode: single
