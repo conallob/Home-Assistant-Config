@@ -1,0 +1,121 @@
+id: '1744368000000'
+alias: CPAP Settings Reminder
+description: >
+  Monthly (1st of each month at 08:00) and on-demand reminder to adjust the
+  ResMed AirSense 10 humidifier (1–8) and heated-tube temperature (16–30 °C)
+  settings to minimise rain-out condensation. The recommendation is driven by
+  the Bedroom sensor; context from Landing, Genevieve and Reuben is shown in
+  the notification message.
+triggers:
+  # Fire every morning and filter to the 1st in the conditions below.
+  - trigger: time
+    at: "08:00:00"
+    id: monthly
+
+  # Fire when the recommended humidity band shifts (sustained for 30 min to
+  # avoid spurious triggers from temporary sensor fluctuations).
+  - trigger: state
+    entity_id: sensor.cpap_recommended_humidity
+    not_to:
+      - unknown
+      - unavailable
+    for:
+      minutes: 30
+    id: conditions_changed
+
+  # Also fire when the recommended tube-temp band shifts.
+  - trigger: state
+    entity_id: sensor.cpap_recommended_tube_temperature
+    not_to:
+      - unknown
+      - unavailable
+    for:
+      minutes: 30
+    id: conditions_changed
+
+conditions:
+  # Monthly trigger: only proceed on the 1st of the month.
+  # Conditions-changed trigger: always eligible (time check below limits hours).
+  - condition: or
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'conditions_changed' }}"
+      - condition: template
+        value_template: "{{ trigger.id == 'monthly' and now().day == 1 }}"
+
+  # Only notify during waking hours regardless of trigger type.
+  - condition: time
+    after: "07:00:00"
+    before: "22:00:00"
+
+  # For conditions-changed triggers, only notify when the recommendation has
+  # actually diverged from the currently tracked settings (avoids re-notifying
+  # after settings have already been applied). Monthly reviews always proceed.
+  - condition: or
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'monthly' }}"
+      - condition: template
+        value_template: >
+          {{ states('sensor.cpap_recommended_humidity') | int !=
+             states('input_number.cpap_humidity_setting') | int or
+             states('sensor.cpap_recommended_tube_temperature') | int !=
+             states('input_number.cpap_tube_temperature') | int }}
+
+actions:
+  # Snapshot current (old) settings and new recommendations before any updates.
+  - variables:
+      old_humidity: "{{ states('input_number.cpap_humidity_setting') | int }}"
+      old_tube_temp: "{{ states('input_number.cpap_tube_temperature') | int }}"
+      new_humidity: "{{ states('sensor.cpap_recommended_humidity') | int }}"
+      new_tube_temp: "{{ states('sensor.cpap_recommended_tube_temperature') | int }}"
+      bedroom_temp: "{{ states('sensor.bedroom_sensor_temperature') | float(0) | round(1) }}"
+      bedroom_humidity: "{{ states('sensor.bedroom_sensor_humidity') | float(0) | round(1) }}"
+      avg_temp: >
+        {{ ((states('sensor.bedroom_sensor_temperature') | float(0) +
+             states('sensor.landing_sensor_temperature') | float(0) +
+             states('sensor.genevieve_sensor_temperature') | float(0) +
+             states('sensor.reuben_sensor_temperature') | float(0)) / 4) | round(1) }}
+      avg_humidity: >
+        {{ ((states('sensor.bedroom_sensor_humidity') | float(0) +
+             states('sensor.landing_sensor_humidity') | float(0) +
+             states('sensor.genevieve_sensor_humidity') | float(0) +
+             states('sensor.reuben_sensor_humidity') | float(0)) / 4) | round(1) }}
+
+  # Notify before updating so the message accurately shows old → new.
+  - action: notify.mobile_app_conall_s_iphone_17_pro
+    data:
+      title: >
+        {% if trigger.id == 'monthly' %}
+        CPAP Monthly Review — AirSense 10
+        {% else %}
+        CPAP Conditions Changed — AirSense 10
+        {% endif %}
+      message: >
+        {% if new_humidity != old_humidity or new_tube_temp != old_tube_temp %}
+        Adjust to minimise rain-out:
+        • Humidity: {{ old_humidity }} → {{ new_humidity }} / 8
+        • Tube Temp: {{ old_tube_temp }}°C → {{ new_tube_temp }}°C
+        {% else %}
+        Settings look good — no change needed:
+        • Humidity: {{ new_humidity }} / 8
+        • Tube Temp: {{ new_tube_temp }}°C
+        {% endif %}
+
+        Bedroom: {{ bedroom_temp }}°C / {{ bedroom_humidity }}% RH
+        Upstairs avg: {{ avg_temp }}°C / {{ avg_humidity }}% RH
+
+  # Update the tracked settings to the new recommendation.
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.cpap_humidity_setting
+    data:
+      value: "{{ new_humidity }}"
+
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.cpap_tube_temperature
+    data:
+      value: "{{ new_tube_temp }}"
+
+mode: single

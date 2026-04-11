@@ -1,0 +1,38 @@
+sensor:
+  # Recommended humidifier level (1–8) for the ResMed AirSense 10 based on the
+  # Bedroom temperature and humidity. Lower settings in cold/humid conditions
+  # prevent rain-out (condensation) in the heated tube.
+  - name: "CPAP Recommended Humidity"
+    unique_id: cpap_recommended_humidity
+    icon: mdi:water-percent
+    state: >
+      {% set t = states('sensor.bedroom_sensor_temperature') | float(18) %}
+      {% set h = states('sensor.bedroom_sensor_humidity') | float(60) %}
+      {% if t < 16 %}
+        {% if h > 65 %}3{% elif h > 50 %}4{% else %}5{% endif %}
+      {% elif t < 19 %}
+        {% if h > 65 %}4{% elif h > 50 %}5{% else %}6{% endif %}
+      {% elif t < 22 %}
+        {% if h > 65 %}5{% elif h > 50 %}6{% else %}6{% endif %}
+      {% else %}
+        {% if h > 65 %}6{% elif h > 50 %}7{% else %}7{% endif %}
+      {% endif %}
+
+  # Recommended heated-tube temperature (°C) for the ResMed AirSense 10.
+  # Higher tube temperatures compensate for cold rooms to prevent rain-out.
+  - name: "CPAP Recommended Tube Temperature"
+    unique_id: cpap_recommended_tube_temperature
+    unit_of_measurement: "°C"
+    icon: mdi:thermometer
+    state: >
+      {% set t = states('sensor.bedroom_sensor_temperature') | float(18) %}
+      {% set h = states('sensor.bedroom_sensor_humidity') | float(60) %}
+      {% if t < 16 %}
+        {% if h > 65 %}30{% elif h > 50 %}28{% else %}26{% endif %}
+      {% elif t < 19 %}
+        {% if h > 65 %}28{% elif h > 50 %}26{% else %}24{% endif %}
+      {% elif t < 22 %}
+        {% if h > 65 %}26{% elif h > 50 %}24{% else %}22{% endif %}
+      {% else %}
+        {% if h > 65 %}24{% elif h > 50 %}22{% else %}20{% endif %}
+      {% endif %}
