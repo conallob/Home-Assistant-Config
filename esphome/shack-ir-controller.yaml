@@ -27,12 +27,11 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
-# I2C bus for ENS161 air quality sensor
-# D4/GPIO22 (SDA) and D5/GPIO23 (SCL) are taken by the IR sensor,
-# so software I2C is used on D1/GPIO3 (SDA) and D0/GPIO2 (SCL)
+# I2C bus for ENS161 air quality sensor (SDA=GPIO22/D4, SCL=GPIO23/D5)
+# IR sensor moved to right-side XIAO pins, freeing hardware I2C
 i2c:
-  sda: GPIO3
-  scl: GPIO2
+  sda: GPIO22
+  scl: GPIO23
   scan: true
 
 # BLE scanning to discover Sandsara v2 BLE services
