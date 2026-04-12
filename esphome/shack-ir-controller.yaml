@@ -59,12 +59,17 @@ sensor:
     aqi:
       name: "Shack Air Quality Index"
 
-# IR Campture:
-#remote_receiver:
-#  pin: GPIO18
-#  dump: all
+# KY-022 IR receiver on D7/GPIO20 (signal pin at I1 on breadboard)
+remote_receiver:
+  pin:
+    number: GPIO20
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  dump: all
 
-# Remote transmitter configuration (adjust pin based on your setup)
+# IR transmitter LED on D8/GPIO18
 remote_transmitter:
   pin: GPIO18
   carrier_duty_percent: 50%
