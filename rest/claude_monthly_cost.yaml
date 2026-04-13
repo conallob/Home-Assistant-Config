@@ -1,0 +1,32 @@
+# Anthropic Claude API - Month-to-Date Cost
+# Polls the Cost Report API from the 1st of the current UTC month to now.
+# The Cost API uses 1d buckets; this sums all daily buckets since month start.
+#
+# Requires an Admin API key (sk-ant-admin-...) stored in secrets.yaml as:
+#   anthropic_admin_api_key: sk-ant-admin-...
+#
+# The Cost API returns amounts in minor currency units (cents for USD).
+# The value_template divides by 100 to produce a dollar amount.
+
+resource_template: "https://api.anthropic.com/v1/organizations/cost_report?starting_at={{ utcnow().strftime('%Y-%m-01T00:00:00Z') }}&bucket_width=1d&limit=31"
+headers:
+  x-api-key: !secret anthropic_admin_api_key
+  anthropic-version: "2023-06-01"
+method: GET
+scan_interval: 3600  # Update every hour
+
+sensor:
+  - name: "Claude Monthly Cost"
+    unique_id: claude_monthly_cost
+    value_template: >-
+      {% set ns = namespace(total=0) %}
+      {% for bucket in value_json.data %}
+        {% for r in bucket.results %}
+          {% set ns.total = ns.total + (r.amount | float(0)) %}
+        {% endfor %}
+      {% endfor %}
+      {{ (ns.total / 100) | round(4) }}
+    unit_of_measurement: "USD"
+    device_class: monetary
+    state_class: measurement
+    icon: mdi:currency-usd-circle
