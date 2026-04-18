@@ -1,0 +1,8 @@
+alias: "Git Pull Config"
+description: "Pull the latest Home Assistant configuration from GitHub and reload"
+sequence:
+  - action: shell_command.git_pull_config
+    data: {}
+  - action: homeassistant.reload_all
+    data: {}
+mode: single
