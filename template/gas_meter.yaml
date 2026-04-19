@@ -1,0 +1,10 @@
+sensor:
+  - name: "Gas Meter Volume"
+    unique_id: gas_meter_volume_m3
+    unit_of_measurement: "m³"
+    device_class: gas
+    state_class: total_increasing
+    # 1 pulse = 0.01 m³ — verify against your meter's faceplate (e.g. "1 imp = 0.01 m³")
+    state: >
+      {{ (states('sensor.gas_meter_zipulses_counter') | float(0)) * 0.01 }}
+    icon: mdi:meter-gas
