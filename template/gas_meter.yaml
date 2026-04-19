@@ -5,7 +5,7 @@ sensor:
     device_class: gas
     state_class: total_increasing
     # Landis+Gyr G130: 1 pulse = 0.01 m³
-    # Offset is the meter index reading at time of ZiPulses installation (11610.607 m³)
+    # Set input_number.gas_meter_offset to the meter index reading at time of ZiPulses installation
     state: >
-      {{ (states('sensor.gas_meter_zipulses_counter') | float(0)) * 0.01 + 11610.607 }}
+      {{ (states('sensor.gas_meter_zipulses_counter') | float(0)) * 0.01 + states('input_number.gas_meter_offset') | float(0) }}
     icon: mdi:meter-gas
