@@ -1,0 +1,80 @@
+alias: 8BitDo Micro Remote
+description: >
+  Maps 8BitDo Micro gamepad buttons (keyboard mode) to home automation actions.
+  Key codes below are placeholders — verify them by listening to
+  keyboard_remote_command_received events in Developer Tools after pairing,
+  or run: evtest /dev/input/by-id/bluetooth-8BitDo_Micro_gamepad-event-kbd
+trigger:
+  - platform: event
+    event_type: keyboard_remote_command_received
+    event_data:
+      device_descriptor: '/dev/input/by-id/bluetooth-8BitDo_Micro_gamepad-event-kbd'
+      type: key_down
+condition: []
+action:
+  - choose:
+      # D-Pad Up
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.key_code == 103 }}"
+        sequence:
+          - action: media_player.volume_up
+            target:
+              entity_id: media_player.living_room
+
+      # D-Pad Down
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.key_code == 108 }}"
+        sequence:
+          - action: media_player.volume_down
+            target:
+              entity_id: media_player.living_room
+
+      # D-Pad Left
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.key_code == 105 }}"
+        sequence:
+          - action: media_player.media_previous_track
+            target:
+              entity_id: media_player.living_room
+
+      # D-Pad Right
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.key_code == 106 }}"
+        sequence:
+          - action: media_player.media_next_track
+            target:
+              entity_id: media_player.living_room
+
+      # A button (confirm / play-pause)
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.key_code == 28 }}"
+        sequence:
+          - action: media_player.media_play_pause
+            target:
+              entity_id: media_player.living_room
+
+      # B button (back / mute)
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.key_code == 1 }}"
+        sequence:
+          - action: media_player.volume_mute
+            target:
+              entity_id: media_player.living_room
+            data:
+              is_volume_muted: true
+
+      # Start button (toggle lights)
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.data.key_code == 57 }}"
+        sequence:
+          - action: light.toggle
+            target:
+              area_id: living_room
+mode: single
