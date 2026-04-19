@@ -1,0 +1,13 @@
+platform: template
+sensors:
+  gas_meter_volume:
+    unique_id: gas_meter_volume_m3
+    friendly_name: "Gas Meter Volume"
+    unit_of_measurement: "m³"
+    device_class: gas
+    state_class: total_increasing
+    # Landis+Gyr G130: 1 pulse = 0.01 m³
+    # Update the offset below to match the meter index reading at time of ZiPulses installation
+    value_template: >
+      {{ (states('sensor.gas_meter_zipulses_counter') | float(0)) * 0.01 + 0 }}
+    icon_template: mdi:meter-gas
