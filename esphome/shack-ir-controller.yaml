@@ -50,7 +50,7 @@ i2c:
 # Note: reports equivalent CO2 (derived from VOCs), not direct NDIR CO2
 sensor:
   - platform: ens160_i2c
-    address: 0x52  # ADDR pin → GND (default); change to 0x53 if ADDR → 3V3
+    address: 0x53  # Adafruit board pulls ADDR high by default; remove SDO→GND wire
     update_interval: 60s
     eco2:
       name: "Shack eCO2"
