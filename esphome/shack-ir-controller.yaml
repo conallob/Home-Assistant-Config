@@ -27,24 +27,49 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
+# I2C bus for ENS161 air quality sensor (SDA=GPIO22/D4, SCL=GPIO23/D5)
+# IR sensor moved to right-side XIAO pins, freeing hardware I2C
+i2c:
+  sda: GPIO22
+  scl: GPIO23
+  scan: true
+
 # BLE scanning to discover Sandsara v2 BLE services
-esp32_ble_tracker:
-  scan_parameters:
-    interval: 1100ms
-    window: 1100ms
-    active: true
+#esp32_ble_tracker:
+#  scan_parameters:
+#    interval: 1100ms
+#    window: 1100ms
+#    active: true
 
 # Text sensor that logs all discovered BLE devices (check ESPHome logs)
-text_sensor:
-  - platform: ble_scanner
-    name: "Shack BLE Scanner"
+#text_sensor:
+#  - platform: ble_scanner
+#    name: "Shack BLE Scanner"
 
-# IR Campture:
-#remote_receiver:
-#  pin: GPIO18
-#  dump: all
+# ENS160 Air Quality Sensor (eCO2 + TVOC + AQI)
+# Note: reports equivalent CO2 (derived from VOCs), not direct NDIR CO2
+sensor:
+  - platform: ens160_i2c
+    address: 0x53  # Adafruit ENS161 ADDR pin pulled high by default
+    update_interval: 60s
+    eco2:
+      name: "Shack eCO2"
+    tvoc:
+      name: "Shack TVOC"
+    aqi:
+      name: "Shack Air Quality Index"
 
-# Remote transmitter configuration (adjust pin based on your setup)
+# KY-022 IR receiver on D7/GPIO20 (signal pin at I1 on breadboard)
+remote_receiver:
+  pin:
+    number: GPIO20
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  dump: all
+
+# IR transmitter LED on D8/GPIO18
 remote_transmitter:
   pin: GPIO18
   carrier_duty_percent: 50%
