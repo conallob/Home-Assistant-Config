@@ -65,7 +65,7 @@ conditions:
 actions:
   # Snapshot current (old) settings and new recommendations before any updates.
   - variables:
-      notify_target: notify.mobile_app_conall_s_iphone_17_pro
+      notify_target: notify.conall_phone
       old_humidity: "{{ states('input_number.cpap_humidity_setting') | int }}"
       old_tube_temp: "{{ states('input_number.cpap_tube_temperature') | int }}"
       new_humidity: "{{ states('sensor.cpap_recommended_humidity') | int }}"
