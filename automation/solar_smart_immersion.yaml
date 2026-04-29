@@ -31,11 +31,10 @@ action:
   device_id: 4083dc6a35662e04adfa685edaff48ce
   entity_id: switch.immersion
   domain: switch
-- device_id: 34a445b8cb3b53dba77631c57276b85a
-  domain: mobile_app
-  type: notify
-  message: Solar Smart Immersion Triggered
-  title: Solar Smart Immersion
+- action: notify.mobile_app_conall_s_iphone_17_pro
+  data:
+    title: Solar Smart Immersion
+    message: Solar Smart Immersion Triggered
 - delay:
     hours: 1
     minutes: 30
