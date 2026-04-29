@@ -123,6 +123,10 @@ powercalc:
 #
 
 notify:
+  - name: "conall_phone"
+    platform: group
+    services:
+      - service: mobile_app_conall_s_iphone_17_pro
   - name: "Omnifocus"
     platform: smtp
     sender: "home-assistant@taku.ie"
