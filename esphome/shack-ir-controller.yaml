@@ -1,11 +1,6 @@
 esphome:
   name: shack-ir-controller
   friendly_name: Shack IR Controller
-  on_boot:
-    priority: 800
-    then:
-      - output.turn_on: ens161_vcc
-      - output.turn_off: ens161_gnd
 
 esp32:
   board: seeed_xiao_esp32c6
@@ -34,10 +29,16 @@ wifi:
 
 # GPIO-based power for ENS161: D0/GPIO2 = VIN (HIGH), D1/GPIO3 = GND (LOW)
 # ENS161 draws ~5-6mA from 3.3V, well within 40mA GPIO source limit
-output:
+# switch.gpio with ALWAYS_ON calls turn_on() during component setup(),
+# guaranteeing GPIO2 is HIGH before the ENS161 sensor initialises
+switch:
   - platform: gpio
     pin: GPIO2
     id: ens161_vcc
+    internal: true
+    restore_mode: ALWAYS_ON
+
+output:
   - platform: gpio
     pin: GPIO3
     id: ens161_gnd
