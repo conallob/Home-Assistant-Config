@@ -111,6 +111,14 @@ utility_meter:
       - day
       - peak
       - night
+  daily_gas_energy:
+    source: sensor.gas_meter_volume
+    name: Daily Gas Meter Volume
+    cycle: daily
+  monthly_gas_energy:
+    source: sensor.gas_meter_volume
+    name: Monthly Gas Meter Volume
+    cycle: monthly
 
 powercalc:
   enable_analytics: true
