@@ -1,6 +1,11 @@
 esphome:
   name: shack-ir-controller
   friendly_name: Shack IR Controller
+  on_boot:
+    priority: 800
+    then:
+      - output.turn_on: ens161_vcc
+      - output.turn_off: ens161_gnd
 
 esp32:
   board: seeed_xiao_esp32c6
@@ -27,8 +32,17 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
+# GPIO-based power for ENS161: D0/GPIO2 = VIN (HIGH), D1/GPIO3 = GND (LOW)
+# ENS161 draws ~5-6mA from 3.3V, well within 40mA GPIO source limit
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: ens161_vcc
+  - platform: gpio
+    pin: GPIO3
+    id: ens161_gnd
+
 # I2C bus for ENS161 air quality sensor (SDA=GPIO22/D4, SCL=GPIO23/D5)
-# IR sensor moved to right-side XIAO pins, freeing hardware I2C
 i2c:
   sda: GPIO22
   scl: GPIO23
