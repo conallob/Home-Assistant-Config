@@ -1,0 +1,23 @@
+id: bathroom_hue_night_dimming
+alias: Bathroom Hue Night Dimming
+description: >
+  Set all bathroom Hue lights to 50% brightness between 23:00 and 07:00.
+  Dims lights at 23:00, and re-applies 50% whenever a bathroom light is
+  turned on during the night window.
+triggers:
+  - trigger: time
+    at: "23:00:00"
+  - trigger: state
+    entity_id: light.bathroom_sink
+    to: "on"
+conditions:
+  - condition: time
+    after: "23:00:00"
+    before: "07:00:00"
+actions:
+  - action: light.turn_on
+    target:
+      area_id: bathroom
+    data:
+      brightness_pct: 50
+mode: single
