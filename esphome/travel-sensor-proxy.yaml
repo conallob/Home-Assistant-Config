@@ -1,0 +1,42 @@
+esphome:
+  name: travel-sensor-proxy
+  friendly_name: Travel Sensor Proxy
+
+esp32:
+  board: esp32-c6-devkitc-1
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key_travel_sensor_proxy
+
+ota:
+  - platform: esphome
+    password: !secret ota_password_travel_sensor_proxy
+
+wifi:
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+    - ssid: !secret travel_wifi_ssid
+      password: !secret travel_wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Travel-Sensor-Proxy"
+    password: "ThstoCkx98Zn"
+
+# Bluetooth Proxy to Home Assistant
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 1100ms
+    window: 1100ms
+    active: true
+
+bluetooth_proxy:
+  active: true    
