@@ -27,23 +27,8 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
-# GPIO-based power for ENS161: D0/GPIO2 = VIN (HIGH), D1/GPIO3 = GND (LOW)
-# ENS161 draws ~5-6mA from 3.3V, well within 40mA GPIO source limit
-# switch.gpio with ALWAYS_ON calls turn_on() during component setup(),
-# guaranteeing GPIO2 is HIGH before the ENS161 sensor initialises
-switch:
-  - platform: gpio
-    pin: GPIO2
-    id: ens161_vcc
-    internal: true
-    restore_mode: ALWAYS_ON
-
-output:
-  - platform: gpio
-    pin: GPIO3
-    id: ens161_gnd
-
 # I2C bus for ENS161 air quality sensor (SDA=GPIO22/D4, SCL=GPIO23/D5)
+# ENS161 VIN → XIAO 3V3 pin, ENS161 GND → XIAO GND pin
 i2c:
   sda: GPIO22
   scl: GPIO23
