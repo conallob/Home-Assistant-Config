@@ -44,7 +44,7 @@ uart:
   id: mmwave_uart
   tx_pin: GPIO21
   rx_pin: GPIO2
-  baud_rate: 256000
+  baud_rate: 256000 # LD2410 chip default; not user-configurable without reflashing the module
   parity: NONE
   stop_bits: 1
 
