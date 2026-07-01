@@ -36,3 +36,58 @@ esp32_ble_tracker:
 
 bluetooth_proxy:
   active: true
+
+# 24GHz mmWave Human Static Presence expansion board (LD2410),
+# used to detect Huck's presence in the utility room.
+# Board mounts directly onto the XIAO's D2/D3 pins.
+uart:
+  id: mmwave_uart
+  tx_pin: GPIO21
+  rx_pin: GPIO2
+  baud_rate: 256000 # LD2410 chip default; not user-configurable without reflashing the module
+  parity: NONE
+  stop_bits: 1
+
+ld2410:
+  id: utility_room_mmwave
+
+binary_sensor:
+  - platform: ld2410
+    has_target:
+      name: "Presence"
+    has_moving_target:
+      name: "Moving Target"
+    has_still_target:
+      name: "Still Target"
+
+sensor:
+  - platform: ld2410
+    moving_distance:
+      name: "Moving Distance"
+    still_distance:
+      name: "Still Distance"
+    moving_energy:
+      name: "Moving Energy"
+    still_energy:
+      name: "Still Energy"
+    detection_distance:
+      name: "Detection Distance"
+
+text_sensor:
+  - platform: ld2410
+    version:
+      name: "Presence Sensor Firmware Version"
+
+button:
+  - platform: ld2410
+    restart:
+      name: "Presence Sensor Restart"
+
+number:
+  - platform: ld2410
+    timeout:
+      name: "Presence Sensor Timeout"
+    max_move_distance_gate:
+      name: "Presence Sensor Max Move Distance"
+    max_still_distance_gate:
+      name: "Presence Sensor Max Still Distance"
