@@ -1,0 +1,8 @@
+platform: filter
+name: "Snapmaker Average Power"
+unique_id: snapmaker_average_power
+entity_id: sensor.snapmaker_current_consumption
+filters:
+  - filter: time_simple_moving_average
+    window_size: "00:05:00"
+    precision: 1
