@@ -5,9 +5,12 @@ triggers:
   - trigger: state
     entity_id: binary_sensor.snapmaker_idle
     to: 'on'
+    # binary_sensor.snapmaker_idle lags real idle onset by up to 5 min (the
+    # power sensor's moving average window), so 40 here + that 5 min lag
+    # keeps total idle-to-shutoff time at ~45 min.
     for:
       hours: 0
-      minutes: 45
+      minutes: 40
       seconds: 0
 conditions: []
 actions:
