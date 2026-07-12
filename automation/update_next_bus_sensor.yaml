@@ -1,3 +1,4 @@
+id: '1783848667747'
 alias: "Update Next Bus Sensor"
 description: >-
   Updates the Transit App next bus sensor every 5 minutes during active windows
