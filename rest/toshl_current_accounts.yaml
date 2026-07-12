@@ -16,11 +16,11 @@ sensor:
     value_template: "{{ (value_json | selectattr('id', 'equalto', '4657362') | first).balance }}"
     unit_of_measurement: "EUR"
     device_class: monetary
-    state_class: measurement
+    state_class: total
 
   - name: "Reuben Current Account Balance"
     unique_id: toshl_reuben_current_account_balance
     value_template: "{{ (value_json | selectattr('id', 'equalto', '4657361') | first).balance }}"
     unit_of_measurement: "EUR"
     device_class: monetary
-    state_class: measurement
+    state_class: total
