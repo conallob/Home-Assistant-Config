@@ -1,0 +1,11 @@
+binary_sensor:
+  - name: "Snapmaker Idle"
+    unique_id: snapmaker_idle
+    state: >
+      {{ is_state('switch.snapmaker', 'on') and states('sensor.snapmaker_average_power')|float(0) < 150 }}
+    icon: >
+      {% if is_state('binary_sensor.snapmaker_idle', 'on') %}
+        mdi:printer-3d-off
+      {% else %}
+        mdi:printer-3d
+      {% endif %}

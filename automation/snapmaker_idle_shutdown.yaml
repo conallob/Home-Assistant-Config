@@ -1,0 +1,21 @@
+id: '1783847882940'
+alias: Snapmaker - Turn Off When Idle
+description: Turns off the Snapmaker 3D printer if it has been powered on but idle (not printing) for 45 minutes
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.snapmaker_idle
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 45
+      seconds: 0
+conditions: []
+actions:
+  - action: switch.turn_off
+    target:
+      entity_id: switch.snapmaker
+  - action: notify.conall_phone
+    data:
+      title: Snapmaker Turned Off
+      message: The Snapmaker was idle for 45 minutes and has been powered off.
+mode: single
