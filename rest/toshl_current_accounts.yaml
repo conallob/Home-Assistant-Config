@@ -1,0 +1,26 @@
+# Toshl - Reuben & Genevieve Current Account Balances
+# Fetches the full list of Toshl accounts in a single API call and
+# extracts the balance for each of Reuben's and Genevieve's Revolut
+# current accounts (ids 4657361 and 4657362), so we don't make two
+# near-simultaneous calls to the Toshl API from the same IP.
+# API Documentation: https://developers.toshl.com/docs/#accounts
+
+resource: "https://api.toshl.com/accounts"
+scan_interval: 3600
+authentication: basic
+username: !secret toshl_api_token
+password: ""
+sensor:
+  - name: "Genevieve Current Account Balance"
+    unique_id: toshl_genevieve_current_account_balance
+    value_template: "{{ (value_json | selectattr('id', 'equalto', '4657362') | first).balance }}"
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+
+  - name: "Reuben Current Account Balance"
+    unique_id: toshl_reuben_current_account_balance
+    value_template: "{{ (value_json | selectattr('id', 'equalto', '4657361') | first).balance }}"
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
