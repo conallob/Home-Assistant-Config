@@ -88,7 +88,7 @@ mqtt:
 # Utility Meter for Electricity Meter
 utility_meter:
   daily_electricity_energy:
-    source: sensor.grid_em_channel_1_power
+    source: sensor.grid_em_channel_1_energy
     name: Daily Electricity Meter Energy
     cycle: daily
     tariffs:
@@ -96,7 +96,7 @@ utility_meter:
       - peak
       - night
   monthly_electricity_energy:
-    source: sensor.grid_em_channel_1_power
+    source: sensor.grid_em_channel_1_energy
     name: Monthly Electricity Meter Energy
     cycle: monthly
     tariffs:
@@ -104,7 +104,7 @@ utility_meter:
       - peak
       - night
   current_electricity_tariff:
-    source: sensor.grid_em_channel_1_power
+    source: sensor.grid_em_channel_1_energy
     name: Current Electricity Tariff
     cycle: daily
     tariffs:
