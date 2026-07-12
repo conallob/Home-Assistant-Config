@@ -1,0 +1,22 @@
+# Toshl - Reuben Current Account Balance
+# Tracks the current balance of Reuben's Revolut current account,
+# as recorded in Toshl (account id 4657361).
+# API Documentation: https://developers.toshl.com/docs/#accounts
+
+resource: "https://api.toshl.com/accounts/4657361"
+scan_interval: 3600
+authentication: basic
+username: !secret toshl_api_token
+password: ""
+sensor:
+  - name: "Reuben Current Account Balance"
+    unique_id: toshl_reuben_current_account_balance
+    value_template: "{{ value_json.balance }}"
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+    json_attributes_path: "$"
+    json_attributes:
+      - id
+      - name
+      - currency
