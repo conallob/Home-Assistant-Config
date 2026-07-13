@@ -4,16 +4,39 @@ substitutions:
   device_name: "e-ink-frame-downstairs"
   friendly_name: "E-Ink Frame Downstairs"
 
-  # Pin Assignments for XIAO ESP32C6 to Waveshare 7.3" e-Paper HAT (F)
+  # Pin Assignments for XIAO ESP32C6 to Waveshare e-Paper Driver HAT (Rev2.3)
   # Using hardware SPI pins for reliable communication
   # XIAO ESP32C6 pinout: https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/
   # Waveshare HAT connector directly to XIAO expansion board
-  pin_clk: "GPIO19"   # D8 - SPI SCK (hardware SPI)
-  pin_mosi: "GPIO18"  # D10 - SPI MOSI (hardware SPI)
-  pin_cs: "GPIO2"     # D2 - Chip Select
-  pin_dc: "GPIO21"    # D3 - Data/Command
-  pin_busy: "GPIO23"  # D5 - Busy signal (ACTIVE LOW - must be inverted!)
-  pin_reset: "GPIO22" # D4 - Reset
+  #
+  # DUPONT WIRE MAP (XIAO expansion board <-> Waveshare e-Paper Driver HAT 9-pin
+  # connector). Confirmed against a labelled product photo of the actual Driver
+  # HAT Rev2.3 board in this build: the 9-pin connector is silkscreened
+  # PWR,BUSY,RST,DC,CS,CLK,DIN,GND,VCC (left to right), with a matching 9-wire
+  # cable in that same colour order. This is the real cable for this board -
+  # not a generic/assumed convention.
+  #
+  # | HAT Pin | Signal | Colour | XIAO Pin | GPIO   | Notes |
+  # |---------|--------|--------|----------|--------|-------|
+  # | 1       | PWR    | Purple | 3V3      | -      | No power_pin in ESPHome's waveshare_epaper component - tie PWR straight to 3V3 (same rail as VCC) rather than a GPIO. CURRENTLY DISCONNECTED - reconnect here. |
+  # | 2       | BUSY   | Blue   | D5       | GPIO23 | Busy signal (ACTIVE LOW - must be inverted!) |
+  # | 3       | RST    | Green  | D4       | GPIO22 | Reset |
+  # | 4       | DC     | Yellow | D3       | GPIO21 | Data/Command |
+  # | 5       | CS     | Orange | D2       | GPIO2  | Chip Select |
+  # | 6       | CLK    | Grey   | D8       | GPIO19 | SPI SCK (hardware SPI) |
+  # | 7       | DIN    | White  | D10      | GPIO18 | SPI MOSI (hardware SPI) |
+  # | 8       | GND    | Black  | GND      | -      | |
+  # | 9       | VCC    | Red    | 3V3      | -      | |
+  #
+  # If a wire ever comes loose again and colour alone isn't enough to confirm:
+  # multimeter in continuity/beep mode, one probe on the HAT-side pin, the
+  # other on the candidate XIAO pin - it beeps when you've found the right one.
+  pin_clk: "GPIO19"   # D8 - SPI SCK (hardware SPI) - Grey wire
+  pin_mosi: "GPIO18"  # D10 - SPI MOSI (hardware SPI) - White wire
+  pin_cs: "GPIO2"     # D2 - Chip Select - Orange wire
+  pin_dc: "GPIO21"    # D3 - Data/Command - Yellow wire
+  pin_busy: "GPIO23"  # D5 - Busy signal (ACTIVE LOW - must be inverted!) - Blue wire
+  pin_reset: "GPIO22" # D4 - Reset - Green wire
 
   # Deep Sleep
   gpio_deep_sleep_wake_up: "GPIO4"
