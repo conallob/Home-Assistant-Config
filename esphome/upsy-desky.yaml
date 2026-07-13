@@ -1,7 +1,7 @@
 substitutions:
   name: "upsy-desky"
 packages:
-  tj_horner.upsy_desky: github://tjhorner/upsy-desky/firmware/stock.yaml@v5.0.0
+  tj_horner.upsy_desky: github://tjhorner/upsy-desky/firmware/stock.yaml@v5.0.2
 esphome:
   name: ${name}
   name_add_mac_suffix: false
