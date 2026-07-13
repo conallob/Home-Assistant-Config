@@ -246,6 +246,7 @@ font:
   - file: "gfonts://Roboto"
     id: font_body
     size: 22
+    glyphs: ["€"]
 
   # Medium for section content
   - file: "gfonts://Roboto"
@@ -399,6 +400,15 @@ sensor:
   - platform: homeassistant
     id: solar_today
     entity_id: sensor.solis_energy_today
+
+  # Toshl - Revolut current account balances
+  - platform: homeassistant
+    id: genevieve_account_balance
+    entity_id: sensor.genevieve_current_account_balance
+
+  - platform: homeassistant
+    id: reuben_account_balance
+    entity_id: sensor.reuben_current_account_balance
 
   # WiFi Signal Sensor
   - platform: wifi_signal
@@ -565,6 +575,28 @@ display:
                   "%.1f kWh", id(solar_today).state);
       } else {
         it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
+      }
+
+      util_y += util_row;
+
+      // Genevieve Account Balance
+      it.printf(center_col_x, util_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Genevieve");
+      if (id(genevieve_account_balance).has_state()) {
+        it.printf(center_col_x + center_col_width, util_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "€%.2f", id(genevieve_account_balance).state);
+      } else {
+        it.printf(center_col_x + center_col_width, util_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--");
+      }
+
+      util_y += util_row;
+
+      // Reuben Account Balance
+      it.printf(center_col_x, util_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Reuben");
+      if (id(reuben_account_balance).has_state()) {
+        it.printf(center_col_x + center_col_width, util_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "€%.2f", id(reuben_account_balance).state);
+      } else {
+        it.printf(center_col_x + center_col_width, util_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--");
       }
 
       // ===== RIGHT COLUMN (Home Sensors) =====
