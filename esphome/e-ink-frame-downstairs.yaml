@@ -246,7 +246,17 @@ font:
   - file: "gfonts://Roboto"
     id: font_body
     size: 22
-    glyphs: ["€"]
+
+  # Body text + Euro sign, for the account balance rows only.
+  # NOTE: ESPHome's `glyphs` option *replaces* the font's default glyph
+  # set rather than extending it, so this must list out the full set of
+  # characters these rows need (not just the extra symbol) - it must not
+  # be added to font_body directly, or every other character in that font
+  # disappears.
+  - file: "gfonts://Roboto"
+    id: font_currency
+    size: 22
+    glyphs: "€0123456789.- ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
   # Medium for section content
   - file: "gfonts://Roboto"
@@ -580,23 +590,23 @@ display:
       util_y += util_row;
 
       // Genevieve Account Balance
-      it.printf(center_col_x, util_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Genevieve");
+      it.printf(center_col_x, util_y, id(font_currency), id(color_black), TextAlign::TOP_LEFT, "Genevieve");
       if (id(genevieve_account_balance).has_state()) {
-        it.printf(center_col_x + center_col_width, util_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(center_col_x + center_col_width, util_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
                   "€%.2f", id(genevieve_account_balance).state);
       } else {
-        it.printf(center_col_x + center_col_width, util_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--");
+        it.printf(center_col_x + center_col_width, util_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
       }
 
       util_y += util_row;
 
       // Reuben Account Balance
-      it.printf(center_col_x, util_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Reuben");
+      it.printf(center_col_x, util_y, id(font_currency), id(color_black), TextAlign::TOP_LEFT, "Reuben");
       if (id(reuben_account_balance).has_state()) {
-        it.printf(center_col_x + center_col_width, util_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(center_col_x + center_col_width, util_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
                   "€%.2f", id(reuben_account_balance).state);
       } else {
-        it.printf(center_col_x + center_col_width, util_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--");
+        it.printf(center_col_x + center_col_width, util_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
       }
 
       // ===== RIGHT COLUMN (Home Sensors) =====
