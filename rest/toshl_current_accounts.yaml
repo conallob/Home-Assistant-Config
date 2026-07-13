@@ -13,14 +13,28 @@ password: ""
 sensor:
   - name: "Genevieve Current Account Balance"
     unique_id: toshl_genevieve_current_account_balance
-    value_template: "{{ (value_json | selectattr('id', 'equalto', '4657362') | first).balance }}"
+    value_template: >-
+      {% set ns = namespace(balance=none) %}
+      {% for account in value_json %}
+        {% if account.id | string == '4657362' %}
+          {% set ns.balance = account.balance %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.balance if ns.balance is not none else 'unknown' }}
     unit_of_measurement: "EUR"
     device_class: monetary
     state_class: total
 
   - name: "Reuben Current Account Balance"
     unique_id: toshl_reuben_current_account_balance
-    value_template: "{{ (value_json | selectattr('id', 'equalto', '4657361') | first).balance }}"
+    value_template: >-
+      {% set ns = namespace(balance=none) %}
+      {% for account in value_json %}
+        {% if account.id | string == '4657361' %}
+          {% set ns.balance = account.balance %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.balance if ns.balance is not none else 'unknown' }}
     unit_of_measurement: "EUR"
     device_class: monetary
     state_class: total
