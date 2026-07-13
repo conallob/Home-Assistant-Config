@@ -20,7 +20,7 @@ sensor:
           {% set ns.balance = account.balance %}
         {% endif %}
       {% endfor %}
-      {{ ns.balance if ns.balance is not none else '' }}
+      {{ ns.balance if ns.balance is not none else -1 }}
     unit_of_measurement: "EUR"
     device_class: monetary
     state_class: total
@@ -34,7 +34,7 @@ sensor:
           {% set ns.balance = account.balance %}
         {% endif %}
       {% endfor %}
-      {{ ns.balance if ns.balance is not none else '' }}
+      {{ ns.balance if ns.balance is not none else -1 }}
     unit_of_measurement: "EUR"
     device_class: monetary
     state_class: total
