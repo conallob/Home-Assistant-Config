@@ -587,26 +587,31 @@ display:
         it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
       }
 
-      util_y += util_row;
+      // ===== REVOLUT KIDS (sub-section below Utilities, same column) =====
+      int kids_header_y = util_y + util_row + 12;
+      it.printf(center_col_x, kids_header_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "REVOLUT KIDS");
+      it.line(center_col_x, kids_header_y + 26, center_col_x + center_col_width, kids_header_y + 26, id(color_red));
+
+      int kids_y = kids_header_y + 40;
 
       // Genevieve Account Balance
-      it.printf(center_col_x, util_y, id(font_currency), id(color_black), TextAlign::TOP_LEFT, "Genevieve");
+      it.printf(center_col_x, kids_y, id(font_currency), id(color_black), TextAlign::TOP_LEFT, "Genevieve");
       if (id(genevieve_account_balance).has_state()) {
-        it.printf(center_col_x + center_col_width, util_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(center_col_x + center_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
                   "€%.2f", id(genevieve_account_balance).state);
       } else {
-        it.printf(center_col_x + center_col_width, util_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
+        it.printf(center_col_x + center_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
       }
 
-      util_y += util_row;
+      kids_y += util_row;
 
       // Reuben Account Balance
-      it.printf(center_col_x, util_y, id(font_currency), id(color_black), TextAlign::TOP_LEFT, "Reuben");
+      it.printf(center_col_x, kids_y, id(font_currency), id(color_black), TextAlign::TOP_LEFT, "Reuben");
       if (id(reuben_account_balance).has_state()) {
-        it.printf(center_col_x + center_col_width, util_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(center_col_x + center_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
                   "€%.2f", id(reuben_account_balance).state);
       } else {
-        it.printf(center_col_x + center_col_width, util_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
+        it.printf(center_col_x + center_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
       }
 
       // ===== RIGHT COLUMN (Home Sensors) =====
