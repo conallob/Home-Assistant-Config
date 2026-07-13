@@ -8,11 +8,38 @@ substitutions:
   # Using hardware SPI pins for reliable communication
   # XIAO ESP32C6 pinout: https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/
   # Waveshare HAT connector directly to XIAO expansion board
+  #
+  # DUPONT WIRE MAP (XIAO expansion board <-> Waveshare 8-pin e-Paper HAT header)
+  # The HAT's 8-pin header has a fixed pin order (VCC,GND,DIN,CLK,CS,DC,RST,BUSY -
+  # see https://www.waveshare.com/wiki/7.3inch_e-Paper_HAT_(G)_Manual#Interfaces).
+  # Wire colours below are NOT a universal Waveshare standard - they're whatever
+  # loose dupont wires were used for THIS specific build, and need confirming by
+  # eye/continuity-check rather than assumed. Update the "Colour" column below
+  # any time a wire is re-seated, since a miswire on DC/RST/BUSY can damage the
+  # panel (see busy_pin note below).
+  #
+  # | HAT Pin | Signal | XIAO Pin | GPIO    | Colour (verify with multimeter!) |
+  # |---------|--------|----------|---------|-----------------------------------|
+  # | 1       | VCC    | 3V3      | -       | TBD - confirm                    |
+  # | 2       | GND    | GND      | -       | TBD - confirm                    |
+  # | 3       | DIN    | D10      | GPIO18  | TBD - confirm                    |
+  # | 4       | CLK    | D8       | GPIO19  | TBD - confirm                    |
+  # | 5       | CS     | D2       | GPIO2   | TBD - confirm                    |
+  # | 6       | DC     | D3       | GPIO21  | TBD - confirm                    |
+  # | 7       | RST    | D4       | GPIO22  | TBD - confirm                    |
+  # | 8       | BUSY   | D5       | GPIO23  | PURPLE - currently disconnected, reconnect HAT pin 8 <-> XIAO D5 |
+  #
+  # How to re-find a lost lane without a color key: set multimeter to
+  # continuity/beep mode, touch one probe to the loose wire's HAT-side pin,
+  # and touch the other probe to each candidate XIAO pin until it beeps -
+  # that confirms the GPIO regardless of wire colour. Once the other 7 wires
+  # are confirmed this way, fill in their colours above so the next loose-wire
+  # fix is a table lookup instead of a guess.
   pin_clk: "GPIO19"   # D8 - SPI SCK (hardware SPI)
   pin_mosi: "GPIO18"  # D10 - SPI MOSI (hardware SPI)
   pin_cs: "GPIO2"     # D2 - Chip Select
   pin_dc: "GPIO21"    # D3 - Data/Command
-  pin_busy: "GPIO23"  # D5 - Busy signal (ACTIVE LOW - must be inverted!)
+  pin_busy: "GPIO23"  # D5 - Busy signal (ACTIVE LOW - must be inverted!) - PURPLE wire, currently disconnected, HAT pin 8
   pin_reset: "GPIO22" # D4 - Reset
 
   # Deep Sleep
