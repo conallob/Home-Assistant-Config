@@ -1,16 +1,40 @@
-  sources:
-    ha_logs:
-      type: file
-      include:
-        - /config/home-assistant.log
-      read_from: beginning
-      line_delimiter: "\n"
+sources:
+  ha_logs:
+    type: file
+    include:
+      - /config/home-assistant.log
+    read_from: beginning
+    line_delimiter: "\n"
 
-  sinks:
-    console:
-      type: console
-      inputs:
-        - ha_logs
-      target: stdout
-      encoding:
-        codec: json
+  syslog_tcp:
+    type: syslog
+    mode: tcp
+    address: 0.0.0.0:514
+
+  syslog_udp:
+    type: syslog
+    mode: udp
+    address: 0.0.0.0:514
+
+sinks:
+  console:
+    type: console
+    inputs:
+      - ha_logs
+      - syslog_tcp
+      - syslog_udp
+    target: stdout
+    encoding:
+      codec: json
+
+  gcp:
+    type: gcp_stackdriver_logs
+    inputs:
+      - ha_logs
+      - syslog_tcp
+      - syslog_udp
+    project_id: "unix-logs-storage"
+    log_id: "home_assistant"
+    credentials_path: "/config/vector/gcp_credentials.json"
+    resource:
+      type: "global"
