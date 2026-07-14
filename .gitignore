@@ -1,4 +1,5 @@
 secrets.yaml
+*/gcp_credentials.json
 
 # Ingore the home-assistant DB file
 home-assistant_v2.db
