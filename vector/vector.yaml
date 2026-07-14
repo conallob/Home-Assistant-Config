@@ -1,0 +1,16 @@
+  sources:
+    ha_logs:
+      type: file
+      include:
+        - /config/home-assistant.log
+      read_from: beginning
+      line_delimiter: "\n"
+
+  sinks:
+    console:
+      type: console
+      inputs:
+        - ha_logs
+      target: stdout
+      encoding:
+        codec: json
