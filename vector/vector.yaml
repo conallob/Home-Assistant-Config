@@ -1,10 +1,4 @@
 sources:
-  ha_logs:
-    type: file
-    include:
-      - /config/home-assistant.log
-    read_from: beginning
-    line_delimiter: "\n"
 
   syslog_tcp:
     type: syslog
@@ -20,7 +14,6 @@ sinks:
   console:
     type: console
     inputs:
-      - ha_logs
       - syslog_tcp
       - syslog_udp
     target: stdout
@@ -30,11 +23,10 @@ sinks:
   gcp:
     type: gcp_stackdriver_logs
     inputs:
-      - ha_logs
       - syslog_tcp
       - syslog_udp
     project_id: "unix-logs-storage"
-    log_id: "home_assistant"
+    log_id: "syslog"
     credentials_path: "/config/vector/gcp/credentials.json"
     resource:
       type: "global"
