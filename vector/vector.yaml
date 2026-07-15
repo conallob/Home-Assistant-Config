@@ -35,6 +35,6 @@ sinks:
       - syslog_udp
     project_id: "unix-logs-storage"
     log_id: "home_assistant"
-    credentials_path: "/config/vector/gcp_credentials.json"
+    credentials_path: "/config/vector/gcp/credentials.json"
     resource:
       type: "global"
