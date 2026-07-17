@@ -263,10 +263,10 @@ font:
     id: font_medium
     size: 28
 
-  # Large for time display
+  # Medium-large for the (now compact) header time display
   - file: "gfonts://Roboto@700"
     id: font_time
-    size: 72
+    size: 40
 
   # Bold for section headers
   - file: "gfonts://Roboto@700"
@@ -457,7 +457,7 @@ display:
       // ===========================================
       // TRMNL-INSPIRED INFO DASHBOARD
       // Waveshare 7.3" e-Paper HAT (G) 4-Color (800x480)
-      // Layout: Header | Weather + Utilities | Home Temps
+      // Layout: Header | Home Temps + Utilities/Electricity + Weather
       // ===========================================
 
       // Display dimensions
@@ -479,87 +479,87 @@ display:
       }
 
       // ===== HEADER SECTION (Time & Date) =====
-      // Black header bar
-      it.filled_rectangle(0, 0, SCREEN_WIDTH, 90, id(color_black));
+      // Kept slim - just the clock and date - to leave more of the panel
+      // for content below.
+      const int HEADER_HEIGHT = 56;
 
-      // Time (large, white on black)
-      it.printf(MARGIN + 10, 8, id(font_time), id(color_white), TextAlign::TOP_LEFT,
+      // Black header bar
+      it.filled_rectangle(0, 0, SCREEN_WIDTH, HEADER_HEIGHT, id(color_black));
+
+      // Time (white on black)
+      it.printf(MARGIN + 10, 6, id(font_time), id(color_white), TextAlign::TOP_LEFT,
                 "%02d:%02d", time.hour, time.minute);
 
       // Date (right side of header)
-      it.strftime(SCREEN_WIDTH - MARGIN - 10, 12, id(font_header), id(color_white), TextAlign::TOP_RIGHT,
+      it.strftime(SCREEN_WIDTH - MARGIN - 10, 6, id(font_small), id(color_white), TextAlign::TOP_RIGHT,
                   "%A", time);  // Day name
-      it.strftime(SCREEN_WIDTH - MARGIN - 10, 40, id(font_medium), id(color_white), TextAlign::TOP_RIGHT,
+      it.strftime(SCREEN_WIDTH - MARGIN - 10, 26, id(font_small), id(color_white), TextAlign::TOP_RIGHT,
                   "%d %B %Y", time);  // Full date
 
-      // ===== LEFT COLUMN (Weather) =====
+      // ===== LEFT COLUMN (Home Sensors) =====
       int left_col_x = MARGIN;
-      int left_col_width = 250;
-      int content_y = 100;
+      int left_col_width = 130;
+      int content_y = HEADER_HEIGHT + 10;
 
-      // Weather section header
-      it.printf(left_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
+      // Home section header
+      it.printf(left_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "HOME");
       it.line(left_col_x, content_y + 26, left_col_x + left_col_width, content_y + 26, id(color_red));
 
-      // Weather icon mapping
-      std::string weather_icon = "\U000F0599"; // default: sunny
-      if (id(weather_condition).has_state()) {
-        std::string condition = id(weather_condition).state;
-        if (condition == "cloudy") weather_icon = "\U000F0590";
-        else if (condition == "fog") weather_icon = "\U000F0591";
-        else if (condition == "hail") weather_icon = "\U000F0592";
-        else if (condition == "lightning") weather_icon = "\U000F0593";
-        else if (condition == "lightning-rainy") weather_icon = "\U000F067E";
-        else if (condition == "clear-night") weather_icon = "\U000F0594";
-        else if (condition == "partlycloudy") weather_icon = "\U000F0595";
-        else if (condition == "pouring") weather_icon = "\U000F0596";
-        else if (condition == "rainy") weather_icon = "\U000F0597";
-        else if (condition == "snowy") weather_icon = "\U000F0598";
-        else if (condition == "snowy-rainy") weather_icon = "\U000F067F";
-        else if (condition == "sunny") weather_icon = "\U000F0599";
-        else if (condition == "windy") weather_icon = "\U000F059D";
-        else if (condition == "windy-variant") weather_icon = "\U000F059E";
+      int home_y = content_y + 35;
+      int row_height = 26;
+
+      // Heating status (current -> target)
+      if (id(thermostat_current).has_state() && id(thermostat_target).has_state()) {
+        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Heat");
+        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.0f→%.0f°", id(thermostat_current).state, id(thermostat_target).state);
       }
+      home_y += row_height + 4;
 
-      // Weather icon and temperature
-      int weather_y = content_y + 35;
-      it.printf(left_col_x + 5, weather_y, id(font_icons_large), id(color_black), TextAlign::TOP_LEFT,
-                "%s", weather_icon.c_str());
-
-      // Current temperature (large) - next to icon
-      if (id(outside_temperature).has_state()) {
-        it.printf(left_col_x + 75, weather_y - 5, id(font_temp_large), id(color_black), TextAlign::TOP_LEFT,
-                  "%.0f°C", id(outside_temperature).state);
-      } else {
-        it.printf(left_col_x + 75, weather_y + 10, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "--°C");
+      // Hall
+      if (id(hall_temperature).has_state()) {
+        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Hall");
+        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f°", id(hall_temperature).state);
       }
+      home_y += row_height;
 
-      // Feels like
-      if (id(outside_feels_like).has_state()) {
-        it.printf(left_col_x + 5, weather_y + 70, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "Feels %.0f°C", id(outside_feels_like).state);
+      // Sitting Room
+      if (id(sitting_room_temperature).has_state()) {
+        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Sitting");
+        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f°", id(sitting_room_temperature).state);
       }
+      home_y += row_height;
 
-      // Humidity
-      if (id(weather_humidity).has_state()) {
-        it.printf(left_col_x + 130, weather_y + 70, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "%.0f%% RH", id(weather_humidity).state);
+      // Kitchen
+      if (id(kitchen_temperature).has_state()) {
+        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Kitchen");
+        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f°", id(kitchen_temperature).state);
       }
+      home_y += row_height;
 
-      // Weather condition text
-      if (id(weather_condition).has_state()) {
-        // Capitalize first letter
-        std::string cond = id(weather_condition).state;
-        if (cond.length() > 0) {
-          cond[0] = toupper(cond[0]);
-        }
-        it.printf(left_col_x + 5, weather_y + 98, id(font_body), id(color_black), TextAlign::TOP_LEFT,
-                  "%s", cond.c_str());
+      // Bedroom
+      if (id(bedroom_temperature).has_state()) {
+        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Bedroom");
+        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f°", id(bedroom_temperature).state);
+      }
+      home_y += row_height;
+
+      // Hot Water (red when > 35°C)
+      if (id(hot_water_temperature).has_state()) {
+        float hot_water_temp = id(hot_water_temperature).state;
+        Color hot_water_color = hot_water_temp > 35.0f ? id(color_red) : id(color_black);
+        it.printf(left_col_x, home_y, id(font_small), hot_water_color, TextAlign::TOP_LEFT, "Water");
+        it.printf(left_col_x + left_col_width, home_y, id(font_small), hot_water_color, TextAlign::TOP_RIGHT,
+                  "%.1f°", hot_water_temp);
       }
 
       // ===== CENTER COLUMN (Utilities) =====
       int center_col_x = left_col_x + left_col_width + SECTION_GAP;
-      int center_col_width = 250;
+      int center_col_width = 500;  // ~2/3 of the row width, for the electricity histogram
 
       // Utilities section header
       it.printf(center_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "UTILITIES");
@@ -758,67 +758,72 @@ display:
         it.printf(center_col_x + center_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
       }
 
-      // ===== RIGHT COLUMN (Home Sensors) =====
+      // ===== RIGHT COLUMN (Weather) =====
       int right_col_x = center_col_x + center_col_width + SECTION_GAP;
       int right_col_width = SCREEN_WIDTH - right_col_x - MARGIN;
+      int right_col_center = right_col_x + right_col_width / 2;
 
-      // Home section header
-      it.printf(right_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "HOME");
+      // Weather section header
+      it.printf(right_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
       it.line(right_col_x, content_y + 26, SCREEN_WIDTH - MARGIN, content_y + 26, id(color_red));
 
-      int home_y = content_y + 35;
-      int row_height = 30;
-
-      // Heating status with icon and label
-      it.printf(right_col_x, home_y, id(font_icons_medium), id(color_red), TextAlign::TOP_LEFT, "\U000F0238");
-      it.printf(right_col_x + 38, home_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Heating");
-      if (id(thermostat_current).has_state() && id(thermostat_target).has_state()) {
-        it.printf(right_col_x + right_col_width, home_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.0f\u00B0\u2192%.0f\u00B0", id(thermostat_current).state, id(thermostat_target).state);
+      // Weather icon mapping
+      std::string weather_icon = "\U000F0599"; // default: sunny
+      if (id(weather_condition).has_state()) {
+        std::string condition = id(weather_condition).state;
+        if (condition == "cloudy") weather_icon = "\U000F0590";
+        else if (condition == "fog") weather_icon = "\U000F0591";
+        else if (condition == "hail") weather_icon = "\U000F0592";
+        else if (condition == "lightning") weather_icon = "\U000F0593";
+        else if (condition == "lightning-rainy") weather_icon = "\U000F067E";
+        else if (condition == "clear-night") weather_icon = "\U000F0594";
+        else if (condition == "partlycloudy") weather_icon = "\U000F0595";
+        else if (condition == "pouring") weather_icon = "\U000F0596";
+        else if (condition == "rainy") weather_icon = "\U000F0597";
+        else if (condition == "snowy") weather_icon = "\U000F0598";
+        else if (condition == "snowy-rainy") weather_icon = "\U000F067F";
+        else if (condition == "sunny") weather_icon = "\U000F0599";
+        else if (condition == "windy") weather_icon = "\U000F059D";
+        else if (condition == "windy-variant") weather_icon = "\U000F059E";
       }
 
-      // Room temperatures
-      home_y += row_height + 8;
+      // This column is narrow (~1/6 of the width), so weather is stacked
+      // vertically and centered rather than icon-beside-number.
+      int weather_y = content_y + 35;
 
-      // Hall
-      if (id(hall_temperature).has_state()) {
-        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Hall");
-        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f\u00B0", id(hall_temperature).state);
+      // Icon
+      it.printf(right_col_center, weather_y, id(font_icons_large), id(color_black), TextAlign::TOP_CENTER,
+                "%s", weather_icon.c_str());
+
+      // Current temperature
+      if (id(outside_temperature).has_state()) {
+        it.printf(right_col_center, weather_y + 72, id(font_medium), id(color_black), TextAlign::TOP_CENTER,
+                  "%.0f\u00B0C", id(outside_temperature).state);
+      } else {
+        it.printf(right_col_center, weather_y + 72, id(font_medium), id(color_black), TextAlign::TOP_CENTER, "--\u00B0C");
       }
-      home_y += row_height;
 
-      // Sitting Room
-      if (id(sitting_room_temperature).has_state()) {
-        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Sitting Room");
-        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f\u00B0", id(sitting_room_temperature).state);
+      // Weather condition text
+      if (id(weather_condition).has_state()) {
+        // Capitalize first letter
+        std::string cond = id(weather_condition).state;
+        if (cond.length() > 0) {
+          cond[0] = toupper(cond[0]);
+        }
+        it.printf(right_col_center, weather_y + 106, id(font_small), id(color_black), TextAlign::TOP_CENTER,
+                  "%s", cond.c_str());
       }
-      home_y += row_height;
 
-      // Kitchen
-      if (id(kitchen_temperature).has_state()) {
-        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Kitchen");
-        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f\u00B0", id(kitchen_temperature).state);
+      // Feels like
+      if (id(outside_feels_like).has_state()) {
+        it.printf(right_col_center, weather_y + 128, id(font_small), id(color_black), TextAlign::TOP_CENTER,
+                  "Feels %.0f\u00B0", id(outside_feels_like).state);
       }
-      home_y += row_height;
 
-      // Bedroom
-      if (id(bedroom_temperature).has_state()) {
-        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Bedroom");
-        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f\u00B0", id(bedroom_temperature).state);
-      }
-      home_y += row_height;
-
-      // Hot Water (red when > 35\u00B0C)
-      if (id(hot_water_temperature).has_state()) {
-        float hot_water_temp = id(hot_water_temperature).state;
-        Color hot_water_color = hot_water_temp > 35.0f ? id(color_red) : id(color_black);
-        it.printf(right_col_x, home_y, id(font_body), hot_water_color, TextAlign::TOP_LEFT, "Hot Water");
-        it.printf(right_col_x + right_col_width, home_y, id(font_body), hot_water_color, TextAlign::TOP_RIGHT,
-                  "%.1f\u00B0", hot_water_temp);
+      // Humidity
+      if (id(weather_humidity).has_state()) {
+        it.printf(right_col_center, weather_y + 146, id(font_small), id(color_black), TextAlign::TOP_CENTER,
+                  "%.0f%% RH", id(weather_humidity).state);
       }
 
       // ===== FOOTER =====
