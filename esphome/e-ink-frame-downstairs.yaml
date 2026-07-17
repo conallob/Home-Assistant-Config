@@ -411,6 +411,22 @@ sensor:
     id: solar_today
     entity_id: sensor.solis_energy_today
 
+  # Live power flow (for the histogram below) - solar generation and
+  # battery charge/discharge, both in Watts, from the Solis inverter
+  # (hultenvp/solis-sensor integration).
+  - platform: homeassistant
+    id: solar_power
+    entity_id: sensor.solis_ac_output_total_power
+
+  - platform: homeassistant
+    id: battery_power
+    entity_id: sensor.solis_battery_power
+
+  # Hot water cylinder temperature
+  - platform: homeassistant
+    id: hot_water_temperature
+    entity_id: sensor.hot_water_tank_temperature
+
   # Toshl - Revolut current account balances
   - platform: homeassistant
     id: genevieve_account_balance
@@ -587,8 +603,92 @@ display:
         it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
       }
 
+      // ===== POWER FLOW HISTOGRAM (current power by source) =====
+      // Solar = yellow, Battery = red, Grid import = black,
+      // Grid export = black/yellow/white hatch.
+      // This panel only has 4 inks (Black/White/Red/Yellow) - there is no
+      // true blue, so battery uses the red freed up by moving grid export
+      // to a hatched fill instead of a solid color.
+      int hist_y = util_y + util_row + 20;
+      int hist_height = 50;
+      int hist_baseline = hist_y + hist_height;
+
+      float solar_power_w = 0.0f;
+      if (id(solar_power).has_state() && id(solar_power).state > 0) {
+        solar_power_w = id(solar_power).state;
+      }
+
+      float battery_power_w = 0.0f;
+      if (id(battery_power).has_state()) {
+        battery_power_w = id(battery_power).state;
+        if (battery_power_w < 0) battery_power_w = -battery_power_w;
+      }
+
+      float grid_raw_w = id(grid_power).has_state() ? id(grid_power).state : 0.0f;
+      float grid_import_w = grid_raw_w > 0 ? grid_raw_w : 0.0f;
+      float grid_export_w = grid_raw_w < 0 ? -grid_raw_w : 0.0f;
+
+      float hist_max_w = 100.0f;
+      if (solar_power_w > hist_max_w) hist_max_w = solar_power_w;
+      if (battery_power_w > hist_max_w) hist_max_w = battery_power_w;
+      if (grid_import_w > hist_max_w) hist_max_w = grid_import_w;
+      if (grid_export_w > hist_max_w) hist_max_w = grid_export_w;
+
+      int hist_gap = 14;
+      int hist_bar_w = (center_col_width - hist_gap * 3) / 4;
+
+      // Bar 0: Solar (yellow)
+      int bar0_x = center_col_x;
+      int bar0_h = (int) (solar_power_w / hist_max_w * hist_height);
+      if (bar0_h > 0) {
+        it.filled_rectangle(bar0_x, hist_baseline - bar0_h, hist_bar_w, bar0_h, id(color_yellow));
+      }
+      it.printf(bar0_x + hist_bar_w / 2, hist_baseline - bar0_h - 20, id(font_small), id(color_black), TextAlign::TOP_CENTER,
+                "%.0f", solar_power_w);
+      it.printf(bar0_x + hist_bar_w / 2, hist_baseline + 4, id(font_small), id(color_black), TextAlign::TOP_CENTER, "Solar");
+
+      // Bar 1: Battery (red)
+      int bar1_x = bar0_x + hist_bar_w + hist_gap;
+      int bar1_h = (int) (battery_power_w / hist_max_w * hist_height);
+      if (bar1_h > 0) {
+        it.filled_rectangle(bar1_x, hist_baseline - bar1_h, hist_bar_w, bar1_h, id(color_red));
+      }
+      it.printf(bar1_x + hist_bar_w / 2, hist_baseline - bar1_h - 20, id(font_small), id(color_black), TextAlign::TOP_CENTER,
+                "%.0f", battery_power_w);
+      it.printf(bar1_x + hist_bar_w / 2, hist_baseline + 4, id(font_small), id(color_black), TextAlign::TOP_CENTER, "Batt");
+
+      // Bar 2: Grid import (black)
+      int bar2_x = bar1_x + hist_bar_w + hist_gap;
+      int bar2_h = (int) (grid_import_w / hist_max_w * hist_height);
+      if (bar2_h > 0) {
+        it.filled_rectangle(bar2_x, hist_baseline - bar2_h, hist_bar_w, bar2_h, id(color_black));
+      }
+      it.printf(bar2_x + hist_bar_w / 2, hist_baseline - bar2_h - 20, id(font_small), id(color_black), TextAlign::TOP_CENTER,
+                "%.0f", grid_import_w);
+      it.printf(bar2_x + hist_bar_w / 2, hist_baseline + 4, id(font_small), id(color_black), TextAlign::TOP_CENTER, "Grid");
+
+      // Bar 3: Grid export (black/yellow/white hatch)
+      int bar3_x = bar2_x + hist_bar_w + hist_gap;
+      int bar3_h = (int) (grid_export_w / hist_max_w * hist_height);
+      int bar3_top = hist_baseline - bar3_h;
+      for (int sy = bar3_top; sy < hist_baseline; sy += 6) {
+        it.line(bar3_x, sy, bar3_x + hist_bar_w, sy, id(color_black));
+        if (sy + 3 < hist_baseline) {
+          it.line(bar3_x, sy + 3, bar3_x + hist_bar_w, sy + 3, id(color_yellow));
+        }
+      }
+      if (bar3_h > 0) {
+        it.rectangle(bar3_x, bar3_top, hist_bar_w, bar3_h, id(color_black));
+      }
+      it.printf(bar3_x + hist_bar_w / 2, hist_baseline - bar3_h - 20, id(font_small), id(color_black), TextAlign::TOP_CENTER,
+                "%.0f", grid_export_w);
+      it.printf(bar3_x + hist_bar_w / 2, hist_baseline + 4, id(font_small), id(color_black), TextAlign::TOP_CENTER, "Export");
+
+      // Baseline
+      it.line(center_col_x, hist_baseline, center_col_x + center_col_width, hist_baseline, id(color_black));
+
       // ===== REVOLUT KIDS (sub-section below Utilities, same column) =====
-      int kids_header_y = util_y + util_row + 12;
+      int kids_header_y = hist_baseline + 36;
       it.printf(center_col_x, kids_header_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "REVOLUT KIDS");
       it.line(center_col_x, kids_header_y + 26, center_col_x + center_col_width, kids_header_y + 26, id(color_red));
 
@@ -665,6 +765,14 @@ display:
         it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Bedroom");
         it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f\u00B0", id(bedroom_temperature).state);
+      }
+      home_y += row_height;
+
+      // Hot Water
+      if (id(hot_water_temperature).has_state()) {
+        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Hot Water");
+        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f\u00B0", id(hot_water_temperature).state);
       }
 
       // ===== FOOTER =====
