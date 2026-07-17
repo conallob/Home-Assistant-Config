@@ -354,6 +354,14 @@ text_sensor:
     entity_id: zone.home
     attribute: persons
 
+  # Hourly electricity usage breakdown for the power flow histogram
+  # (see template/downstairs_display_hourly_energy.yaml). CSV format:
+  # "hour,solar_wh,battery_discharged_wh,grid_import_wh,battery_charged_wh,grid_export_wh|..."
+  - platform: homeassistant
+    id: hourly_energy_csv
+    entity_id: sensor.downstairs_display_hourly_energy
+    attribute: hourly_csv
+
 # Sensors for Home Assistant data
 sensor:
   # Weather data
@@ -410,17 +418,6 @@ sensor:
   - platform: homeassistant
     id: solar_today
     entity_id: sensor.solis_energy_today
-
-  # Live power flow (for the histogram below) - solar generation and
-  # battery charge/discharge, both in Watts, from the Solis inverter
-  # (hultenvp/solis-sensor integration).
-  - platform: homeassistant
-    id: solar_power
-    entity_id: sensor.solis_ac_output_total_power
-
-  - platform: homeassistant
-    id: battery_power
-    entity_id: sensor.solis_battery_power
 
   # Hot water cylinder temperature
   - platform: homeassistant
@@ -603,92 +600,139 @@ display:
         it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
       }
 
-      // ===== POWER FLOW HISTOGRAM (current power by source) =====
-      // Solar = yellow, Battery = red, Grid import = black,
-      // Grid export = black/yellow/white hatch.
-      // This panel only has 4 inks (Black/White/Red/Yellow) - there is no
-      // true blue, so battery uses the red freed up by moving grid export
-      // to a hatched fill instead of a solid color.
-      int hist_y = util_y + util_row + 20;
-      int hist_height = 50;
-      int hist_baseline = hist_y + hist_height;
+      // ===== ELECTRICITY USAGE HISTOGRAM (hourly, 08:00-23:00) =====
+      // Stacked bars per hour: above the baseline, Solar (yellow) +
+      // Battery discharged (red) + Grid import (black); below the
+      // baseline, Battery charged (red) + Grid export (black/yellow/white
+      // hatch). This panel only has 4 inks (Black/White/Red/Yellow) - no
+      // true blue - so battery uses red on both sides of the baseline,
+      // distinguished by position rather than a second color.
+      // Range is trimmed to 08:00-23:00 (Day + Peak tariff hours) to fit
+      // this column's width and to line up exactly with the Night
+      // boundaries. Dotted vertical lines mark the tariff changeovers:
+      // black at 08:00/23:00 (Night ends/starts), red at 17:00/19:00
+      // (Peak starts/ends).
+      const int HIST_START_HOUR = 8;
+      const int HIST_END_HOUR = 23;  // exclusive
+      const int HIST_HOURS = HIST_END_HOUR - HIST_START_HOUR;
 
-      float solar_power_w = 0.0f;
-      if (id(solar_power).has_state() && id(solar_power).state > 0) {
-        solar_power_w = id(solar_power).state;
-      }
+      // [hour index][solar, battery_discharged, grid_import, battery_charged, grid_export], all in Wh
+      int hourly_wh[HIST_HOURS][5] = {{0}};
 
-      float battery_power_w = 0.0f;
-      if (id(battery_power).has_state()) {
-        battery_power_w = id(battery_power).state;
-        if (battery_power_w < 0) battery_power_w = -battery_power_w;
-      }
+      if (id(hourly_energy_csv).has_state()) {
+        std::string csv = id(hourly_energy_csv).state;
+        size_t seg_start = 0;
+        while (seg_start <= csv.size()) {
+          size_t seg_end = csv.find('|', seg_start);
+          if (seg_end == std::string::npos) seg_end = csv.size();
+          std::string segment = csv.substr(seg_start, seg_end - seg_start);
 
-      float grid_raw_w = id(grid_power).has_state() ? id(grid_power).state : 0.0f;
-      float grid_import_w = grid_raw_w > 0 ? grid_raw_w : 0.0f;
-      float grid_export_w = grid_raw_w < 0 ? -grid_raw_w : 0.0f;
+          int fields[6];
+          int field_count = 0;
+          size_t f_start = 0;
+          while (field_count < 6 && f_start <= segment.size()) {
+            size_t f_end = segment.find(',', f_start);
+            if (f_end == std::string::npos) f_end = segment.size();
+            std::string field = segment.substr(f_start, f_end - f_start);
+            if (!field.empty()) {
+              fields[field_count++] = atoi(field.c_str());
+            }
+            if (f_end == segment.size()) break;
+            f_start = f_end + 1;
+          }
 
-      float hist_max_w = 100.0f;
-      if (solar_power_w > hist_max_w) hist_max_w = solar_power_w;
-      if (battery_power_w > hist_max_w) hist_max_w = battery_power_w;
-      if (grid_import_w > hist_max_w) hist_max_w = grid_import_w;
-      if (grid_export_w > hist_max_w) hist_max_w = grid_export_w;
+          if (field_count == 6) {
+            int h = fields[0];
+            if (h >= HIST_START_HOUR && h < HIST_END_HOUR) {
+              int idx = h - HIST_START_HOUR;
+              for (int i = 0; i < 5; i++) hourly_wh[idx][i] = fields[i + 1];
+            }
+          }
 
-      int hist_gap = 14;
-      int hist_bar_w = (center_col_width - hist_gap * 3) / 4;
-
-      // Bar 0: Solar (yellow)
-      int bar0_x = center_col_x;
-      int bar0_h = (int) (solar_power_w / hist_max_w * hist_height);
-      if (bar0_h > 0) {
-        it.filled_rectangle(bar0_x, hist_baseline - bar0_h, hist_bar_w, bar0_h, id(color_yellow));
-      }
-      it.printf(bar0_x + hist_bar_w / 2, hist_baseline - bar0_h - 20, id(font_small), id(color_black), TextAlign::TOP_CENTER,
-                "%.0f", solar_power_w);
-      it.printf(bar0_x + hist_bar_w / 2, hist_baseline + 4, id(font_small), id(color_black), TextAlign::TOP_CENTER, "Solar");
-
-      // Bar 1: Battery (red)
-      int bar1_x = bar0_x + hist_bar_w + hist_gap;
-      int bar1_h = (int) (battery_power_w / hist_max_w * hist_height);
-      if (bar1_h > 0) {
-        it.filled_rectangle(bar1_x, hist_baseline - bar1_h, hist_bar_w, bar1_h, id(color_red));
-      }
-      it.printf(bar1_x + hist_bar_w / 2, hist_baseline - bar1_h - 20, id(font_small), id(color_black), TextAlign::TOP_CENTER,
-                "%.0f", battery_power_w);
-      it.printf(bar1_x + hist_bar_w / 2, hist_baseline + 4, id(font_small), id(color_black), TextAlign::TOP_CENTER, "Batt");
-
-      // Bar 2: Grid import (black)
-      int bar2_x = bar1_x + hist_bar_w + hist_gap;
-      int bar2_h = (int) (grid_import_w / hist_max_w * hist_height);
-      if (bar2_h > 0) {
-        it.filled_rectangle(bar2_x, hist_baseline - bar2_h, hist_bar_w, bar2_h, id(color_black));
-      }
-      it.printf(bar2_x + hist_bar_w / 2, hist_baseline - bar2_h - 20, id(font_small), id(color_black), TextAlign::TOP_CENTER,
-                "%.0f", grid_import_w);
-      it.printf(bar2_x + hist_bar_w / 2, hist_baseline + 4, id(font_small), id(color_black), TextAlign::TOP_CENTER, "Grid");
-
-      // Bar 3: Grid export (black/yellow/white hatch)
-      int bar3_x = bar2_x + hist_bar_w + hist_gap;
-      int bar3_h = (int) (grid_export_w / hist_max_w * hist_height);
-      int bar3_top = hist_baseline - bar3_h;
-      for (int sy = bar3_top; sy < hist_baseline; sy += 6) {
-        it.line(bar3_x, sy, bar3_x + hist_bar_w, sy, id(color_black));
-        if (sy + 3 < hist_baseline) {
-          it.line(bar3_x, sy + 3, bar3_x + hist_bar_w, sy + 3, id(color_yellow));
+          if (seg_end == csv.size()) break;
+          seg_start = seg_end + 1;
         }
       }
-      if (bar3_h > 0) {
-        it.rectangle(bar3_x, bar3_top, hist_bar_w, bar3_h, id(color_black));
-      }
-      it.printf(bar3_x + hist_bar_w / 2, hist_baseline - bar3_h - 20, id(font_small), id(color_black), TextAlign::TOP_CENTER,
-                "%.0f", grid_export_w);
-      it.printf(bar3_x + hist_bar_w / 2, hist_baseline + 4, id(font_small), id(color_black), TextAlign::TOP_CENTER, "Export");
 
-      // Baseline
+      int hist_max_wh = 200;  // floor so a near-empty day doesn't blow up the scale
+      for (int i = 0; i < HIST_HOURS; i++) {
+        int pos = hourly_wh[i][0] + hourly_wh[i][1] + hourly_wh[i][2];
+        int neg = hourly_wh[i][3] + hourly_wh[i][4];
+        if (pos > hist_max_wh) hist_max_wh = pos;
+        if (neg > hist_max_wh) hist_max_wh = neg;
+      }
+
+      int hist_y = util_y + util_row + 14;
+      int hist_half_height = 38;
+      int hist_baseline = hist_y + hist_half_height;
+      int hist_bottom = hist_baseline + hist_half_height;
+
+      int hist_bar_pitch = center_col_width / HIST_HOURS;
+      int hist_bar_w = hist_bar_pitch - 2;
+
+      for (int i = 0; i < HIST_HOURS; i++) {
+        int bar_x = center_col_x + i * hist_bar_pitch;
+
+        // Positive stack, bottom-up from the baseline: solar, battery discharged, grid import
+        int y = hist_baseline;
+        int solar_h = (int) ((float) hourly_wh[i][0] / hist_max_wh * hist_half_height);
+        if (solar_h > 0) {
+          it.filled_rectangle(bar_x, y - solar_h, hist_bar_w, solar_h, id(color_yellow));
+        }
+        y -= solar_h;
+        int batt_dis_h = (int) ((float) hourly_wh[i][1] / hist_max_wh * hist_half_height);
+        if (batt_dis_h > 0) {
+          it.filled_rectangle(bar_x, y - batt_dis_h, hist_bar_w, batt_dis_h, id(color_red));
+        }
+        y -= batt_dis_h;
+        int grid_imp_h = (int) ((float) hourly_wh[i][2] / hist_max_wh * hist_half_height);
+        if (grid_imp_h > 0) {
+          it.filled_rectangle(bar_x, y - grid_imp_h, hist_bar_w, grid_imp_h, id(color_black));
+        }
+
+        // Negative stack, top-down from the baseline: battery charged, grid export (hatched)
+        y = hist_baseline;
+        int batt_chg_h = (int) ((float) hourly_wh[i][3] / hist_max_wh * hist_half_height);
+        if (batt_chg_h > 0) {
+          it.filled_rectangle(bar_x, y, hist_bar_w, batt_chg_h, id(color_red));
+        }
+        y += batt_chg_h;
+        int grid_exp_h = (int) ((float) hourly_wh[i][4] / hist_max_wh * hist_half_height);
+        if (grid_exp_h > 0) {
+          for (int sy = y; sy < y + grid_exp_h; sy += 6) {
+            it.line(bar_x, sy, bar_x + hist_bar_w, sy, id(color_black));
+            if (sy + 3 < y + grid_exp_h) {
+              it.line(bar_x, sy + 3, bar_x + hist_bar_w, sy + 3, id(color_yellow));
+            }
+          }
+          it.rectangle(bar_x, y, hist_bar_w, grid_exp_h, id(color_black));
+        }
+      }
+
+      // Baseline (zero line)
       it.line(center_col_x, hist_baseline, center_col_x + center_col_width, hist_baseline, id(color_black));
 
+      // Tariff changeover markers (dotted vertical lines)
+      int tariff_hours[4] = {8, 23, 17, 19};
+      bool tariff_is_peak[4] = {false, false, true, true};
+      for (int t = 0; t < 4; t++) {
+        int tx = center_col_x + (tariff_hours[t] - HIST_START_HOUR) * hist_bar_pitch;
+        Color tariff_color = tariff_is_peak[t] ? id(color_red) : id(color_black);
+        for (int sy = hist_y; sy < hist_bottom; sy += 6) {
+          it.line(tx, sy, tx, sy + 3, tariff_color);
+        }
+      }
+
+      // Hour axis labels at the tariff changeover hours
+      int hist_label_y = hist_bottom + 4;
+      int label_hours[5] = {8, 12, 17, 19, 23};
+      for (int l = 0; l < 5; l++) {
+        int lx = center_col_x + (label_hours[l] - HIST_START_HOUR) * hist_bar_pitch;
+        it.printf(lx, hist_label_y, id(font_small), id(color_black), TextAlign::TOP_CENTER, "%d", label_hours[l]);
+      }
+
       // ===== REVOLUT KIDS (sub-section below Utilities, same column) =====
-      int kids_header_y = hist_baseline + 36;
+      int kids_header_y = hist_bottom + 32;
       it.printf(center_col_x, kids_header_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "REVOLUT KIDS");
       it.line(center_col_x, kids_header_y + 26, center_col_x + center_col_width, kids_header_y + 26, id(color_red));
 
