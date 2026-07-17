@@ -768,11 +768,13 @@ display:
       }
       home_y += row_height;
 
-      // Hot Water
+      // Hot Water (red when > 35\u00B0C)
       if (id(hot_water_temperature).has_state()) {
-        it.printf(right_col_x, home_y, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Hot Water");
-        it.printf(right_col_x + right_col_width, home_y, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f\u00B0", id(hot_water_temperature).state);
+        float hot_water_temp = id(hot_water_temperature).state;
+        Color hot_water_color = hot_water_temp > 35.0f ? id(color_red) : id(color_black);
+        it.printf(right_col_x, home_y, id(font_body), hot_water_color, TextAlign::TOP_LEFT, "Hot Water");
+        it.printf(right_col_x + right_col_width, home_y, id(font_body), hot_water_color, TextAlign::TOP_RIGHT,
+                  "%.1f\u00B0", hot_water_temp);
       }
 
       // ===== FOOTER =====
