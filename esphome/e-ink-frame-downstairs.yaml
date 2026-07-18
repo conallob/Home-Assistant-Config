@@ -436,6 +436,10 @@ sensor:
     id: kitchen_temperature
     entity_id: sensor.kitchen_sensor_temperature
 
+  - platform: homeassistant
+    id: family_room_temperature
+    entity_id: sensor.family_room_sensor_temperature
+
   # Hall thermostat target
   - platform: homeassistant
     id: thermostat_target
@@ -653,6 +657,14 @@ display:
         it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Kitchen");
         it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f°", id(kitchen_temperature).state);
+      }
+      home_y += row_height;
+
+      // Family Room
+      if (id(family_room_temperature).has_state()) {
+        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Family");
+        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f°", id(family_room_temperature).state);
       }
       home_y += row_height;
 
