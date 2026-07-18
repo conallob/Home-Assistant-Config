@@ -410,10 +410,10 @@ sensor:
     id: thermostat_current
     entity_id: sensor.hall_thermostat_current_temperature
 
-  # Utilities - Grid and Solar
+  # Utilities - Grid and Solar (both daily kWh, standardised units)
   - platform: homeassistant
-    id: grid_power
-    entity_id: sensor.grid_em_channel_1_power
+    id: daily_grid_energy
+    entity_id: sensor.downstairs_display_daily_grid_energy
 
   - platform: homeassistant
     id: solar_today
@@ -478,28 +478,74 @@ display:
         return;
       }
 
-      // ===== HEADER SECTION (Time & Date) =====
-      // Kept slim - just the clock and date - to leave more of the panel
-      // for content below.
-      const int HEADER_HEIGHT = 56;
+      // ===== HEADER SECTION: 4 info bubbles (Time / Month / Date / Weather) =====
+      // Bordered boxes rather than one solid bar, TRMNL/bubble-UI style -
+      // distinct at a glance, more compact than the old full-width clock.
 
-      // Black header bar
-      it.filled_rectangle(0, 0, SCREEN_WIDTH, HEADER_HEIGHT, id(color_black));
+      // Weather icon mapping - computed once here (used by the header
+      // weather bubble below, and reused as-is by the WEATHER column
+      // further down).
+      std::string weather_icon = "\U000F0599"; // default: sunny
+      if (id(weather_condition).has_state()) {
+        std::string condition = id(weather_condition).state;
+        if (condition == "cloudy") weather_icon = "\U000F0590";
+        else if (condition == "fog") weather_icon = "\U000F0591";
+        else if (condition == "hail") weather_icon = "\U000F0592";
+        else if (condition == "lightning") weather_icon = "\U000F0593";
+        else if (condition == "lightning-rainy") weather_icon = "\U000F067E";
+        else if (condition == "clear-night") weather_icon = "\U000F0594";
+        else if (condition == "partlycloudy") weather_icon = "\U000F0595";
+        else if (condition == "pouring") weather_icon = "\U000F0596";
+        else if (condition == "rainy") weather_icon = "\U000F0597";
+        else if (condition == "snowy") weather_icon = "\U000F0598";
+        else if (condition == "snowy-rainy") weather_icon = "\U000F067F";
+        else if (condition == "sunny") weather_icon = "\U000F0599";
+        else if (condition == "windy") weather_icon = "\U000F059D";
+        else if (condition == "windy-variant") weather_icon = "\U000F059E";
+      }
 
-      // Time (white on black)
-      it.printf(MARGIN + 10, 6, id(font_time), id(color_white), TextAlign::TOP_LEFT,
+      const int BUBBLE_TOP = 6;
+      const int BUBBLE_HEIGHT = 70;
+      const int BUBBLE_GAP = 10;
+      int bubble_w = (SCREEN_WIDTH - 2 * MARGIN - BUBBLE_GAP * 3) / 4;
+
+      int bubble1_x = MARGIN;
+      int bubble2_x = bubble1_x + bubble_w + BUBBLE_GAP;
+      int bubble3_x = bubble2_x + bubble_w + BUBBLE_GAP;
+      int bubble4_x = bubble3_x + bubble_w + BUBBLE_GAP;
+
+      // Bubble 1: Time
+      it.rectangle(bubble1_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
+      it.printf(bubble1_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "TIME");
+      it.printf(bubble1_x + 8, BUBBLE_TOP + 26, id(font_time), id(color_black), TextAlign::TOP_LEFT,
                 "%02d:%02d", time.hour, time.minute);
 
-      // Date (right side of header)
-      it.strftime(SCREEN_WIDTH - MARGIN - 10, 6, id(font_small), id(color_white), TextAlign::TOP_RIGHT,
-                  "%A", time);  // Day name
-      it.strftime(SCREEN_WIDTH - MARGIN - 10, 26, id(font_small), id(color_white), TextAlign::TOP_RIGHT,
-                  "%d %B %Y", time);  // Full date
+      // Bubble 2: Month
+      it.rectangle(bubble2_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
+      it.printf(bubble2_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "MONTH");
+      it.strftime(bubble2_x + 8, BUBBLE_TOP + 26, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "%B", time);
+
+      // Bubble 3: Date (weekday label, day-of-month as the big value)
+      it.rectangle(bubble3_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
+      it.strftime(bubble3_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "%A", time);
+      it.strftime(bubble3_x + 8, BUBBLE_TOP + 26, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "%d", time);
+
+      // Bubble 4: Weather (icon + current temperature)
+      it.rectangle(bubble4_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
+      it.printf(bubble4_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
+      it.printf(bubble4_x + 8, BUBBLE_TOP + 26, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT,
+                "%s", weather_icon.c_str());
+      if (id(outside_temperature).has_state()) {
+        it.printf(bubble4_x + bubble_w - 8, BUBBLE_TOP + 32, id(font_medium), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.0f°C", id(outside_temperature).state);
+      } else {
+        it.printf(bubble4_x + bubble_w - 8, BUBBLE_TOP + 32, id(font_medium), id(color_black), TextAlign::TOP_RIGHT, "--°C");
+      }
 
       // ===== LEFT COLUMN (Home Sensors) =====
       int left_col_x = MARGIN;
       int left_col_width = 130;
-      int content_y = HEADER_HEIGHT + 10;
+      int content_y = BUBBLE_TOP + BUBBLE_HEIGHT + 12;
 
       // Home section header
       it.printf(left_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "HOME");
@@ -557,6 +603,36 @@ display:
                   "%.1f°", hot_water_temp);
       }
 
+      // ===== REVOLUT KIDS (bottom-left corner, pinned above the footer) =====
+      int kids_row_h = 22;
+      int kids_block_h = 22 + 8 + kids_row_h * 2;  // header line + gap + 2 rows
+      int kids_header_y = (SCREEN_HEIGHT - 35) - 10 - kids_block_h;
+
+      it.printf(left_col_x, kids_header_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "KIDS");
+      it.line(left_col_x, kids_header_y + 22, left_col_x + left_col_width, kids_header_y + 22, id(color_red));
+
+      int kids_y = kids_header_y + 30;
+
+      // Genevieve Account Balance
+      it.printf(left_col_x, kids_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Gen");
+      if (id(genevieve_account_balance).has_state()) {
+        it.printf(left_col_x + left_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
+                  "€%.2f", id(genevieve_account_balance).state);
+      } else {
+        it.printf(left_col_x + left_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
+      }
+
+      kids_y += kids_row_h;
+
+      // Reuben Account Balance
+      it.printf(left_col_x, kids_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Reu");
+      if (id(reuben_account_balance).has_state()) {
+        it.printf(left_col_x + left_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
+                  "€%.2f", id(reuben_account_balance).state);
+      } else {
+        it.printf(left_col_x + left_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
+      }
+
       // ===== CENTER COLUMN (Utilities) =====
       int center_col_x = left_col_x + left_col_width + SECTION_GAP;
       int center_col_width = 500;  // ~2/3 of the row width, for the electricity histogram
@@ -568,24 +644,14 @@ display:
       int util_y = content_y + 40;
       int util_row = 38;
 
-      // Grid Power
+      // Grid Energy Today (daily kWh, matching Solar Today's units)
       it.printf(center_col_x, util_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0A72");
-      it.printf(center_col_x + 40, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Grid");
-      if (id(grid_power).has_state()) {
-        float power = id(grid_power).state;
-        // Show import/export with color
-        if (power > 0) {
-          it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_red), TextAlign::TOP_RIGHT,
-                    "%.0fW", power);
-        } else if (power < 0) {
-          it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_yellow), TextAlign::TOP_RIGHT,
-                    "%.0fW", power);
-        } else {
-          it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                    "0W");
-        }
+      it.printf(center_col_x + 40, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Grid Today");
+      if (id(daily_grid_energy).has_state()) {
+        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+                  "%.1f kWh", id(daily_grid_energy).state);
       } else {
-        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--W");
+        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
       }
 
       util_y += util_row;
@@ -663,7 +729,7 @@ display:
       }
 
       int hist_y = util_y + util_row + 14;
-      int hist_half_height = 38;
+      int hist_half_height = 70;  // Kids moved out of this column, so the chart can use the freed height
       int hist_baseline = hist_y + hist_half_height;
       int hist_bottom = hist_baseline + hist_half_height;
 
@@ -731,33 +797,6 @@ display:
         it.printf(lx, hist_label_y, id(font_small), id(color_black), TextAlign::TOP_CENTER, "%d", label_hours[l]);
       }
 
-      // ===== REVOLUT KIDS (sub-section below Utilities, same column) =====
-      int kids_header_y = hist_bottom + 32;
-      it.printf(center_col_x, kids_header_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "REVOLUT KIDS");
-      it.line(center_col_x, kids_header_y + 26, center_col_x + center_col_width, kids_header_y + 26, id(color_red));
-
-      int kids_y = kids_header_y + 40;
-
-      // Genevieve Account Balance
-      it.printf(center_col_x, kids_y, id(font_currency), id(color_black), TextAlign::TOP_LEFT, "Genevieve");
-      if (id(genevieve_account_balance).has_state()) {
-        it.printf(center_col_x + center_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
-                  "€%.2f", id(genevieve_account_balance).state);
-      } else {
-        it.printf(center_col_x + center_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
-      }
-
-      kids_y += util_row;
-
-      // Reuben Account Balance
-      it.printf(center_col_x, kids_y, id(font_currency), id(color_black), TextAlign::TOP_LEFT, "Reuben");
-      if (id(reuben_account_balance).has_state()) {
-        it.printf(center_col_x + center_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
-                  "€%.2f", id(reuben_account_balance).state);
-      } else {
-        it.printf(center_col_x + center_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
-      }
-
       // ===== RIGHT COLUMN (Weather) =====
       int right_col_x = center_col_x + center_col_width + SECTION_GAP;
       int right_col_width = SCREEN_WIDTH - right_col_x - MARGIN;
@@ -767,25 +806,7 @@ display:
       it.printf(right_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
       it.line(right_col_x, content_y + 26, SCREEN_WIDTH - MARGIN, content_y + 26, id(color_red));
 
-      // Weather icon mapping
-      std::string weather_icon = "\U000F0599"; // default: sunny
-      if (id(weather_condition).has_state()) {
-        std::string condition = id(weather_condition).state;
-        if (condition == "cloudy") weather_icon = "\U000F0590";
-        else if (condition == "fog") weather_icon = "\U000F0591";
-        else if (condition == "hail") weather_icon = "\U000F0592";
-        else if (condition == "lightning") weather_icon = "\U000F0593";
-        else if (condition == "lightning-rainy") weather_icon = "\U000F067E";
-        else if (condition == "clear-night") weather_icon = "\U000F0594";
-        else if (condition == "partlycloudy") weather_icon = "\U000F0595";
-        else if (condition == "pouring") weather_icon = "\U000F0596";
-        else if (condition == "rainy") weather_icon = "\U000F0597";
-        else if (condition == "snowy") weather_icon = "\U000F0598";
-        else if (condition == "snowy-rainy") weather_icon = "\U000F067F";
-        else if (condition == "sunny") weather_icon = "\U000F0599";
-        else if (condition == "windy") weather_icon = "\U000F059D";
-        else if (condition == "windy-variant") weather_icon = "\U000F059E";
-      }
+      // weather_icon was already computed above for the header weather bubble.
 
       // This column is narrow (~1/6 of the width), so weather is stacked
       // vertically and centered rather than icon-beside-number.
