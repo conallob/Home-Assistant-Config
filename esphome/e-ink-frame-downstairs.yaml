@@ -278,10 +278,12 @@ font:
     id: font_temp_large
     size: 56
 
-  # Material Design Icons - Large (weather)
+  # Material Design Icons - Weather, sized for the header weather bubble.
+  # font_icons_medium doesn't include the weather glyphs at all - using it
+  # for weather icons previously rendered as blank squares.
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf'
-    id: font_icons_large
-    size: 64
+    id: font_icons_weather
+    size: 36
     glyphs:
       - "\U000F0590" # mdi:weather-cloudy
       - "\U000F0591" # mdi:weather-fog
@@ -579,7 +581,7 @@ display:
       }
 
       const int BUBBLE_TOP = 6;
-      const int BUBBLE_HEIGHT = 70;
+      const int BUBBLE_HEIGHT = 118;  // tall enough for the full weather bubble (icon/temp/condition/feels/humidity)
       const int BUBBLE_GAP = 10;
       int bubble_w = (SCREEN_WIDTH - 2 * MARGIN - BUBBLE_GAP * 3) / 4;
 
@@ -604,16 +606,48 @@ display:
       it.strftime(bubble3_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "%A", time);
       it.strftime(bubble3_x + 8, BUBBLE_TOP + 26, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "%d", time);
 
-      // Bubble 4: Weather (icon + current temperature)
+      // Bubble 4: Weather (icon, temperature, condition, feels-like, humidity -
+      // consolidated here from the old separate WEATHER column, which was
+      // dropped to avoid showing the same weather info twice. Uses
+      // font_icons_weather (not font_icons_medium, which doesn't have the
+      // weather glyphs and rendered as a blank square).
       it.rectangle(bubble4_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
       it.printf(bubble4_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
-      it.printf(bubble4_x + 8, BUBBLE_TOP + 26, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT,
+      it.printf(bubble4_x + 8, BUBBLE_TOP + 24, id(font_icons_weather), id(color_black), TextAlign::TOP_LEFT,
                 "%s", weather_icon.c_str());
       if (id(outside_temperature).has_state()) {
-        it.printf(bubble4_x + bubble_w - 8, BUBBLE_TOP + 32, id(font_medium), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(bubble4_x + bubble_w - 8, BUBBLE_TOP + 30, id(font_medium), id(color_black), TextAlign::TOP_RIGHT,
                   "%.0f°C", id(outside_temperature).state);
       } else {
-        it.printf(bubble4_x + bubble_w - 8, BUBBLE_TOP + 32, id(font_medium), id(color_black), TextAlign::TOP_RIGHT, "--°C");
+        it.printf(bubble4_x + bubble_w - 8, BUBBLE_TOP + 30, id(font_medium), id(color_black), TextAlign::TOP_RIGHT, "--°C");
+      }
+
+      // Weather condition text
+      if (id(weather_condition).has_state()) {
+        std::string cond = id(weather_condition).state;
+        if (cond.length() > 0) {
+          cond[0] = toupper(cond[0]);
+        }
+        it.printf(bubble4_x + 8, BUBBLE_TOP + 68, id(font_small), id(color_black), TextAlign::TOP_LEFT,
+                  "%s", cond.c_str());
+      }
+
+      // Feels-like and humidity, combined onto one line
+      if (id(outside_feels_like).has_state() || id(weather_humidity).has_state()) {
+        std::string feels_humidity = "";
+        if (id(outside_feels_like).has_state()) {
+          char buf[16];
+          snprintf(buf, sizeof(buf), "Feels %.0f°", id(outside_feels_like).state);
+          feels_humidity += buf;
+        }
+        if (id(weather_humidity).has_state()) {
+          if (!feels_humidity.empty()) feels_humidity += "  ";
+          char buf[16];
+          snprintf(buf, sizeof(buf), "%.0f%% RH", id(weather_humidity).state);
+          feels_humidity += buf;
+        }
+        it.printf(bubble4_x + 8, BUBBLE_TOP + 90, id(font_small), id(color_black), TextAlign::TOP_LEFT,
+                  "%s", feels_humidity.c_str());
       }
 
       // ===== LEFT COLUMN (Home Sensors) =====
@@ -709,7 +743,10 @@ display:
 
       // ===== CENTER COLUMN (Utilities) =====
       int center_col_x = left_col_x + left_col_width + SECTION_GAP;
-      int center_col_width = 500;  // ~2/3 of the row width, for the electricity histogram
+      // Fills the rest of the row - the WEATHER column was removed (its
+      // content moved into the header weather bubble), so this now absorbs
+      // that freed width instead of a fixed ~2/3 split.
+      int center_col_width = SCREEN_WIDTH - 2 * MARGIN - left_col_width - SECTION_GAP;
 
       // Utilities section header
       it.printf(center_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "UTILITIES");
@@ -803,7 +840,7 @@ display:
       }
 
       int hist_y = util_y + util_row + 14;
-      int hist_half_height = 70;  // Kids moved out of this column, so the chart can use the freed height
+      int hist_half_height = 45;  // trimmed back down - the taller header weather bubble eats into vertical space
       int hist_baseline = hist_y + hist_half_height;
       int hist_bottom = hist_baseline + hist_half_height;
 
@@ -878,56 +915,6 @@ display:
         it.printf(center_col_x, open_y + 20, id(font_body), id(color_black), TextAlign::TOP_LEFT, "All closed");
       } else {
         it.printf(center_col_x, open_y + 20, id(font_body), id(color_red), TextAlign::TOP_LEFT, "%s", open_names.c_str());
-      }
-
-      // ===== RIGHT COLUMN (Weather) =====
-      int right_col_x = center_col_x + center_col_width + SECTION_GAP;
-      int right_col_width = SCREEN_WIDTH - right_col_x - MARGIN;
-      int right_col_center = right_col_x + right_col_width / 2;
-
-      // Weather section header
-      it.printf(right_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
-      it.line(right_col_x, content_y + 26, SCREEN_WIDTH - MARGIN, content_y + 26, id(color_red));
-
-      // weather_icon was already computed above for the header weather bubble.
-
-      // This column is narrow (~1/6 of the width), so weather is stacked
-      // vertically and centered rather than icon-beside-number.
-      int weather_y = content_y + 35;
-
-      // Icon
-      it.printf(right_col_center, weather_y, id(font_icons_large), id(color_black), TextAlign::TOP_CENTER,
-                "%s", weather_icon.c_str());
-
-      // Current temperature
-      if (id(outside_temperature).has_state()) {
-        it.printf(right_col_center, weather_y + 72, id(font_medium), id(color_black), TextAlign::TOP_CENTER,
-                  "%.0f\u00B0C", id(outside_temperature).state);
-      } else {
-        it.printf(right_col_center, weather_y + 72, id(font_medium), id(color_black), TextAlign::TOP_CENTER, "--\u00B0C");
-      }
-
-      // Weather condition text
-      if (id(weather_condition).has_state()) {
-        // Capitalize first letter
-        std::string cond = id(weather_condition).state;
-        if (cond.length() > 0) {
-          cond[0] = toupper(cond[0]);
-        }
-        it.printf(right_col_center, weather_y + 106, id(font_small), id(color_black), TextAlign::TOP_CENTER,
-                  "%s", cond.c_str());
-      }
-
-      // Feels like
-      if (id(outside_feels_like).has_state()) {
-        it.printf(right_col_center, weather_y + 128, id(font_small), id(color_black), TextAlign::TOP_CENTER,
-                  "Feels %.0f\u00B0", id(outside_feels_like).state);
-      }
-
-      // Humidity
-      if (id(weather_humidity).has_state()) {
-        it.printf(right_col_center, weather_y + 146, id(font_small), id(color_black), TextAlign::TOP_CENTER,
-                  "%.0f%% RH", id(weather_humidity).state);
       }
 
       // ===== FOOTER =====
