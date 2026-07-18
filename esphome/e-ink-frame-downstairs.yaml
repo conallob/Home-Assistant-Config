@@ -436,10 +436,6 @@ sensor:
     id: kitchen_temperature
     entity_id: sensor.kitchen_sensor_temperature
 
-  - platform: homeassistant
-    id: bedroom_temperature
-    entity_id: sensor.bedroom_sensor_temperature
-
   # Hall thermostat target
   - platform: homeassistant
     id: thermostat_target
@@ -660,15 +656,7 @@ display:
       }
       home_y += row_height;
 
-      // Bedroom
-      if (id(bedroom_temperature).has_state()) {
-        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Bedroom");
-        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f°", id(bedroom_temperature).state);
-      }
-      home_y += row_height;
-
-      // Hot Water (red when > 35°C)
+      // Hot Water (bottom item in this list - red when > 35°C)
       if (id(hot_water_temperature).has_state()) {
         float hot_water_temp = id(hot_water_temperature).state;
         Color hot_water_color = hot_water_temp > 35.0f ? id(color_red) : id(color_black);
