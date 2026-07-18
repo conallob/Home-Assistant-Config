@@ -362,6 +362,45 @@ text_sensor:
     entity_id: sensor.downstairs_display_hourly_energy
     attribute: hourly_csv
 
+  # HKC alarm door/window contact sensors - state is text, "Open" or
+  # "Closed" (IR/motion zones are deliberately excluded, only door and
+  # window contacts are tracked here).
+  - platform: homeassistant
+    id: door_back
+    entity_id: sensor.back_door
+
+  - platform: homeassistant
+    id: door_front
+    entity_id: sensor.front_door
+
+  - platform: homeassistant
+    id: door_front_room
+    entity_id: sensor.front_room
+
+  - platform: homeassistant
+    id: door_garage
+    entity_id: sensor.garagedoor
+
+  - platform: homeassistant
+    id: door_kitchen_win
+    entity_id: sensor.kitchen_win
+
+  - platform: homeassistant
+    id: door_roller
+    entity_id: sensor.rollerdoor
+
+  - platform: homeassistant
+    id: door_shack
+    entity_id: sensor.shack_door
+
+  - platform: homeassistant
+    id: door_sitting_room
+    entity_id: sensor.sitting_roo
+
+  - platform: homeassistant
+    id: door_up_wins
+    entity_id: sensor.up_wins
+
 # Sensors for Home Assistant data
 sensor:
   # Weather data
@@ -398,8 +437,8 @@ sensor:
     entity_id: sensor.kitchen_sensor_temperature
 
   - platform: homeassistant
-    id: bedroom_temperature
-    entity_id: sensor.bedroom_sensor_temperature
+    id: family_room_temperature
+    entity_id: sensor.family_room_sensor_temperature
 
   # Hall thermostat target
   - platform: homeassistant
@@ -504,6 +543,41 @@ display:
         else if (condition == "windy-variant") weather_icon = "\U000F059E";
       }
 
+      // Open doors/windows - HKC alarm contact sensors (text state,
+      // "Open" or "Closed"). IR/motion zones are deliberately not part
+      // of this list. Drawn below the electricity histogram (center
+      // column), computed here since it doesn't depend on that column's
+      // layout.
+      const char* open_labels[9] = {"Back", "Front", "F.Room", "Garage", "Kitchen", "Roller", "Shack", "Sitting", "Up Win"};
+      bool open_state[9] = {
+        id(door_back).has_state() && id(door_back).state == "Open",
+        id(door_front).has_state() && id(door_front).state == "Open",
+        id(door_front_room).has_state() && id(door_front_room).state == "Open",
+        id(door_garage).has_state() && id(door_garage).state == "Open",
+        id(door_kitchen_win).has_state() && id(door_kitchen_win).state == "Open",
+        id(door_roller).has_state() && id(door_roller).state == "Open",
+        id(door_shack).has_state() && id(door_shack).state == "Open",
+        id(door_sitting_room).has_state() && id(door_sitting_room).state == "Open",
+        id(door_up_wins).has_state() && id(door_up_wins).state == "Open",
+      };
+      int open_count = 0;
+      std::string open_names = "";
+      const int OPEN_NAMES_SHOWN = 5;  // center column is wide enough for several names before truncating
+      for (int i = 0; i < 9; i++) {
+        if (open_state[i]) {
+          if (open_count < OPEN_NAMES_SHOWN) {
+            if (!open_names.empty()) open_names += ", ";
+            open_names += open_labels[i];
+          }
+          open_count++;
+        }
+      }
+      if (open_count > OPEN_NAMES_SHOWN) {
+        char more_buf[16];
+        snprintf(more_buf, sizeof(more_buf), " +%d", open_count - OPEN_NAMES_SHOWN);
+        open_names += more_buf;
+      }
+
       const int BUBBLE_TOP = 6;
       const int BUBBLE_HEIGHT = 70;
       const int BUBBLE_GAP = 10;
@@ -586,15 +660,15 @@ display:
       }
       home_y += row_height;
 
-      // Bedroom
-      if (id(bedroom_temperature).has_state()) {
-        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Bedroom");
+      // Family Room
+      if (id(family_room_temperature).has_state()) {
+        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Family");
         it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
-                  "%.1f°", id(bedroom_temperature).state);
+                  "%.1f°", id(family_room_temperature).state);
       }
       home_y += row_height;
 
-      // Hot Water (red when > 35°C)
+      // Hot Water (bottom item in this list - red when > 35°C)
       if (id(hot_water_temperature).has_state()) {
         float hot_water_temp = id(hot_water_temperature).state;
         Color hot_water_color = hot_water_temp > 35.0f ? id(color_red) : id(color_black);
@@ -795,6 +869,15 @@ display:
       for (int l = 0; l < 5; l++) {
         int lx = center_col_x + (label_hours[l] - HIST_START_HOUR) * hist_bar_pitch;
         it.printf(lx, hist_label_y, id(font_small), id(color_black), TextAlign::TOP_CENTER, "%d", label_hours[l]);
+      }
+
+      // ===== OPEN DOORS/WINDOWS (below the electricity histogram, same column) =====
+      int open_y = hist_label_y + 22;
+      it.printf(center_col_x, open_y, id(font_small), id(color_red), TextAlign::TOP_LEFT, "OPEN DOORS/WINDOWS");
+      if (open_count == 0) {
+        it.printf(center_col_x, open_y + 20, id(font_body), id(color_black), TextAlign::TOP_LEFT, "All closed");
+      } else {
+        it.printf(center_col_x, open_y + 20, id(font_body), id(color_red), TextAlign::TOP_LEFT, "%s", open_names.c_str());
       }
 
       // ===== RIGHT COLUMN (Weather) =====
