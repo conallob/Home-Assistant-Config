@@ -362,6 +362,45 @@ text_sensor:
     entity_id: sensor.downstairs_display_hourly_energy
     attribute: hourly_csv
 
+  # HKC alarm door/window contact sensors - state is text, "Open" or
+  # "Closed" (IR/motion zones are deliberately excluded, only door and
+  # window contacts are tracked here).
+  - platform: homeassistant
+    id: door_back
+    entity_id: sensor.back_door
+
+  - platform: homeassistant
+    id: door_front
+    entity_id: sensor.front_door
+
+  - platform: homeassistant
+    id: door_front_room
+    entity_id: sensor.front_room
+
+  - platform: homeassistant
+    id: door_garage
+    entity_id: sensor.garagedoor
+
+  - platform: homeassistant
+    id: door_kitchen_win
+    entity_id: sensor.kitchen_win
+
+  - platform: homeassistant
+    id: door_roller
+    entity_id: sensor.rollerdoor
+
+  - platform: homeassistant
+    id: door_shack
+    entity_id: sensor.shack_door
+
+  - platform: homeassistant
+    id: door_sitting_room
+    entity_id: sensor.sitting_roo
+
+  - platform: homeassistant
+    id: door_up_wins
+    entity_id: sensor.up_wins
+
 # Sensors for Home Assistant data
 sensor:
   # Weather data
@@ -478,7 +517,7 @@ display:
         return;
       }
 
-      // ===== HEADER SECTION: 4 info bubbles (Time / Month / Date / Weather) =====
+      // ===== HEADER SECTION: 5 info bubbles (Time / Month / Date / Weather / Open) =====
       // Bordered boxes rather than one solid bar, TRMNL/bubble-UI style -
       // distinct at a glance, more compact than the old full-width clock.
 
@@ -504,15 +543,49 @@ display:
         else if (condition == "windy-variant") weather_icon = "\U000F059E";
       }
 
+      // Open doors/windows - HKC alarm contact sensors (text state,
+      // "Open" or "Closed"). IR/motion zones are deliberately not part
+      // of this list.
+      const char* open_labels[9] = {"Back", "Front", "F.Room", "Garage", "Kitchen", "Roller", "Shack", "Sitting", "Up Win"};
+      bool open_state[9] = {
+        id(door_back).has_state() && id(door_back).state == "Open",
+        id(door_front).has_state() && id(door_front).state == "Open",
+        id(door_front_room).has_state() && id(door_front_room).state == "Open",
+        id(door_garage).has_state() && id(door_garage).state == "Open",
+        id(door_kitchen_win).has_state() && id(door_kitchen_win).state == "Open",
+        id(door_roller).has_state() && id(door_roller).state == "Open",
+        id(door_shack).has_state() && id(door_shack).state == "Open",
+        id(door_sitting_room).has_state() && id(door_sitting_room).state == "Open",
+        id(door_up_wins).has_state() && id(door_up_wins).state == "Open",
+      };
+      int open_count = 0;
+      std::string open_names = "";
+      for (int i = 0; i < 9; i++) {
+        if (open_state[i]) {
+          if (open_count < 2) {
+            if (!open_names.empty()) open_names += ", ";
+            open_names += open_labels[i];
+          }
+          open_count++;
+        }
+      }
+      if (open_count > 2) {
+        char more_buf[16];
+        snprintf(more_buf, sizeof(more_buf), " +%d", open_count - 2);
+        open_names += more_buf;
+      }
+
       const int BUBBLE_TOP = 6;
-      const int BUBBLE_HEIGHT = 70;
+      const int BUBBLE_HEIGHT = 78;
       const int BUBBLE_GAP = 10;
-      int bubble_w = (SCREEN_WIDTH - 2 * MARGIN - BUBBLE_GAP * 3) / 4;
+      const int BUBBLE_COUNT = 5;
+      int bubble_w = (SCREEN_WIDTH - 2 * MARGIN - BUBBLE_GAP * (BUBBLE_COUNT - 1)) / BUBBLE_COUNT;
 
       int bubble1_x = MARGIN;
       int bubble2_x = bubble1_x + bubble_w + BUBBLE_GAP;
       int bubble3_x = bubble2_x + bubble_w + BUBBLE_GAP;
       int bubble4_x = bubble3_x + bubble_w + BUBBLE_GAP;
+      int bubble5_x = bubble4_x + bubble_w + BUBBLE_GAP;
 
       // Bubble 1: Time
       it.rectangle(bubble1_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
@@ -523,11 +596,11 @@ display:
       // Bubble 2: Month
       it.rectangle(bubble2_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
       it.printf(bubble2_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "MONTH");
-      it.strftime(bubble2_x + 8, BUBBLE_TOP + 26, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "%B", time);
+      it.strftime(bubble2_x + 8, BUBBLE_TOP + 26, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "%b", time);
 
       // Bubble 3: Date (weekday label, day-of-month as the big value)
       it.rectangle(bubble3_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
-      it.strftime(bubble3_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "%A", time);
+      it.strftime(bubble3_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "%a", time);
       it.strftime(bubble3_x + 8, BUBBLE_TOP + 26, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "%d", time);
 
       // Bubble 4: Weather (icon + current temperature)
@@ -540,6 +613,16 @@ display:
                   "%.0f°C", id(outside_temperature).state);
       } else {
         it.printf(bubble4_x + bubble_w - 8, BUBBLE_TOP + 32, id(font_medium), id(color_black), TextAlign::TOP_RIGHT, "--°C");
+      }
+
+      // Bubble 5: Open doors/windows
+      it.rectangle(bubble5_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
+      it.printf(bubble5_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "OPEN");
+      Color open_color = open_count > 0 ? id(color_red) : id(color_black);
+      it.printf(bubble5_x + 8, BUBBLE_TOP + 24, id(font_medium), open_color, TextAlign::TOP_LEFT, "%d", open_count);
+      if (open_count > 0) {
+        it.printf(bubble5_x + 8, BUBBLE_TOP + 52, id(font_small), open_color, TextAlign::TOP_LEFT,
+                  "%s", open_names.c_str());
       }
 
       // ===== LEFT COLUMN (Home Sensors) =====
