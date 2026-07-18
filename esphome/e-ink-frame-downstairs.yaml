@@ -263,10 +263,22 @@ font:
     id: font_medium
     size: 28
 
+  # Bold for the top bubble row's headline values (date, weather temp) -
+  # readable from across a room, per feedback that the previous regular-
+  # weight font_medium wasn't legible at ~2.5m.
+  - file: "gfonts://Roboto@700"
+    id: font_bubble_value
+    size: 34
+
+  # Bold for the top bubble row's labels and weather condition text
+  - file: "gfonts://Roboto@700"
+    id: font_bubble_label
+    size: 20
+
   # Medium-large for the (now compact) header time display
   - file: "gfonts://Roboto@700"
     id: font_time
-    size: 40
+    size: 48
 
   # Bold for section headers
   - file: "gfonts://Roboto@700"
@@ -283,7 +295,7 @@ font:
   # for weather icons previously rendered as blank squares.
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf'
     id: font_icons_weather
-    size: 36
+    size: 42
     glyphs:
       - "\U000F0590" # mdi:weather-cloudy
       - "\U000F0591" # mdi:weather-fog
@@ -519,7 +531,7 @@ display:
         return;
       }
 
-      // ===== HEADER SECTION: 4 info bubbles (Time / Month / Date / Weather) =====
+      // ===== HEADER SECTION: 3 info bubbles (Time / Date / Weather) =====
       // Bordered boxes rather than one solid bar, TRMNL/bubble-UI style -
       // distinct at a glance, more compact than the old full-width clock.
 
@@ -580,46 +592,46 @@ display:
         open_names += more_buf;
       }
 
+      // 3 bubbles now (was 4) - Month and Date merged into one, freeing a
+      // bubble-width of space for Weather to expand into on its left side.
+      // Fonts here are bold and larger than the rest of the display -
+      // readability from ~2.5m away was the point of this bubble row.
       const int BUBBLE_TOP = 6;
-      const int BUBBLE_HEIGHT = 118;  // tall enough for the full weather bubble (icon/temp/condition/feels/humidity)
+      const int BUBBLE_HEIGHT = 135;  // tall enough for the full weather bubble (icon/temp/condition/feels/humidity)
       const int BUBBLE_GAP = 10;
-      int bubble_w = (SCREEN_WIDTH - 2 * MARGIN - BUBBLE_GAP * 3) / 4;
+      int bubble_w = (SCREEN_WIDTH - 2 * MARGIN - BUBBLE_GAP * 3) / 4;  // Time/Date keep the original single-bubble width
 
       int bubble1_x = MARGIN;
       int bubble2_x = bubble1_x + bubble_w + BUBBLE_GAP;
       int bubble3_x = bubble2_x + bubble_w + BUBBLE_GAP;
-      int bubble4_x = bubble3_x + bubble_w + BUBBLE_GAP;
+      int bubble3_w = SCREEN_WIDTH - MARGIN - bubble3_x;  // Weather absorbs everything left over
 
       // Bubble 1: Time
       it.rectangle(bubble1_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
-      it.printf(bubble1_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "TIME");
-      it.printf(bubble1_x + 8, BUBBLE_TOP + 26, id(font_time), id(color_black), TextAlign::TOP_LEFT,
+      it.printf(bubble1_x + 8, BUBBLE_TOP + 6, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "TIME");
+      it.printf(bubble1_x + 8, BUBBLE_TOP + 30, id(font_time), id(color_black), TextAlign::TOP_LEFT,
                 "%02d:%02d", time.hour, time.minute);
 
-      // Bubble 2: Month
+      // Bubble 2: Date (weekday label, day + abbreviated month as the value -
+      // a fixed-width format regardless of month name length)
       it.rectangle(bubble2_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
-      it.printf(bubble2_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "MONTH");
-      it.strftime(bubble2_x + 8, BUBBLE_TOP + 26, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "%B", time);
+      it.strftime(bubble2_x + 8, BUBBLE_TOP + 6, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "%A", time);
+      it.strftime(bubble2_x + 8, BUBBLE_TOP + 30, id(font_bubble_value), id(color_black), TextAlign::TOP_LEFT, "%d %b", time);
 
-      // Bubble 3: Date (weekday label, day-of-month as the big value)
-      it.rectangle(bubble3_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
-      it.strftime(bubble3_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "%A", time);
-      it.strftime(bubble3_x + 8, BUBBLE_TOP + 26, id(font_medium), id(color_black), TextAlign::TOP_LEFT, "%d", time);
-
-      // Bubble 4: Weather (icon, temperature, condition, feels-like, humidity -
+      // Bubble 3: Weather (icon, temperature, condition, feels-like, humidity -
       // consolidated here from the old separate WEATHER column, which was
       // dropped to avoid showing the same weather info twice. Uses
       // font_icons_weather (not font_icons_medium, which doesn't have the
       // weather glyphs and rendered as a blank square).
-      it.rectangle(bubble4_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
-      it.printf(bubble4_x + 8, BUBBLE_TOP + 6, id(font_small), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
-      it.printf(bubble4_x + 8, BUBBLE_TOP + 24, id(font_icons_weather), id(color_black), TextAlign::TOP_LEFT,
+      it.rectangle(bubble3_x, BUBBLE_TOP, bubble3_w, BUBBLE_HEIGHT, id(color_black));
+      it.printf(bubble3_x + 8, BUBBLE_TOP + 6, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
+      it.printf(bubble3_x + 8, BUBBLE_TOP + 28, id(font_icons_weather), id(color_black), TextAlign::TOP_LEFT,
                 "%s", weather_icon.c_str());
       if (id(outside_temperature).has_state()) {
-        it.printf(bubble4_x + bubble_w - 8, BUBBLE_TOP + 30, id(font_medium), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(bubble3_x + bubble3_w - 8, BUBBLE_TOP + 34, id(font_bubble_value), id(color_black), TextAlign::TOP_RIGHT,
                   "%.0f°C", id(outside_temperature).state);
       } else {
-        it.printf(bubble4_x + bubble_w - 8, BUBBLE_TOP + 30, id(font_medium), id(color_black), TextAlign::TOP_RIGHT, "--°C");
+        it.printf(bubble3_x + bubble3_w - 8, BUBBLE_TOP + 34, id(font_bubble_value), id(color_black), TextAlign::TOP_RIGHT, "--°C");
       }
 
       // Weather condition text
@@ -628,11 +640,13 @@ display:
         if (cond.length() > 0) {
           cond[0] = toupper(cond[0]);
         }
-        it.printf(bubble4_x + 8, BUBBLE_TOP + 68, id(font_small), id(color_black), TextAlign::TOP_LEFT,
+        it.printf(bubble3_x + 8, BUBBLE_TOP + 78, id(font_bubble_label), id(color_black), TextAlign::TOP_LEFT,
                   "%s", cond.c_str());
       }
 
-      // Feels-like and humidity, combined onto one line
+      // Feels-like and humidity, combined onto one line - kept at the
+      // regular (non-bold) small font since this is supplementary detail,
+      // not the headline info this bubble row needed to be readable.
       if (id(outside_feels_like).has_state() || id(weather_humidity).has_state()) {
         std::string feels_humidity = "";
         if (id(outside_feels_like).has_state()) {
@@ -646,7 +660,7 @@ display:
           snprintf(buf, sizeof(buf), "%.0f%% RH", id(weather_humidity).state);
           feels_humidity += buf;
         }
-        it.printf(bubble4_x + 8, BUBBLE_TOP + 90, id(font_small), id(color_black), TextAlign::TOP_LEFT,
+        it.printf(bubble3_x + 8, BUBBLE_TOP + 104, id(font_small), id(color_black), TextAlign::TOP_LEFT,
                   "%s", feels_humidity.c_str());
       }
 
@@ -839,8 +853,8 @@ display:
         if (neg > hist_max_wh) hist_max_wh = neg;
       }
 
-      int hist_y = util_y + util_row + 14;
-      int hist_half_height = 45;  // trimmed back down - the taller header weather bubble eats into vertical space
+      int hist_y = util_y + util_row + 10;
+      int hist_half_height = 40;  // trimmed further - the bigger bubble-row fonts eat more vertical space
       int hist_baseline = hist_y + hist_half_height;
       int hist_bottom = hist_baseline + hist_half_height;
 
@@ -909,12 +923,12 @@ display:
       }
 
       // ===== OPEN DOORS/WINDOWS (below the electricity histogram, same column) =====
-      int open_y = hist_label_y + 22;
+      int open_y = hist_label_y + 18;
       it.printf(center_col_x, open_y, id(font_small), id(color_red), TextAlign::TOP_LEFT, "OPEN DOORS/WINDOWS");
       if (open_count == 0) {
-        it.printf(center_col_x, open_y + 20, id(font_body), id(color_black), TextAlign::TOP_LEFT, "All closed");
+        it.printf(center_col_x, open_y + 18, id(font_body), id(color_black), TextAlign::TOP_LEFT, "All closed");
       } else {
-        it.printf(center_col_x, open_y + 20, id(font_body), id(color_red), TextAlign::TOP_LEFT, "%s", open_names.c_str());
+        it.printf(center_col_x, open_y + 18, id(font_body), id(color_red), TextAlign::TOP_LEFT, "%s", open_names.c_str());
       }
 
       // ===== FOOTER =====
