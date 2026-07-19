@@ -43,8 +43,8 @@ substitutions:
   sleep_duration: "30min"
 
   # Location
-  latitude: "53.1935777"
-  longitude: "-6.120645"
+  latitude: !secret taku_coords_lat
+  longitude: !secret taku_coords_lon
   timezone: "Europe/Dublin"
 
   # Display - Waveshare 7.3" e-Paper HAT (G) 4-Color (800x480)
