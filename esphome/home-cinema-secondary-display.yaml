@@ -12,17 +12,32 @@ substitutions:
   #
   # Pin roles below follow the Round Display for XIAO's fixed connector
   # (it plugs straight onto the XIAO's expansion pads, so the *role* of each
-  # pin - LCD CS/DC/backlight, hardware SPI clock/MOSI - is the same across
-  # every XIAO variant; only the GPIO number behind each Dx pin changes per
-  # board). These were derived from Seeed's published schematics rather than
-  # confirmed on this specific physical unit - verify with a continuity
-  # check against the board before first flash, same as e-ink-frame-downstairs.
-  # XIAO ESP32C6 Dx -> GPIO map: D1=GPIO1, D3=GPIO21, D6=GPIO16, D8=GPIO19, D10=GPIO18
+  # pin - LCD CS/DC/RST/backlight, hardware SPI clock/MOSI - is the same
+  # across every XIAO variant; only the GPIO number behind each Dx pin
+  # changes per board).
+  #
+  # First attempt (BL=D6, DC=D3, no reset_pin) booted to full-screen static
+  # "snow" - the display's raw uninitialized RAM, meaning it never received
+  # a valid init sequence. That matches DC actually being wired to the
+  # panel's RST line: every SPI transaction would toggle hardware reset
+  # mid-transfer instead of framing commands/data, so the chip never leaves
+  # reset. Switched to the other documented pinout for this board (the
+  # simple sequential D0-D3 convention) and wired up reset_pin, which was
+  # previously left unconnected. Still not confirmed on this specific unit -
+  # verify with a continuity check against the board if this doesn't fix it,
+  # same as e-ink-frame-downstairs.
+  # XIAO ESP32C6 Dx -> GPIO map: D0=GPIO0, D1=GPIO1, D2=GPIO2, D3=GPIO21, D8=GPIO19, D10=GPIO18
   pin_spi_clk: "GPIO19"  # D8  - hardware SPI SCK
   pin_spi_mosi: "GPIO18" # D10 - hardware SPI MOSI
+  pin_lcd_bl: "GPIO0"    # D0  - LCD backlight enable
   pin_lcd_cs: "GPIO1"    # D1  - LCD chip select
-  pin_lcd_dc: "GPIO21"   # D3  - LCD data/command
-  pin_lcd_bl: "GPIO16"   # D6  - LCD backlight enable
+  pin_lcd_dc: "GPIO2"    # D2  - LCD data/command
+  pin_lcd_rst: "GPIO21"  # D3  - LCD reset
+
+  # Home Assistant base URL, used to resolve the relative entity_picture
+  # path media_player.home_cinema reports (e.g. "/api/media_player_proxy/...")
+  # into a URL online_image can actually fetch.
+  ha_base_url: !secret home_assistant_base_url
 
 esphome:
   name: ${device_name}
@@ -60,6 +75,25 @@ web_server:
 spi:
   clk_pin: ${pin_spi_clk}
   mosi_pin: ${pin_spi_mosi}
+
+http_request:
+  id: http_client
+  timeout: 10s
+
+# Album/show artwork for whatever's currently playing, fetched from Home
+# Assistant's media_player_proxy. Re-downloaded whenever the Media Entity
+# Picture text sensor below sees a new URL; redraws once the fetch settles
+# (success or failure) rather than racing the async download.
+online_image:
+  - id: now_playing_art
+    url: "${ha_base_url}/"
+    format: JPEG
+    type: RGB565
+    resize: 240x240
+    on_download_finished:
+      - component.update: main_display
+    on_error:
+      - component.update: main_display
 
 # Text sensors mirroring the composite "Home Cinema" universal media_player
 # (media_player.yaml). Whichever child device is currently active - the
@@ -116,6 +150,25 @@ text_sensor:
     entity_id: media_player.home_cinema
     attribute: media_content_type
     id: media_content_type
+
+  # Not every source provides artwork (e.g. a bare TV tuner or Sonos
+  # line-in) - only kick off a fetch when there's actually a URL, so the
+  # display lambda can fall back to the plain text layout otherwise.
+  - platform: homeassistant
+    name: "Media Entity Picture"
+    entity_id: media_player.home_cinema
+    attribute: entity_picture
+    id: media_entity_picture
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return !x.empty();'
+            then:
+              - online_image.set_url:
+                  id: now_playing_art
+                  url: !lambda |-
+                    return std::string("${ha_base_url}") + x;
 
 # Colors for the display
 color:
@@ -177,6 +230,7 @@ display:
     id: main_display
     cs_pin: ${pin_lcd_cs}
     dc_pin: ${pin_lcd_dc}
+    reset_pin: ${pin_lcd_rst}
     invert_colors: true
     update_interval: never
     lambda: |-
@@ -234,8 +288,34 @@ display:
         return;
       }
 
-      // Status word, centered near the top - the chord is narrow there on a
-      // round panel, so keep it to a single short word.
+      // If this source has artwork, draw it full-bleed behind the text and
+      // pull the text block down into a solid band over the bottom of it -
+      // the round bezel crops the square image to a circle for free, but
+      // arbitrary album art needs a solid backing for the text to stay
+      // legible over it. Sources without artwork (bare TV tuner, Sonos
+      // line-in) keep the original all-text layout, positioned to fit the
+      // narrower chord near the middle of the circle.
+      bool has_art = !id(media_entity_picture).state.empty();
+      int title_max = 20;
+      int artist_max = 24;
+      int source_max = 30;
+      int y_status = 35;
+      int y_title = 95;
+      int y_artist = 128;
+
+      if (has_art) {
+        it.image(0, 0, id(now_playing_art));
+        it.filled_rectangle(0, 150, 240, 90, id(color_background));
+        title_max = 16;
+        artist_max = 18;
+        source_max = 18;
+        y_status = 160;
+        y_title = 182;
+        y_artist = 205;
+      }
+
+      // Status word - short enough to fit the narrow chord near the top,
+      // or the art overlay band when artwork is showing.
       Color status_color = id(color_status_idle);
       std::string status_text = state;
       if (state == "playing") {
@@ -248,23 +328,27 @@ display:
         status_color = id(color_status_paused);
         status_text = "Buffering";
       }
-      it.printf(cx, 35, id(font_status), status_color, TextAlign::CENTER, "%s", status_text.c_str());
+      it.printf(cx, y_status, id(font_status), status_color, TextAlign::CENTER, "%s", status_text.c_str());
 
       // Title
-      std::string title = truncate(sanitize(id(media_title).state), 20);
-      it.printf(cx, 95, id(font_title), id(color_title), TextAlign::CENTER,
+      std::string title = truncate(sanitize(id(media_title).state), title_max);
+      it.printf(cx, y_title, id(font_title), id(color_title), TextAlign::CENTER,
                 "%s", title.empty() ? "Unknown Title" : title.c_str());
 
       // Artist
-      std::string artist = truncate(sanitize(id(media_artist).state), 24);
+      std::string artist = truncate(sanitize(id(media_artist).state), artist_max);
       if (!artist.empty()) {
-        it.printf(cx, 128, id(font_artist), id(color_artist), TextAlign::CENTER, "%s", artist.c_str());
+        it.printf(cx, y_artist, id(font_artist), id(color_artist), TextAlign::CENTER, "%s", artist.c_str());
       }
 
-      // Album
-      std::string album = truncate(sanitize(id(media_album).state), 30);
-      if (!album.empty()) {
-        it.printf(cx, 155, id(font_meta), id(color_meta), TextAlign::CENTER, "%s", album.c_str());
+      if (!has_art) {
+        // Album - only shown in the all-text layout; the art card already
+        // conveys "album" visually when artwork is available, and there's
+        // no room for a 4th line in the overlay band.
+        std::string album = truncate(sanitize(id(media_album).state), 30);
+        if (!album.empty()) {
+          it.printf(cx, 155, id(font_meta), id(color_meta), TextAlign::CENTER, "%s", album.c_str());
+        }
       }
 
       // Source line: prefer app_name (e.g. "Netflix", "Spotify"), then fall
@@ -274,9 +358,10 @@ display:
       if (source_line.empty()) {
         source_line = sanitize(id(media_content_type).state);
       }
-      source_line = truncate(source_line, 30);
+      source_line = truncate(source_line, source_max);
       if (!source_line.empty()) {
-        it.printf(cx, 205, id(font_meta), id(color_meta), TextAlign::CENTER, "%s", source_line.c_str());
+        int y_source = has_art ? 222 : 205;
+        it.printf(cx, y_source, id(font_meta), id(color_meta), TextAlign::CENTER, "%s", source_line.c_str());
       }
 
 output:
