@@ -2,14 +2,46 @@
 # Fetches real-time departure information for specific bus stops
 # API Documentation: https://api-doc.transitapp.com/v3.html
 #
-# Note: global_stop_id format is "AGENCY:STOPNUMBER"
+# IMPORTANT: global_stop_id is NOT "AGENCY:STOP_CODE" (the number painted on
+# the physical stop sign). It's Transit App's own internal numeric stop ID,
+# and a single physical stop can have multiple global_stop_ids - one per
+# transit agency feed that serves it. Always confirm via nearby_stops
+# (matching on "stop_code") rather than guessing the ID.
+#
 # To find your stop's global_stop_id, use the nearby_stops endpoint:
 #   curl -H "apiKey:YOUR_KEY" "https://external.transitapp.com/v3/public/nearby_stops?lat=LAT&lon=LON&max_distance=200"
 #
-# Configured stops:
-#   - Stop 4180: E1, L12 routes
-#   - Stop 8270: E1 route
-#   - Stop 4142: 45A route
+# To manually test departures for a stop (mirrors this resource's own request),
+# use the stop_departures endpoint directly:
+#   curl -s -H "apiKey:YOUR_KEY" -H "Accept-Language:en" \
+#     "https://external.transitapp.com/v3/public/stop_departures?global_stop_ids=DUBIE:72440&remove_cancelled=true" | jq .
+#
+# Configured stops (stop_code -> global_stop_id):
+#   - 4180 "Killarney Road" -> DUBIE:72440 (E1, L12). This physical stop is
+#     also served by a Bus Éireann feed (EIREANNIE:9486) but that ID is
+#     intentionally not queried here.
+#   - 8270 "Fairyhill"      -> DUBIE:72429 (E1)
+#   - 4142 "Oldcourt"       -> GOIE:466    (45A, 45B)
+#
+# How these IDs were found (2026-07): a single nearby_stops call near home,
+# radius widened until both 4180 and 8270 appeared, then matched by
+# "stop_code" in the response to get each one's real "global_stop_id":
+#   curl -s -H "apiKey:YOUR_KEY" \
+#     "https://external.transitapp.com/v3/public/nearby_stops?lat=LAT&lon=LON&max_distance=500" | jq .
+#
+# 4142 wasn't in that radius, so it was looked up separately. Querying at a
+# stop's own coordinates (distance 0) is the most reliable way to confirm a
+# specific stop_code's global_stop_id - re-run nearby_stops with that stop's
+# own stop_lat/stop_lon (from a wider search) and a small max_distance:
+#   curl -s -H "apiKey:YOUR_KEY" \
+#     "https://external.transitapp.com/v3/public/nearby_stops?lat=LAT&lon=LON&max_distance=50" | jq .
+#
+# (LAT/LON intentionally omitted here - they pinpoint home. Use your own
+# home coordinates, kept in secrets.yaml if referenced elsewhere.)
+#
+# Each candidate global_stop_id was then confirmed with a real stop_departures
+# call (see the recipe above) before adding it to global_stop_ids below - an
+# empty route_departures array is the signal that the ID is wrong.
 
 resource: "https://external.transitapp.com/v3/public/stop_departures"
 scan_interval: 3600  # Default 1 hour; automation triggers more frequent updates during active windows
@@ -17,7 +49,7 @@ headers:
   apiKey: !secret transit_api_token
   Accept-Language: "en"
 params:
-  global_stop_ids: "Dublin:4180,Dublin:8270,Dublin:4142"
+  global_stop_ids: "DUBIE:72440,DUBIE:72429,GOIE:466"
   remove_cancelled: "true"
 sensor:
   - name: "Next Bus Departures"
@@ -35,24 +67,27 @@ sensor:
   - name: "Next Bus Stop 4180"
     unique_id: transit_app_next_bus_stop_4180
     value_template: >-
-      {% set ns = namespace(departures=[]) %}
+      {% set ns = namespace(routes=[]) %}
       {% if value_json.route_departures is defined %}
-        {% for route in value_json.route_departures %}
-          {% if route.itineraries is defined %}
-            {% for itinerary in route.itineraries %}
-              {% if itinerary.schedule_items is defined %}
-                {% for item in itinerary.schedule_items %}
-                  {% if 'Dublin:4180' in (item.global_stop_id | default('')) or route.global_route_id is search('4180') %}
-                    {% set ns.departures = ns.departures + [item.departure_time] %}
-                  {% endif %}
-                {% endfor %}
-              {% endif %}
-            {% endfor %}
+        {% for route in value_json.route_departures if route.global_stop_id == 'DUBIE:72440' %}
+          {% set times = route.itineraries
+                          | map(attribute='schedule_items')
+                          | sum(start=[])
+                          | selectattr('is_cancelled', 'eq', false)
+                          | map(attribute='departure_time')
+                          | list %}
+          {% if times | length > 0 %}
+            {% set mins = [(((times | min - now().timestamp()) / 60) | round(0, 'floor') | int), 0] | max %}
+            {% set ns.routes = ns.routes + [{'name': route.route_short_name, 'mins': mins}] %}
           {% endif %}
         {% endfor %}
       {% endif %}
-      {% if ns.departures | length > 0 %}
-        {{ (ns.departures | first | as_datetime).strftime('%H:%M') if ns.departures | first is defined else 'No data' }}
+      {% if ns.routes | length > 0 %}
+        {% set ns2 = namespace(parts=[]) %}
+        {% for r in ns.routes | sort(attribute='mins') %}
+          {% set ns2.parts = ns2.parts + [r.name ~ ' ' ~ r.mins ~ 'm'] %}
+        {% endfor %}
+        {{ ns2.parts | join(', ') }}
       {% else %}
         No departures
       {% endif %}
@@ -63,24 +98,27 @@ sensor:
   - name: "Next Bus Stop 8270"
     unique_id: transit_app_next_bus_stop_8270
     value_template: >-
-      {% set ns = namespace(departures=[]) %}
+      {% set ns = namespace(routes=[]) %}
       {% if value_json.route_departures is defined %}
-        {% for route in value_json.route_departures %}
-          {% if route.itineraries is defined %}
-            {% for itinerary in route.itineraries %}
-              {% if itinerary.schedule_items is defined %}
-                {% for item in itinerary.schedule_items %}
-                  {% if 'Dublin:8270' in (item.global_stop_id | default('')) or route.global_route_id is search('8270') %}
-                    {% set ns.departures = ns.departures + [item.departure_time] %}
-                  {% endif %}
-                {% endfor %}
-              {% endif %}
-            {% endfor %}
+        {% for route in value_json.route_departures if route.global_stop_id == 'DUBIE:72429' %}
+          {% set times = route.itineraries
+                          | map(attribute='schedule_items')
+                          | sum(start=[])
+                          | selectattr('is_cancelled', 'eq', false)
+                          | map(attribute='departure_time')
+                          | list %}
+          {% if times | length > 0 %}
+            {% set mins = [(((times | min - now().timestamp()) / 60) | round(0, 'floor') | int), 0] | max %}
+            {% set ns.routes = ns.routes + [{'name': route.route_short_name, 'mins': mins}] %}
           {% endif %}
         {% endfor %}
       {% endif %}
-      {% if ns.departures | length > 0 %}
-        {{ (ns.departures | first | as_datetime).strftime('%H:%M') if ns.departures | first is defined else 'No data' }}
+      {% if ns.routes | length > 0 %}
+        {% set ns2 = namespace(parts=[]) %}
+        {% for r in ns.routes | sort(attribute='mins') %}
+          {% set ns2.parts = ns2.parts + [r.name ~ ' ' ~ r.mins ~ 'm'] %}
+        {% endfor %}
+        {{ ns2.parts | join(', ') }}
       {% else %}
         No departures
       {% endif %}
@@ -91,24 +129,27 @@ sensor:
   - name: "Next Bus Stop 4142"
     unique_id: transit_app_next_bus_stop_4142
     value_template: >-
-      {% set ns = namespace(departures=[]) %}
+      {% set ns = namespace(routes=[]) %}
       {% if value_json.route_departures is defined %}
-        {% for route in value_json.route_departures %}
-          {% if route.itineraries is defined %}
-            {% for itinerary in route.itineraries %}
-              {% if itinerary.schedule_items is defined %}
-                {% for item in itinerary.schedule_items %}
-                  {% if 'Dublin:4142' in (item.global_stop_id | default('')) or route.global_route_id is search('4142') %}
-                    {% set ns.departures = ns.departures + [item.departure_time] %}
-                  {% endif %}
-                {% endfor %}
-              {% endif %}
-            {% endfor %}
+        {% for route in value_json.route_departures if route.global_stop_id == 'GOIE:466' %}
+          {% set times = route.itineraries
+                          | map(attribute='schedule_items')
+                          | sum(start=[])
+                          | selectattr('is_cancelled', 'eq', false)
+                          | map(attribute='departure_time')
+                          | list %}
+          {% if times | length > 0 %}
+            {% set mins = [(((times | min - now().timestamp()) / 60) | round(0, 'floor') | int), 0] | max %}
+            {% set ns.routes = ns.routes + [{'name': route.route_short_name, 'mins': mins}] %}
           {% endif %}
         {% endfor %}
       {% endif %}
-      {% if ns.departures | length > 0 %}
-        {{ (ns.departures | first | as_datetime).strftime('%H:%M') if ns.departures | first is defined else 'No data' }}
+      {% if ns.routes | length > 0 %}
+        {% set ns2 = namespace(parts=[]) %}
+        {% for r in ns.routes | sort(attribute='mins') %}
+          {% set ns2.parts = ns2.parts + [r.name ~ ' ' ~ r.mins ~ 'm'] %}
+        {% endfor %}
+        {{ ns2.parts | join(', ') }}
       {% else %}
         No departures
       {% endif %}

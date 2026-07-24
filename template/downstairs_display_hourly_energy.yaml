@@ -1,0 +1,48 @@
+# Hourly electricity usage breakdown for the downstairs e-ink display's
+# power flow histogram (esphome/e-ink-frame-downstairs.yaml). This is a
+# simplified stand-in for Home Assistant's own Energy dashboard "Electricity
+# usage" chart: it charts the raw hourly energy per source (solar generated,
+# battery charged/discharged, grid imported/exported) rather than HA's
+# internal consumption-attribution split, since the latter isn't available
+# as a queryable statistic.
+sensor:
+  - name: "Downstairs Display Hourly Energy"
+    unique_id: downstairs_display_hourly_energy
+    # The state itself isn't meaningful - it just needs to use now() so
+    # this entity (state + attributes) re-renders every minute, since the
+    # hourly_csv attribute below has no other entity dependency HA can
+    # auto-detect (statistics_during_period reads entity IDs from a plain
+    # list, not via states()).
+    state: "{{ now().hour }}"
+    attributes:
+      # Hourly energy from 08:00 up to (not including) 23:00 - aligned
+      # with the Night/Day/Peak tariff boundaries so the e-ink display
+      # doesn't need to render the overnight Night-rate hours.
+      # Format: "hour,solar_wh,battery_discharged_wh,grid_import_wh,battery_charged_wh,grid_export_wh|..."
+      # Values are Wh (not kWh) integers to keep the string compact for
+      # the ESPHome text_sensor to parse.
+      hourly_csv: >
+        {% set entities = [
+             'sensor.solis_energy_today',
+             'sensor.solis_daily_energy_discharged',
+             'sensor.grid_em_channel_1_energy',
+             'sensor.solis_daily_energy_charged',
+             'sensor.grid_em_channel_1_energy_returned'
+           ] %}
+        {% set day_start = today_at("00:00") %}
+        {% set stats = statistics_during_period(start_time=day_start, end_time=now(), statistic_ids=entities, period="hour", units=none, types={"change"}) %}
+        {% set ns = namespace(rows=[]) %}
+        {% for h in range(8, 23) %}
+          {% set vals = [] %}
+          {% for ent in entities %}
+            {% set change = 0 %}
+            {% for row in stats.get(ent, []) %}
+              {% if as_datetime(row.start).hour == h %}
+                {% set change = row.change or 0 %}
+              {% endif %}
+            {% endfor %}
+            {% set vals = vals + [ (change * 1000) | round(0) | int ] %}
+          {% endfor %}
+          {% set ns.rows = ns.rows + [ h ~ ',' ~ vals | join(',') ] %}
+        {% endfor %}
+        {{ ns.rows | join('|') }}

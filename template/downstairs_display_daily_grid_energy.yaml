@@ -1,0 +1,15 @@
+# Total daily grid import energy (kWh) for the downstairs e-ink display's
+# "Grid" row, so it matches the "Solar Today" row's unit (kWh) instead of
+# showing an instantaneous power reading. utility_meter (configuration.yaml)
+# splits daily grid energy into per-tariff sub-sensors, so this just sums
+# them back into a single daily total.
+sensor:
+  - name: "Downstairs Display Daily Grid Energy"
+    unique_id: downstairs_display_daily_grid_energy
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state: >
+      {% set day = states('sensor.daily_electricity_energy_day') | float(0) %}
+      {% set peak = states('sensor.daily_electricity_energy_peak') | float(0) %}
+      {% set night = states('sensor.daily_electricity_energy_night') | float(0) %}
+      {{ (day + peak + night) | round(2) }}

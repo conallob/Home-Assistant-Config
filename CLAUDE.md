@@ -213,6 +213,10 @@ Zigbee devices are managed via Zigbee2MQTT (separate from Home Assistant core):
 
 External video streaming service integration at `http://ratchet.int.taku.ie:1984` for camera feeds.
 
+### E-Ink Info Displays
+
+ESPHome e-ink displays (e.g. `esphome/e-ink-frame-downstairs.yaml`) use a row of bordered "info bubbles" (TRMNL/bubble-UI style) across the top for glanceable data like time, date, and weather. Keep this row to **at most 4 bubbles** - beyond that, bubble width drops too low for legible text on these panels. If a new piece of glanceable info is needed, either replace/consolidate an existing bubble or place it elsewhere in the layout (e.g. as its own section further down the display) rather than adding a 5th bubble.
+
 ## File Naming Conventions
 
 - Use lowercase with underscores: `my_sensor_name.yaml`
