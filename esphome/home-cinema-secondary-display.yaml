@@ -1,3 +1,6 @@
+# Board: Seeed Studio XIAO ESP32C6 (Seeed Studio)
+# Definition: definitions/boards/seeed_xiao_esp32c6/manifest.yaml
+
 substitutions:
   # Device Info
   device_name: "home-cinema-secondary-display"
@@ -26,7 +29,8 @@ esphome:
   friendly_name: ${friendly_name}
 
 esp32:
-  board: seeed_xiao_esp32c6
+  variant: esp32c6
+  flash_size: 4MB
   framework:
     type: esp-idf
 
@@ -38,28 +42,6 @@ network:
   enable_ipv6: true
 
 # Enable Home Assistant API
-api:
-  encryption:
-    key: !secret api_encryption_key_home_cinema_secondary_display
-
-ota:
-  - platform: esphome
-    password: !secret ota_password_home_cinema_secondary_display
-# Board: Seeed Studio XIAO ESP32C6 (Seeed Studio)
-# Definition: definitions/boards/seeed_xiao_esp32c6/manifest.yaml
-
-esphome:
-  name: home-cinema-secondary-display
-  friendly_name: Home-Cinema-Secondary-Display
-
-esp32:
-  variant: esp32c6
-  flash_size: 4MB
-  framework:
-    type: esp-idf
-
-logger:
-
 api:
   encryption:
     key: !secret api_encryption_key_home_cinema_secondary_screen
@@ -307,38 +289,3 @@ light:
     name: "${friendly_name} Backlight"
     id: display_backlight
     restore_mode: ALWAYS_ON
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-~                                                                                                                                                                                                 
-"home-cinema-secondary-display.yaml" 30L, 562B                                                                                                                                  19,0-1        All
- *1  [vim]                                                                                                                                                                         Fri 07-24 01:08
