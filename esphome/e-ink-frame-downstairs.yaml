@@ -38,6 +38,21 @@ substitutions:
   pin_busy: "GPIO23"  # D5 - Busy signal (ACTIVE LOW - must be inverted!) - Blue wire
   pin_reset: "GPIO22" # D4 - Reset - Green wire
 
+  # MAX17043 LiPo fuel gauge (18650 cell, battery backup power).
+  # D0/D1/D6/D7/D9 are the only XIAO pins not already claimed above by the
+  # e-ink SPI bus or deep-sleep wake. The board's own dedicated I2C pins
+  # (D4/D5 - GPIO22/23) are already used for the e-ink RESET/BUSY signals,
+  # and D6/D7 (GPIO16/17) double as U0TXD/U0RXD - ESPHome's default
+  # hardware-UART logger output - so I2C activity there could corrupt
+  # both the log and the bus. D0/D1 (GPIO0/GPIO1) have no default
+  # peripheral role on this chip, so they're used instead.
+  # Board wires: Black=GND, Red=VCC (3V3), Yellow=SDA, Green=SCL - this
+  # colour convention is this specific breakout's, not a universal
+  # standard. If the device doesn't show up on the I2C bus (address 0x36)
+  # after wiring, swap the SDA/SCL pins below first.
+  pin_i2c_sda: "GPIO0" # D0 - I2C SDA - Yellow wire
+  pin_i2c_scl: "GPIO1" # D1 - I2C SCL - Green wire
+
   # Deep Sleep
   gpio_deep_sleep_wake_up: "GPIO4"
   sleep_duration: "30min"
@@ -111,6 +126,12 @@ spi:
   clk_pin: ${pin_clk}
   mosi_pin: ${pin_mosi}
   id: spi_bus
+
+# I2C bus for the MAX17043 LiPo fuel gauge
+i2c:
+  sda: ${pin_i2c_sda}
+  scl: ${pin_i2c_scl}
+  id: i2c_bus
 
 # Global to track if initial refresh has happened
 globals:
@@ -491,6 +512,16 @@ sensor:
     id: wifi_signal_strength
     name: "${friendly_name} WiFi Signal"
     update_interval: 60s
+
+  # MAX17043 LiPo fuel gauge - 18650 cell battery backup
+  - platform: max17043
+    update_interval: 60s
+    battery_voltage:
+      name: "${friendly_name} Battery Voltage"
+      id: fuel_gauge_voltage
+    battery_level:
+      name: "${friendly_name} Battery Level"
+      id: fuel_gauge_level
 
 # E-Ink Display
 display:
