@@ -1,0 +1,288 @@
+substitutions:
+  # Device Info
+  device_name: "home-cinema-secondary-display"
+  friendly_name: "Home Cinema Secondary Display"
+
+  # Hardware: Seeed Studio XIAO ESP32C6 + Seeed Studio Round Display for XIAO
+  # https://wiki.seeedstudio.com/get_start_round_display/
+  # 1.28in round LCD, 240x240, GC9A01A driver, SPI.
+  #
+  # Pin roles below follow the Round Display for XIAO's fixed connector
+  # (it plugs straight onto the XIAO's expansion pads, so the *role* of each
+  # pin - LCD CS/DC/backlight, hardware SPI clock/MOSI - is the same across
+  # every XIAO variant; only the GPIO number behind each Dx pin changes per
+  # board). These were derived from Seeed's published schematics rather than
+  # confirmed on this specific physical unit - verify with a continuity
+  # check against the board before first flash, same as e-ink-frame-downstairs.
+  # XIAO ESP32C6 Dx -> GPIO map: D1=GPIO1, D3=GPIO21, D6=GPIO16, D8=GPIO19, D10=GPIO18
+  pin_spi_clk: "GPIO19"  # D8  - hardware SPI SCK
+  pin_spi_mosi: "GPIO18" # D10 - hardware SPI MOSI
+  pin_lcd_cs: "GPIO1"    # D1  - LCD chip select
+  pin_lcd_dc: "GPIO21"   # D3  - LCD data/command
+  pin_lcd_bl: "GPIO16"   # D6  - LCD backlight enable
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: seeed_xiao_esp32c6
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable IPv6
+network:
+  enable_ipv6: true
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key_home_cinema_secondary_display
+
+ota:
+  - platform: esphome
+    password: !secret ota_password_home_cinema_secondary_display
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+web_server:
+  port: 80
+
+spi:
+  clk_pin: ${pin_spi_clk}
+  mosi_pin: ${pin_spi_mosi}
+
+# Text sensors mirroring the composite "Home Cinema" universal media_player
+# (media_player.yaml). Whichever child device is currently active - the
+# Pioneer AVR, the TV, the Sonos Port, or the Apple TV - the universal
+# player surfaces that child's attributes directly, so this device doesn't
+# need to know which physical source is playing.
+text_sensor:
+  - platform: homeassistant
+    name: "Media Player State"
+    entity_id: media_player.home_cinema
+    id: media_player_state
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Title"
+    entity_id: media_player.home_cinema
+    attribute: media_title
+    id: media_title
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Artist"
+    entity_id: media_player.home_cinema
+    attribute: media_artist
+    id: media_artist
+    on_value:
+      then:
+        - component.update: main_display
+
+  - platform: homeassistant
+    name: "Media Album"
+    entity_id: media_player.home_cinema
+    attribute: media_album_name
+    id: media_album
+    on_value:
+      then:
+        - component.update: main_display
+
+  # App name (e.g. "Netflix", "Spotify") when the active source provides
+  # one - typically the Apple TV. Falls back to media_content_type in the
+  # display lambda when absent, e.g. for the Sonos Port or a bare TV tuner.
+  - platform: homeassistant
+    name: "Media App Name"
+    entity_id: media_player.home_cinema
+    attribute: app_name
+    id: media_app_name
+
+  - platform: homeassistant
+    name: "Media Content Type"
+    entity_id: media_player.home_cinema
+    attribute: media_content_type
+    id: media_content_type
+
+# Colors for the display
+color:
+  - id: color_background
+    red: 0%
+    green: 0%
+    blue: 0%
+  - id: color_title
+    red: 100%
+    green: 100%
+    blue: 100%
+  - id: color_artist
+    red: 80%
+    green: 80%
+    blue: 100%
+  - id: color_meta
+    red: 65%
+    green: 65%
+    blue: 65%
+  - id: color_status_playing
+    red: 50%
+    green: 100%
+    blue: 50%
+  - id: color_status_paused
+    red: 100%
+    green: 100%
+    blue: 50%
+  - id: color_status_idle
+    red: 60%
+    green: 60%
+    blue: 60%
+  - id: color_status_error
+    red: 100%
+    green: 40%
+    blue: 40%
+
+# Fonts
+font:
+  - file: "gfonts://Roboto@700"
+    id: font_title
+    size: 22
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
+  - file: "gfonts://Roboto"
+    id: font_artist
+    size: 18
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
+  - file: "gfonts://Roboto"
+    id: font_meta
+    size: 13
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
+  - file: "gfonts://Roboto"
+    id: font_status
+    size: 15
+    glyphs: ' !"#$%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~°éèêëàâäùûüôöîïçñáíóúÁÉÍÓÚÑ''&'
+
+display:
+  - platform: ili9xxx
+    model: GC9A01A
+    id: main_display
+    cs_pin: ${pin_lcd_cs}
+    dc_pin: ${pin_lcd_dc}
+    invert_colors: true
+    update_interval: never
+    lambda: |-
+      // Strip characters outside basic printable ASCII + common accented
+      // Latin-1, since the fonts above only carry those glyphs and anything
+      // else (emoji, CJK, box-drawing) would otherwise render as blanks/junk.
+      auto sanitize = [](std::string s) -> std::string {
+        std::string result;
+        for (size_t i = 0; i < s.length(); i++) {
+          unsigned char c = s[i];
+          if (c >= 0x20 && c <= 0x7E) {
+            result += c;
+          } else if (c >= 0xC0 && c <= 0xFF) {
+            result += c;
+          } else if ((c & 0xE0) == 0xC0) {
+            if (i + 1 < s.length()) {
+              result += c;
+              result += s[++i];
+            }
+          } else if ((c & 0xF0) == 0xE0) {
+            i += 2;
+          } else if ((c & 0xF8) == 0xF0) {
+            i += 3;
+          }
+        }
+        return result;
+      };
+
+      auto truncate = [](std::string s, size_t max_len) -> std::string {
+        if (s.length() > max_len) {
+          return s.substr(0, max_len - 3) + "...";
+        }
+        return s;
+      };
+
+      it.fill(id(color_background));
+
+      int cx = 120;
+      int cy = 120;
+
+      std::string state = id(media_player_state).state;
+
+      if (state.empty() || state == "unavailable" || state == "unknown") {
+        it.printf(cx, cy, id(font_status), id(color_status_error), TextAlign::CENTER, "Unavailable");
+        return;
+      }
+
+      if (state == "off" || state == "standby") {
+        it.printf(cx, cy, id(font_artist), id(color_status_idle), TextAlign::CENTER, "Home Cinema Off");
+        return;
+      }
+
+      if (state == "idle") {
+        it.printf(cx, cy, id(font_artist), id(color_status_idle), TextAlign::CENTER, "Nothing Playing");
+        return;
+      }
+
+      // Status word, centered near the top - the chord is narrow there on a
+      // round panel, so keep it to a single short word.
+      Color status_color = id(color_status_idle);
+      std::string status_text = state;
+      if (state == "playing") {
+        status_color = id(color_status_playing);
+        status_text = "Playing";
+      } else if (state == "paused") {
+        status_color = id(color_status_paused);
+        status_text = "Paused";
+      } else if (state == "buffering") {
+        status_color = id(color_status_paused);
+        status_text = "Buffering";
+      }
+      it.printf(cx, 35, id(font_status), status_color, TextAlign::CENTER, "%s", status_text.c_str());
+
+      // Title
+      std::string title = truncate(sanitize(id(media_title).state), 20);
+      it.printf(cx, 95, id(font_title), id(color_title), TextAlign::CENTER,
+                "%s", title.empty() ? "Unknown Title" : title.c_str());
+
+      // Artist
+      std::string artist = truncate(sanitize(id(media_artist).state), 24);
+      if (!artist.empty()) {
+        it.printf(cx, 128, id(font_artist), id(color_artist), TextAlign::CENTER, "%s", artist.c_str());
+      }
+
+      // Album
+      std::string album = truncate(sanitize(id(media_album).state), 30);
+      if (!album.empty()) {
+        it.printf(cx, 155, id(font_meta), id(color_meta), TextAlign::CENTER, "%s", album.c_str());
+      }
+
+      // Source line: prefer app_name (e.g. "Netflix", "Spotify"), then fall
+      // back to the raw content type (e.g. "music", "tv") so there's always
+      // some indication of what's actually playing on a composite system.
+      std::string source_line = sanitize(id(media_app_name).state);
+      if (source_line.empty()) {
+        source_line = sanitize(id(media_content_type).state);
+      }
+      source_line = truncate(source_line, 30);
+      if (!source_line.empty()) {
+        it.printf(cx, 205, id(font_meta), id(color_meta), TextAlign::CENTER, "%s", source_line.c_str());
+      }
+
+output:
+  - platform: gpio
+    pin: ${pin_lcd_bl}
+    id: display_backlight_output
+
+light:
+  - platform: binary
+    output: display_backlight_output
+    name: "${friendly_name} Backlight"
+    id: display_backlight
+    restore_mode: ALWAYS_ON
