@@ -1,0 +1,69 @@
+# Local Air Quality Monitoring Station (Ireland EPA network)
+#
+# airquality.ie itself has no public/documented API (its pages actively
+# block automated requests), so this instead queries the World Air
+# Quality Index (WAQI/aqicn.org) aggregator, which mirrors the same
+# Ireland EPA National Ambient Air Quality Network readings hourly via a
+# free, documented API.
+#
+# The specific station queried is intentionally NOT hardcoded here - it's
+# kept in secrets.yaml so this file can be published/shared for others'
+# inspiration without revealing which monitoring station is closest to
+# home. Add both of these to secrets.yaml:
+#
+#   epa_air_quality_resource_url: "https://api.waqi.info/feed/@<UID>/"
+#   aqicn_api_token: "your-token-here"
+#
+# To find your own station's UID:
+#   1. Get a free token: https://aqicn.org/data-platform/token/
+#   2. Look up the nearest station by geo (use your own coordinates):
+#        curl -s "https://api.waqi.info/feed/geo:LAT;LON/?token=YOUR_TOKEN" | jq .
+#   3. Confirm data.city.name / data.attributions match the station you
+#      expect (cross-reference against https://airquality.ie/stations),
+#      then note its "idx" field as <UID>.
+#   4. Double check the resolved feed directly before saving it:
+#        curl -s "https://api.waqi.info/feed/@<UID>/?token=YOUR_TOKEN" | jq .
+
+resource: !secret epa_air_quality_resource_url
+scan_interval: 3600 # source station data itself only updates hourly
+params:
+  token: !secret aqicn_api_token
+sensor:
+  - name: "Local Air Quality Index"
+    unique_id: epa_air_quality_index
+    value_template: >-
+      {{ value_json.data.aqi if value_json.status == 'ok' and value_json.data.aqi is number else none }}
+    device_class: aqi
+    state_class: measurement
+    json_attributes_path: "$.data"
+    json_attributes:
+      - dominentpol
+      - city
+
+  - name: "Local PM2.5 Sub-Index"
+    unique_id: epa_air_quality_pm25_subindex
+    value_template: >-
+      {% if value_json.status == 'ok' and value_json.data.iaqi.pm25 is defined %}
+        {{ value_json.data.iaqi.pm25.v }}
+      {% else %}
+        {{ none }}
+      {% endif %}
+    icon: mdi:blur
+    state_class: measurement
+
+  - name: "Local Ozone Sub-Index"
+    unique_id: epa_air_quality_ozone_subindex
+    value_template: >-
+      {% if value_json.status == 'ok' and value_json.data.iaqi.o3 is defined %}
+        {{ value_json.data.iaqi.o3.v }}
+      {% else %}
+        {{ none }}
+      {% endif %}
+    icon: mdi:weather-sunny-alert
+    state_class: measurement
+
+  - name: "Local Air Quality Last Updated"
+    unique_id: epa_air_quality_last_updated
+    value_template: >-
+      {{ value_json.data.time.iso if value_json.status == 'ok' and value_json.data.time is defined else none }}
+    device_class: timestamp
