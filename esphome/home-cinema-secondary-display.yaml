@@ -44,10 +44,11 @@ network:
 # Enable Home Assistant API
 api:
   encryption:
-    key: !secret api_encryption_key_home_cinema_secondary_screen
+    key: !secret api_encryption_key_home_cinema_secondary_display
 
 ota:
   - platform: esphome
+    password: !secret ota_password_home_cinema_secondary_display
 
 wifi:
   ssid: !secret wifi_ssid
