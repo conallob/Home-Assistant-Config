@@ -1,7 +1,8 @@
 id: '1730144055808'
 alias: Television Daily Schedule
 description: Automation to decide when the television should power on each day,
-  based on whether it's a school day
+  based on whether it's a school day. Powers on at 08:30 on school days, 07:30 on
+  weekdays that are not school days, and 07:00 on weekends that are not school days.
 triggers:
 - at: 07:00:00
   trigger: time
@@ -9,24 +10,36 @@ conditions: []
 actions:
 - choose:
   - conditions:
-    - condition: or
-      conditions:
-      - condition: time
-        weekday:
-        - sat
-        - sun
-      - condition: state
-        entity_id: binary_sensor.school_day
-        state: 'off'
+    - condition: state
+      entity_id: binary_sensor.school_day
+      state: 'on'
     sequence:
+    - delay:
+        hours: 1
+        minutes: 30
+    - target:
+        entity_id: switch.rectangular_babysitter
+      data: {}
+      action: switch.turn_on
+  - conditions:
+    - condition: time
+      weekday:
+      - mon
+      - tue
+      - wed
+      - thu
+      - fri
+    - condition: state
+      entity_id: binary_sensor.school_day
+      state: 'off'
+    sequence:
+    - delay:
+        minutes: 30
     - target:
         entity_id: switch.rectangular_babysitter
       data: {}
       action: switch.turn_on
   default:
-  - delay:
-      hours: 1
-      minutes: 30
   - target:
       entity_id: switch.rectangular_babysitter
     data: {}
