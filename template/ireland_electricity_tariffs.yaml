@@ -16,6 +16,15 @@ sensor:
     unit_of_measurement: "EUR/kWh"
     state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['peak'] }}"
 
+  # Flat rate paid for exported microgeneration - not time-banded like
+  # day/night/peak, so this can be used directly as the Energy Dashboard's
+  # "Entity with current price" for energy exported to grid.
+  - name: "Electric Ireland Smart Duel Fuel Microgeneration Rate"
+    unique_id: electric_ireland_smart_duel_fuel_microgeneration_rate
+    unit_of_measurement: "EUR/kWh"
+    state_class: measurement
+    state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['microgeneration'] }}"
+
   # Current active tariff rate, tracking the active tariff band as selected by
   # the "Rotate Electricity Meter Counter" automation on the
   # current_electricity_tariff utility_meter helper (configuration.yaml).
