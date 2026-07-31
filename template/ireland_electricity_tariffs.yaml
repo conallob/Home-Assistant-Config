@@ -16,29 +16,16 @@ sensor:
     unit_of_measurement: "EUR/kWh"
     state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['peak'] }}"
 
-  # Current tariff band (day/night/peak), derived from the standard ESB Networks
-  # smart-meter DG2 time bands: Night 23:00-08:00 every day, Peak 17:00-19:00 on
-  # weekdays, Day at all other times. Adjust here if Electric Ireland's bands differ.
-  - name: "Electricity Tariff Period"
-    unique_id: electricity_tariff_period
-    state: >
-      {% set t = now() %}
-      {% if t.hour >= 23 or t.hour < 8 %}
-        night
-      {% elif t.weekday() < 5 and 17 <= t.hour < 19 %}
-        peak
-      {% else %}
-        day
-      {% endif %}
-
-  # Current active tariff rate, tracking Electricity Tariff Period above.
+  # Current active tariff rate, tracking the active tariff band as selected by
+  # the "Rotate Electricity Meter Counter" automation on the
+  # current_electricity_tariff utility_meter helper (configuration.yaml).
   # Used by the Energy Dashboard's "Use an entity with current price" cost setting.
   - name: "Current Electricity Rate"
     unique_id: current_electricity_rate
     unit_of_measurement: "EUR/kWh"
     state_class: measurement
     state: >
-      {% set period = states('sensor.electricity_tariff_period') %}
+      {% set period = states('select.current_electricity_tariff') %}
       {% set tariff_data = state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel') %}
       {% if tariff_data and period in ['day', 'night', 'peak'] %}
         {{ tariff_data['rates'][period] }}
