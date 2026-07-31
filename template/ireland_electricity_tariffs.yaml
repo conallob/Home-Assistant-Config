@@ -16,14 +16,19 @@ sensor:
     unit_of_measurement: "EUR/kWh"
     state: "{{ state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel')['rates']['peak'] }}"
 
-  # Current active tariff rate - rotates based on utility meter tariff selection
+  # Current active tariff rate, tracking the active tariff band as selected by
+  # the "Rotate Electricity Meter Counter" automation on the
+  # current_electricity_tariff utility_meter helper (configuration.yaml).
+  # Used by the Energy Dashboard's "Use an entity with current price" cost setting.
   - name: "Current Electricity Rate"
+    unique_id: current_electricity_rate
     unit_of_measurement: "EUR/kWh"
+    state_class: measurement
     state: >
-      {% set tariff = states('select.daily_energy') %}
+      {% set period = states('select.current_electricity_tariff') %}
       {% set tariff_data = state_attr('sensor.ireland_electricity_tariffs', 'electric-ireland-smart-dual-fuel') %}
-      {% if tariff_data and tariff in ['day', 'night', 'peak'] %}
-        {{ tariff_data['rates'][tariff] }}
+      {% if tariff_data and period in ['day', 'night', 'peak'] %}
+        {{ tariff_data['rates'][period] }}
       {% else %}
         unavailable
       {% endif %}
