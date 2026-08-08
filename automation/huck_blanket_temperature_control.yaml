@@ -1,0 +1,67 @@
+alias: Huck Blanket - Temperature Based Control
+description: >
+  Turns on Huck's electric blanket (switch.cat_blanket) overnight, within the
+  window set by input_datetime.huck_blanket_window_start /
+  input_datetime.huck_blanket_window_end, only when
+  sensor.huck_temperature_sensor_temperature is at or below
+  input_number.huck_blanket_temp_low. Turns it back off once the temperature
+  recovers above input_number.huck_blanket_temp_high, or when the window ends,
+  whichever comes first. All three values can be adjusted from the dashboard
+  without editing this automation.
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.huck_temperature_sensor_temperature
+    below: input_number.huck_blanket_temp_low
+    for:
+      minutes: 5
+    id: too_cold
+  - trigger: numeric_state
+    entity_id: sensor.huck_temperature_sensor_temperature
+    above: input_number.huck_blanket_temp_high
+    for:
+      minutes: 5
+    id: warm_enough
+  - trigger: time
+    at: input_datetime.huck_blanket_window_start
+    id: window_start
+  - trigger: time
+    at: input_datetime.huck_blanket_window_end
+    id: window_end
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: too_cold
+          - condition: time
+            after: input_datetime.huck_blanket_window_start
+            before: input_datetime.huck_blanket_window_end
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.cat_blanket
+      - conditions:
+          - condition: trigger
+            id: warm_enough
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.cat_blanket
+      - conditions:
+          - condition: trigger
+            id: window_start
+          - condition: numeric_state
+            entity_id: sensor.huck_temperature_sensor_temperature
+            below: input_number.huck_blanket_temp_low
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.cat_blanket
+      - conditions:
+          - condition: trigger
+            id: window_end
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.cat_blanket
+mode: single
