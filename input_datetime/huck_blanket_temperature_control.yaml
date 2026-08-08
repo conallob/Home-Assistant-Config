@@ -1,0 +1,10 @@
+huck_blanket_window_start:
+  name: "Huck Blanket - Window Start"
+  has_date: false
+  has_time: true
+  initial: "00:00:00"
+huck_blanket_window_end:
+  name: "Huck Blanket - Window End"
+  has_date: false
+  has_time: true
+  initial: "08:00:00"

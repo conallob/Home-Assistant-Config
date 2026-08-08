@@ -23,6 +23,8 @@ The `configuration.yaml` file serves as the entry point and uses `!include` and 
 ### Key Directories
 
 - `automation/` - Production automations stored as individual YAML files (one per automation)
+- `input_number/` - `input_number` helpers, one file per feature (`!include_dir_merge_named`)
+- `input_datetime/` - `input_datetime` helpers, one file per feature (`!include_dir_merge_named`)
 - `custom_components/` - Custom integrations installed via HACS or manually (e.g., hacs, frigate, anker_solix, spook, mass, icloud3)
 - `esphome/` - ESPHome device configurations for ESP32/ESP8266 devices (Bluetooth proxies, sensors, etc.)
   - `esphome/archive/` - Old/deprecated device configurations
@@ -183,6 +185,16 @@ end: "{{ now() }}"
 ```
 
 If you need multiple related sensors, create separate files (e.g., `conall_wfh_annual_days.yaml` and `ciara_wfh_annual_days.yaml`).
+
+### Fractional Configs and `configuration.yaml` Churn
+
+`configuration.yaml` should stay a thin index of `!include` / `!include_dir_*` directives, not a place where feature-specific settings accumulate. When a change needs new config for a domain that's still inline in `configuration.yaml` (e.g. `input_number`, `input_datetime`, `input_boolean`, `input_text`, `input_select`, `counter`, `timer`), prefer converting that domain to a directory of fractional configs over adding another inline entry:
+
+- Create a directory named after the domain (e.g. `input_number/`, `input_datetime/`), matching the existing `automation/`, `sensor/`, `template/`, `rest_command/` pattern.
+- Point `configuration.yaml` at it with `!include_dir_merge_named <dir>` (each file is a dict of `entity_key: {options}`, merged into the domain) — this is the right loader for domains like `input_number`/`input_datetime`/`input_boolean` where the top-level YAML is itself a mapping of entity keys (see `frontend: themes: !include_dir_merge_named themes` for existing precedent). Use `!include_dir_list` instead only for domains whose files are standalone entity dicts appended to a list (as `sensor/` and `template/` already do).
+- **Name the file to convey its relationship to what it configures.** If a helper exists to parametrize a specific automation, name the file after that automation (e.g. `automation/huck_blanket_temperature_control.yaml` pairs with `input_number/huck_blanket_temperature_control.yaml` and `input_datetime/huck_blanket_temperature_control.yaml`). If several helpers belong to one feature or device instead, name the file after the feature (e.g. `input_number/cpap.yaml`).
+- Once a domain has been converted to a directory, add new entries there, not back in `configuration.yaml` — this keeps future changes to that domain from touching `configuration.yaml` at all.
+- Don't convert a domain preemptively if it only has one unrelated entry and no new config is being added to it right now — do the conversion when you're already touching that domain, not as a drive-by refactor.
 
 ## Configuration Best Practices
 
