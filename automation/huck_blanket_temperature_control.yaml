@@ -1,0 +1,63 @@
+alias: Huck Blanket - Temperature Based Control
+description: >
+  Turns on Huck's electric blanket (switch.cat_blanket) overnight (00:00-08:00)
+  only when sensor.huck_temperature_sensor_temperature is cool enough that the
+  extra heat would help, instead of naively running the blanket for the whole
+  window. Turns it back off once it's warm enough, or at 08:00 regardless.
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.huck_temperature_sensor_temperature
+    below: 18
+    for:
+      minutes: 5
+    id: too_cold
+  - trigger: numeric_state
+    entity_id: sensor.huck_temperature_sensor_temperature
+    above: 19
+    for:
+      minutes: 5
+    id: warm_enough
+  - trigger: time
+    at: "00:00:00"
+    id: night_start
+  - trigger: time
+    at: "08:00:00"
+    id: morning_cutoff
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: too_cold
+          - condition: time
+            after: "00:00:00"
+            before: "08:00:00"
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.cat_blanket
+      - conditions:
+          - condition: trigger
+            id: warm_enough
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.cat_blanket
+      - conditions:
+          - condition: trigger
+            id: night_start
+          - condition: numeric_state
+            entity_id: sensor.huck_temperature_sensor_temperature
+            below: 18
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.cat_blanket
+      - conditions:
+          - condition: trigger
+            id: morning_cutoff
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.cat_blanket
+mode: single
