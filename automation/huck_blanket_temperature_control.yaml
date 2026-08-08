@@ -1,28 +1,32 @@
 alias: Huck Blanket - Temperature Based Control
 description: >
-  Turns on Huck's electric blanket (switch.cat_blanket) overnight (00:00-08:00)
-  only when sensor.huck_temperature_sensor_temperature is cool enough that the
-  extra heat would help, instead of naively running the blanket for the whole
-  window. Turns it back off once it's warm enough, or at 08:00 regardless.
+  Turns on Huck's electric blanket (switch.cat_blanket) overnight, within the
+  window set by input_datetime.huck_blanket_window_start /
+  input_datetime.huck_blanket_window_end, only when
+  sensor.huck_temperature_sensor_temperature is at or below
+  input_number.huck_blanket_temp_low. Turns it back off once the temperature
+  recovers above input_number.huck_blanket_temp_high, or when the window ends,
+  whichever comes first. All three values can be adjusted from the dashboard
+  without editing this automation.
 triggers:
   - trigger: numeric_state
     entity_id: sensor.huck_temperature_sensor_temperature
-    below: 18
+    below: input_number.huck_blanket_temp_low
     for:
       minutes: 5
     id: too_cold
   - trigger: numeric_state
     entity_id: sensor.huck_temperature_sensor_temperature
-    above: 19
+    above: input_number.huck_blanket_temp_high
     for:
       minutes: 5
     id: warm_enough
   - trigger: time
-    at: "00:00:00"
-    id: night_start
+    at: input_datetime.huck_blanket_window_start
+    id: window_start
   - trigger: time
-    at: "08:00:00"
-    id: morning_cutoff
+    at: input_datetime.huck_blanket_window_end
+    id: window_end
 conditions: []
 actions:
   - choose:
@@ -30,8 +34,8 @@ actions:
           - condition: trigger
             id: too_cold
           - condition: time
-            after: "00:00:00"
-            before: "08:00:00"
+            after: input_datetime.huck_blanket_window_start
+            before: input_datetime.huck_blanket_window_end
         sequence:
           - action: switch.turn_on
             target:
@@ -45,17 +49,17 @@ actions:
               entity_id: switch.cat_blanket
       - conditions:
           - condition: trigger
-            id: night_start
+            id: window_start
           - condition: numeric_state
             entity_id: sensor.huck_temperature_sensor_temperature
-            below: 18
+            below: input_number.huck_blanket_temp_low
         sequence:
           - action: switch.turn_on
             target:
               entity_id: switch.cat_blanket
       - conditions:
           - condition: trigger
-            id: morning_cutoff
+            id: window_end
         sequence:
           - action: switch.turn_off
             target:
