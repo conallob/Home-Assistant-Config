@@ -1,0 +1,33 @@
+id: '1786652619507'
+alias: Reuben Lava Lamp - Double Tap On
+description: >-
+  Double-tapping button 1 on the Reuben Hue dimmer switch turns
+  switch.reuben_lava_lamp on for 90 minutes. The Hue dimmer only reports a
+  single short_release event per press, so a second press is detected by
+  waiting a short window for a repeat of the same event.
+mode: single
+trigger:
+  - platform: device
+    domain: hue
+    device_id: 1de0bf19715fc2caeffe3f6ef25928eb
+    type: short_release
+    subtype: 1
+condition: []
+action:
+  - wait_for_trigger:
+      - platform: device
+        domain: hue
+        device_id: 1de0bf19715fc2caeffe3f6ef25928eb
+        type: short_release
+        subtype: 1
+    timeout:
+      seconds: 1
+    continue_on_timeout: false
+  - service: switch.turn_on
+    target:
+      entity_id: switch.reuben_lava_lamp
+  - delay:
+      minutes: 90
+  - service: switch.turn_off
+    target:
+      entity_id: switch.reuben_lava_lamp
