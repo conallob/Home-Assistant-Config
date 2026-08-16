@@ -11,6 +11,15 @@ use_blueprint:
       entity_id: ebecc732ac944d9d00bfebb4fa89b61b
       domain: light
       brightness_pct: 75
+    on_long_action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.reuben_lava_lamp
+    - delay:
+        minutes: 90
+    - service: switch.turn_off
+      target:
+        entity_id: switch.reuben_lava_lamp
     off_short_action:
     - type: turn_off
       device_id: 9233e835156235aa3b24411e13487ccf
