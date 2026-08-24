@@ -5,11 +5,22 @@
 # sensors - see rest/beer_price_obrienswine.yaml for the rationale. Refreshed
 # once a day.
 #
-# NOTE: written without being able to load the live page (sandboxed dev
-# environment has no outbound network access). If sensor.beer_price_dunnesstores
-# reads "unavailable" after deploying, fetch the page HTML and adjust the
-# regex patterns below, e.g.:
-#   curl -s -A "Mozilla/5.0" "https://www.dunnesstoresgrocery.com/product/wicklow-wolf-tundra-tropical-ipa-440ml-id-100298563" | grep -o '"price":"[0-9.]*"'
+# KNOWN LIMITATION (2026-08-24): this sensor cannot currently work. Confirmed
+# via curl -v against the live URL that dunnesstoresgrocery.com sits behind
+# Cloudflare Bot Management and returns HTTP 403 with `cf-mitigated: challenge`
+# for any plain (non-browser) request - the response body is Cloudflare's JS
+# challenge page, not the product page, so no regex tuning here can fix it.
+# This is a request-level block before the page is ever served, not a
+# markup/selector issue.
+#
+# A headless-browser fetch (e.g. Cloudflare's own Browser Run product,
+# https://developers.cloudflare.com/browser-run/) was considered, but
+# Cloudflare's FAQ states Browser Run traffic is *always* flagged as bot
+# traffic by Bot Management on the target site, so it is not expected to
+# clear this specific challenge either and hasn't been pursued.
+#
+# sensor.beer_price_dunnesstores is expected to read "unavailable" until a
+# different approach is found (e.g. a self-hosted/undetected browser fetch).
 
 resource: "https://www.dunnesstoresgrocery.com/product/wicklow-wolf-tundra-tropical-ipa-440ml-id-100298563"
 scan_interval: 86400
