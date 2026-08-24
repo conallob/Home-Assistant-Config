@@ -1,0 +1,39 @@
+# O'Briens Wine - Wicklow Wolf Tundra Tropical IPA (44cl can) price tracker
+# https://www.obrienswine.ie/products/wicklow-wolf-tundra-tropical-ipa-44cl-can
+#
+# Shopify product pages normally embed a schema.org "Product" JSON-LD block
+# (used for Google Shopping/SEO), so we try to pull "price" out of that first
+# and fall back to the Open Graph "product:price:amount" meta tag, which
+# Shopify themes also commonly render. Refreshed once a day - this is a
+# slow-moving retail price, not something that needs frequent polling.
+#
+# NOTE: selectors here were written without being able to load the live page
+# (sandboxed dev environment has no outbound network access). After this
+# merges, check sensor.beer_price_obrienswine in Developer Tools - if it
+# reads "unavailable", fetch the page HTML and adjust the regex patterns
+# below to match what's actually there, e.g.:
+#   curl -s -A "Mozilla/5.0" "https://www.obrienswine.ie/products/wicklow-wolf-tundra-tropical-ipa-44cl-can" | grep -o '"price":"[0-9.]*"'
+
+resource: "https://www.obrienswine.ie/products/wicklow-wolf-tundra-tropical-ipa-44cl-can"
+scan_interval: 86400
+headers:
+  User-Agent: "Mozilla/5.0 (compatible; HomeAssistant/beer-price-tracker)"
+sensor:
+  - name: "Beer Price O'Briens Wine"
+    unique_id: beer_price_obrienswine
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+    value_template: >-
+      {% set ld = value | regex_findall('"price"\s*:\s*"?([0-9]+\.[0-9]{2})"?') %}
+      {% set og = value | regex_findall('product:price:amount"\s+content="([0-9]+\.[0-9]{2})"') %}
+      {% if ld %}
+        {{ ld[0] }}
+      {% elif og %}
+        {{ og[0] }}
+      {% else %}
+        unavailable
+      {% endif %}
+    attributes:
+      url: "https://www.obrienswine.ie/products/wicklow-wolf-tundra-tropical-ipa-44cl-can"
+      store: "O'Briens Wine"
