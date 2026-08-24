@@ -38,6 +38,3 @@ sensor:
       {% else %}
         unavailable
       {% endif %}
-    attributes:
-      url: "https://shop.supervalu.ie/sm/delivery/rsid/5550/product/wicklow-wolf-tundra-tropical-ipa-can-440-ml-id-1675882007"
-      store: "SuperValu"
