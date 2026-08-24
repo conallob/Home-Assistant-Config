@@ -51,12 +51,22 @@ sensor:
       {% else %}
         unavailable
       {% endif %}
-    attributes:
-      url: "https://www.tesco.ie/shop/en-IE/products/316180014"
-      store: "Tesco"
-      is_member_price: >-
-        {% set member = value | regex_findall('"(?:clubcardPrice|memberPrice|loyaltyPrice|promoPrice)"\s*:\s*"?([0-9]+\.[0-9]{2})"?') %}
-        {{ member | length > 0 }}
-      regular_price: >-
-        {% set ld = value | regex_findall('"price"\s*:\s*"?([0-9]+\.[0-9]{2})"?') %}
-        {{ ld[0] if ld else 'unknown' }}
+
+  # The `rest` sensor platform has no generic templated-attributes option
+  # (only json_attributes, which needs a JSON response body - ours is HTML),
+  # so the member-price flag and regular price are tracked as their own
+  # sibling sensors off the same fetched resource instead of as attributes.
+  - name: "Beer Price Tesco Is Member Price"
+    unique_id: beer_price_tesco_is_member_price
+    value_template: >-
+      {% set member = value | regex_findall('"(?:clubcardPrice|memberPrice|loyaltyPrice|promoPrice)"\s*:\s*"?([0-9]+\.[0-9]{2})"?') %}
+      {{ member | length > 0 }}
+
+  - name: "Beer Price Tesco Regular Price"
+    unique_id: beer_price_tesco_regular_price
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+    value_template: >-
+      {% set ld = value | regex_findall('"price"\s*:\s*"?([0-9]+\.[0-9]{2})"?') %}
+      {{ ld[0] if ld else 'unavailable' }}

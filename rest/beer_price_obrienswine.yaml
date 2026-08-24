@@ -34,6 +34,3 @@ sensor:
       {% else %}
         unavailable
       {% endif %}
-    attributes:
-      url: "https://www.obrienswine.ie/products/wicklow-wolf-tundra-tropical-ipa-44cl-can"
-      store: "O'Briens Wine"

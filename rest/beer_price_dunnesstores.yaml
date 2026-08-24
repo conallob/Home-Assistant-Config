@@ -31,6 +31,3 @@ sensor:
       {% else %}
         unavailable
       {% endif %}
-    attributes:
-      url: "https://www.dunnesstoresgrocery.com/product/wicklow-wolf-tundra-tropical-ipa-440ml-id-100298563"
-      store: "Dunnes Stores"
