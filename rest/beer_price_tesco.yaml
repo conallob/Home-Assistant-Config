@@ -1,0 +1,43 @@
+# Tesco Ireland - Wicklow Wolf Tundra Tropical IPA price tracker
+# https://www.tesco.ie/shop/en-IE/products/316180014
+#
+# Same JSON-LD / Open Graph price extraction strategy as the other beer_price_*
+# sensors - see rest/beer_price_obrienswine.yaml for the rationale. Refreshed
+# once a day.
+#
+# RISK: tesco.ie/shop is a heavily JavaScript-rendered storefront. A plain
+# REST GET (no JS execution) may not receive the price at all if it's only
+# populated client-side after page load - in that case this sensor will stay
+# "unavailable" no matter how the regex is tuned, and pulling the price would
+# need a real browser-based fetch (e.g. a headless-browser script called via
+# rest_command/command_line) instead of the `rest` platform used here.
+#
+# NOTE: written without being able to load the live page (sandboxed dev
+# environment has no outbound network access). If sensor.beer_price_tesco
+# reads "unavailable" after deploying, fetch the page HTML to check whether the
+# price is present in the raw response at all:
+#   curl -s -A "Mozilla/5.0" "https://www.tesco.ie/shop/en-IE/products/316180014" | grep -o '"price":[0-9.]*'
+
+resource: "https://www.tesco.ie/shop/en-IE/products/316180014"
+scan_interval: 86400
+headers:
+  User-Agent: "Mozilla/5.0 (compatible; HomeAssistant/beer-price-tracker)"
+sensor:
+  - name: "Beer Price Tesco"
+    unique_id: beer_price_tesco
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+    value_template: >-
+      {% set ld = value | regex_findall('"price"\s*:\s*"?([0-9]+\.[0-9]{2})"?') %}
+      {% set og = value | regex_findall('product:price:amount"\s+content="([0-9]+\.[0-9]{2})"') %}
+      {% if ld %}
+        {{ ld[0] }}
+      {% elif og %}
+        {{ og[0] }}
+      {% else %}
+        unavailable
+      {% endif %}
+    attributes:
+      url: "https://www.tesco.ie/shop/en-IE/products/316180014"
+      store: "Tesco"

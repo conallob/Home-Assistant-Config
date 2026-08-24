@@ -1,0 +1,36 @@
+# Dunnes Stores Grocery - Wicklow Wolf Tundra Tropical IPA (440ml) price tracker
+# https://www.dunnesstoresgrocery.com/product/wicklow-wolf-tundra-tropical-ipa-440ml-id-100298563
+#
+# Same JSON-LD / Open Graph price extraction strategy as the other beer_price_*
+# sensors - see rest/beer_price_obrienswine.yaml for the rationale. Refreshed
+# once a day.
+#
+# NOTE: written without being able to load the live page (sandboxed dev
+# environment has no outbound network access). If sensor.beer_price_dunnesstores
+# reads "unavailable" after deploying, fetch the page HTML and adjust the
+# regex patterns below, e.g.:
+#   curl -s -A "Mozilla/5.0" "https://www.dunnesstoresgrocery.com/product/wicklow-wolf-tundra-tropical-ipa-440ml-id-100298563" | grep -o '"price":"[0-9.]*"'
+
+resource: "https://www.dunnesstoresgrocery.com/product/wicklow-wolf-tundra-tropical-ipa-440ml-id-100298563"
+scan_interval: 86400
+headers:
+  User-Agent: "Mozilla/5.0 (compatible; HomeAssistant/beer-price-tracker)"
+sensor:
+  - name: "Beer Price Dunnes Stores"
+    unique_id: beer_price_dunnesstores
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+    value_template: >-
+      {% set ld = value | regex_findall('"price"\s*:\s*"?([0-9]+\.[0-9]{2})"?') %}
+      {% set og = value | regex_findall('product:price:amount"\s+content="([0-9]+\.[0-9]{2})"') %}
+      {% if ld %}
+        {{ ld[0] }}
+      {% elif og %}
+        {{ og[0] }}
+      {% else %}
+        unavailable
+      {% endif %}
+    attributes:
+      url: "https://www.dunnesstoresgrocery.com/product/wicklow-wolf-tundra-tropical-ipa-440ml-id-100298563"
+      store: "Dunnes Stores"

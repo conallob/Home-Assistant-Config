@@ -1,0 +1,32 @@
+# Cheapest current price for Wicklow Wolf Tundra Tropical IPA across the
+# stores tracked by rest/beer_price_*.yaml. Ignores any store sensor that is
+# currently "unavailable" (e.g. price couldn't be scraped, or not yet polled).
+
+sensor:
+  - name: "Beer Price Wicklow Wolf Tundra Cheapest"
+    unique_id: beer_price_wicklow_wolf_tundra_cheapest
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+    state: >-
+      {% set prices = ['sensor.beer_price_obrienswine', 'sensor.beer_price_dunnesstores',
+                        'sensor.beer_price_supervalu', 'sensor.beer_price_tesco']
+                       | map('states') | select('is_number') | map('float') | list %}
+      {{ prices | min if prices else 'unavailable' }}
+    attributes:
+      cheapest_store: >-
+        {% set stores = {'sensor.beer_price_obrienswine': "O'Briens Wine",
+                          'sensor.beer_price_dunnesstores': 'Dunnes Stores',
+                          'sensor.beer_price_supervalu': 'SuperValu',
+                          'sensor.beer_price_tesco': 'Tesco'} %}
+        {% set ns = namespace(best_entity=none, best_price=none) %}
+        {% for entity, name in stores.items() %}
+          {% set s = states(entity) %}
+          {% if s not in ['unavailable', 'unknown', 'none', ''] %}
+            {% if ns.best_price is none or s | float < ns.best_price %}
+              {% set ns.best_entity = name %}
+              {% set ns.best_price = s | float %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.best_entity if ns.best_entity else 'unknown' }}
