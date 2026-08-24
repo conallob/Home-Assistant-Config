@@ -12,21 +12,19 @@
 # with a Clubcard. The `is_member_price` attribute records which one was used
 # so this can be told apart from a straight regular-price read.
 #
-# RISK: tesco.ie/shop is a heavily JavaScript-rendered storefront. A plain
-# REST GET (no JS execution) may not receive the price at all if it's only
-# populated client-side after page load - in that case this sensor will stay
-# "unavailable" no matter how the regex is tuned, and pulling the price would
-# need a real browser-based fetch (e.g. a headless-browser script called via
-# rest_command/command_line) instead of the `rest` platform used here.
+# KNOWN LIMITATION (2026-08-24): this sensor cannot currently work. Confirmed
+# via curl -v against the live URL that www.tesco.ie sits behind Akamai bot
+# management and returns a plain HTTP 403 "Access Denied" (Akamai edge error,
+# not even a JS challenge page) for any plain (non-browser) request - so no
+# regex tuning here can fix it, and the clubcard/member-price key name below
+# remains unverified since the real page HTML has never been reachable. This
+# is a request-level block before the page is ever served, not a
+# markup/selector issue.
 #
-# NOTE: written without being able to load the live page (sandboxed dev
-# environment has no outbound network access). The clubcard/member price key
-# name is a best guess (common Tesco naming: clubcardPrice/memberPrice/
-# loyaltyPrice/promoPrice) and is UNVERIFIED. If sensor.beer_price_tesco
-# reads "unavailable", or is_member_price stays false while a Clubcard Price
-# is visible on the page, fetch the raw HTML to find the real key:
-#   curl -s -A "Mozilla/5.0" "https://www.tesco.ie/shop/en-IE/products/316180014" \
-#     | grep -oE '"[a-zA-Z]*[Pp]rice[a-zA-Z]*"\s*:\s*"?[0-9]+\.[0-9]{2}"?'
+# sensor.beer_price_tesco, sensor.beer_price_tesco_is_member_price, and
+# sensor.beer_price_tesco_regular_price are all expected to read
+# "unavailable"/false until a different approach is found (e.g. a
+# self-hosted/undetected browser fetch).
 
 resource: "https://www.tesco.ie/shop/en-IE/products/316180014"
 scan_interval: 86400
