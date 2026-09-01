@@ -1,86 +1,56 @@
 name: Deploy Config
 
 on:
-  workflow_run:
-    workflows:
-      - "Home Assistant Configuration Check"
-      - "ESPHome Configuration Check"
-    types:
-      - completed
+  push:
     branches:
       - main
 
 jobs:
-  deploy_config:
+  changes:
+    name: Detect changed paths
     runs-on: ubuntu-latest
-    # Only deploy if:
-    # 1. The triggering workflow succeeded
-    # 2. It was triggered by a push (not a PR)
-    # Note: With multiple workflows in the list, this job runs when ANY workflow completes.
-    # We check the specific workflow name and conclusion to handle this correctly.
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
+    outputs:
+      esphome: ${{ steps.check.outputs.esphome }}
     steps:
-      - name: Check all required workflows passed
-        uses: actions/github-script@v7
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          script: |
-            const requiredWorkflows = [
-              'Home Assistant Configuration Check',
-              'ESPHome Configuration Check'
-            ];
+          fetch-depth: 0
 
-            // Get the head SHA from the triggering workflow
-            const headSha = context.payload.workflow_run.head_sha;
-            console.log(`Checking workflows for commit: ${headSha}`);
+      - name: Check for ESPHome-relevant changes
+        id: check
+        run: |
+          if git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | grep -qE '^(esphome/|\.github/workflows/esphome-config-check\.yaml)'; then
+            echo "esphome=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "esphome=false" >> "$GITHUB_OUTPUT"
+          fi
 
-            // Get ALL workflow runs for this commit (not just completed)
-            // This avoids a race condition where in-progress workflows would be missed
-            const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head_sha: headSha
-            });
+  # Both checks run as job-level dependencies (not via workflow_run) so
+  # deploy_config's `needs:` gives a real completion guarantee instead of
+  # racing whichever workflow_run event happens to arrive first.
+  home_assistant_check:
+    name: Home Assistant Configuration Check
+    needs: changes
+    uses: ./.github/workflows/home-assistant-config-check.yaml
 
-            // Check each required workflow
-            for (const workflowName of requiredWorkflows) {
-              // Find any run for this workflow
-              const workflowRuns = runs.workflow_runs.filter(run => run.name === workflowName);
+  esphome_check:
+    name: ESPHome Configuration Check
+    needs: changes
+    if: needs.changes.outputs.esphome == 'true'
+    uses: ./.github/workflows/esphome-config-check.yaml
 
-              if (workflowRuns.length === 0) {
-                // Workflow was not triggered (no matching path filters)
-                console.log(`✓ ${workflowName}: not triggered (no matching files changed)`);
-                continue;
-              }
-
-              // Get the most recent run for this workflow
-              const latestRun = workflowRuns[0];
-
-              // Check if workflow is still running
-              if (latestRun.status !== 'completed') {
-                core.setFailed(`${workflowName} is still running (status: ${latestRun.status}). Cannot deploy until all workflows complete.`);
-                return;
-              }
-
-              // Check conclusion
-              if (latestRun.conclusion === 'success') {
-                console.log(`✓ ${workflowName}: passed`);
-                continue;
-              }
-
-              if (latestRun.conclusion === 'skipped') {
-                console.log(`✓ ${workflowName}: skipped (no matching files changed)`);
-                continue;
-              }
-
-              // Workflow completed but did not succeed
-              core.setFailed(`${workflowName} did not succeed. Conclusion: ${latestRun.conclusion}`);
-              return;
-            }
-
-            console.log('All required workflows have passed!');
-
+  deploy_config:
+    name: Deploy to Home Assistant
+    runs-on: ubuntu-latest
+    needs:
+      - home_assistant_check
+      - esphome_check
+    if: |
+      always() &&
+      needs.home_assistant_check.result == 'success' &&
+      (needs.esphome_check.result == 'success' || needs.esphome_check.result == 'skipped')
+    steps:
       - name: Deploy to Home Assistant
         uses: joelwmale/webhook-action@2.1.0
         with:
