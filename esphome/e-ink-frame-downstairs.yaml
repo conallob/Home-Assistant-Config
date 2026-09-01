@@ -50,8 +50,39 @@ substitutions:
   # colour convention is this specific breakout's, not a universal
   # standard. If the device doesn't show up on the I2C bus (address 0x36)
   # after wiring, swap the SDA/SCL pins below first.
+  #
+  # PHYSICAL WIRING CHECKLIST (MAX17043 breakout -> XIAO ESP32C6):
+  #   Black (GND) -> GND
+  #   Red   (VCC) -> 3V3
+  #   Yellow(SDA) -> D0 / GPIO0
+  #   Green (SCL) -> D1 / GPIO1
+  # Not yet physically wired as of 2026-09-01 - pins above are reserved
+  # for it but the breakout isn't connected to the XIAO yet.
   pin_i2c_sda: "GPIO0" # D0 - I2C SDA - Yellow wire
   pin_i2c_scl: "GPIO1" # D1 - I2C SCL - Green wire
+
+  # Onboard Bat+/Bat- solder pads (XIAO ESP32C6's single-cell Li-ion/LiPo
+  # charge circuit, ~3.7V nominal / 4.2V full charge). A JST connector was
+  # soldered to these pads and wired to a 2x 18650 cell holder for battery
+  # backup power.
+  #
+  # IMPORTANT - series vs. parallel: the onboard charge IC is rated for a
+  # SINGLE cell. Two cells in series (~7.4-8.4V) would exceed that rating
+  # and risks damaging the board/cells - the holder must be wired in
+  # PARALLEL (both cells stay at ~3.7-4.2V, capacity doubles) for this to
+  # be safe to leave connected. Cells were observed in the same physical
+  # orientation in the holder, which is consistent with parallel wiring
+  # (series holders typically need cells flipped so the connecting tab
+  # bridges + to -), but this has NOT yet been confirmed with a
+  # multimeter across Bat+/Bat- - do that before leaving this connected
+  # unattended, and disconnect immediately if the reading is above ~4.2V.
+  #
+  # Note: unlike the XIAO ESP32S3 (which has a built-in resistor divider
+  # exposing battery voltage on pin A0), the XIAO ESP32C6 has no built-in
+  # ADC tap on Bat+ - reading voltage that way would require soldering an
+  # external divider onto a free ADC-capable pin, and isn't done here.
+  # Battery voltage/level for this build is read via the MAX17043 fuel
+  # gauge on the I2C bus above, not via a direct ADC read of Bat+.
 
   # Deep Sleep
   gpio_deep_sleep_wake_up: "GPIO4"
