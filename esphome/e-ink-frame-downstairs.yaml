@@ -871,54 +871,63 @@ display:
       // Row/gap sizing below is a first estimate - check against the
       // physical display and adjust bus_row_h/the gap before OPEN
       // DOORS/WINDOWS if either section crowds the footer.
+      // The direction arrow already conveys which stop a row is for, so
+      // rows only need the route code, not the stop name.
+      //
+      // Sensor state is an ISO8601 UTC timestamp, e.g.
+      // "2026-09-01T15:08:28+00:00" (Transit app convention - if a sensor
+      // ever reports a non-UTC offset instead this will render a wrong
+      // time, since the offset itself is never read, only the first 19
+      // characters). Formats it as "<route> in <N> min (<local HH:MM>)".
+      auto format_bus = [&](bool has_state, const std::string &raw, const char *route) -> std::string {
+        char buf[32];
+        if (!has_state || raw.size() < 19) {
+          snprintf(buf, sizeof(buf), "%s --", route);
+          return std::string(buf);
+        }
+        std::string clean = raw.substr(0, 19);
+        clean[10] = ' ';  // "YYYY-MM-DDTHH:MM:SS" -> "YYYY-MM-DD HH:MM:SS" for strptime
+        ESPTime dep{};
+        if (!ESPTime::strptime(clean.c_str(), clean.size(), dep)) {
+          snprintf(buf, sizeof(buf), "%s --", route);
+          return std::string(buf);
+        }
+        dep.recalc_timestamp_utc(false);
+        int mins = (int) ((dep.timestamp - id(homeassistant_time).now().timestamp) / 60);
+        if (mins < 0) mins = 0;
+        ESPTime local_dep = ESPTime::from_epoch_local(dep.timestamp);
+        snprintf(buf, sizeof(buf), "%s in %d min (%02d:%02d)", route, mins, local_dep.hour, local_dep.minute);
+        return std::string(buf);
+      };
+
       int bus_y = util_y + util_row + 10;
       it.printf(center_col_x, bus_y, id(font_small), id(color_red), TextAlign::TOP_LEFT, "NEXT BUS");
 
       int bus_row_y = bus_y + 22;
       int bus_row_h = 24;
 
-      // Fairyhill - E1 to Ballywaltrim
+      // Fairyhill -> Ballywaltrim
       it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F004D");
-      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Fairyhill E1");
-      if (id(bus_fairyhill_e1_ballywaltrim).has_state()) {
-        it.printf(center_col_x + center_col_width, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%s", id(bus_fairyhill_e1_ballywaltrim).state.c_str());
-      } else {
-        it.printf(center_col_x + center_col_width, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--");
-      }
+      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s",
+                format_bus(id(bus_fairyhill_e1_ballywaltrim).has_state(), id(bus_fairyhill_e1_ballywaltrim).state, "E1").c_str());
       bus_row_y += bus_row_h;
 
-      // Killarney Road - E1 to Northwood
+      // Killarney Road -> Northwood
       it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0054");
-      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Killarney Rd E1");
-      if (id(bus_killarney_road_e1_northwood).has_state()) {
-        it.printf(center_col_x + center_col_width, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%s", id(bus_killarney_road_e1_northwood).state.c_str());
-      } else {
-        it.printf(center_col_x + center_col_width, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--");
-      }
+      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s",
+                format_bus(id(bus_killarney_road_e1_northwood).has_state(), id(bus_killarney_road_e1_northwood).state, "E1").c_str());
       bus_row_y += bus_row_h;
 
-      // Killarney Road - L12 to Bray Station
+      // Killarney Road -> Bray Station
       it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0054");
-      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Killarney Rd L12");
-      if (id(bus_killarney_road_l12_bray_station).has_state()) {
-        it.printf(center_col_x + center_col_width, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%s", id(bus_killarney_road_l12_bray_station).state.c_str());
-      } else {
-        it.printf(center_col_x + center_col_width, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--");
-      }
+      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s",
+                format_bus(id(bus_killarney_road_l12_bray_station).has_state(), id(bus_killarney_road_l12_bray_station).state, "L12").c_str());
       bus_row_y += bus_row_h;
 
-      // Oldcourt - 45A to Dun Laoghaire
+      // Oldcourt -> Dun Laoghaire
       it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F17A1");
-      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Oldcourt 45A");
-      if (id(bus_oldcourt_45a_dun_laoghaire).has_state()) {
-        it.printf(center_col_x + center_col_width, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
-                  "%s", id(bus_oldcourt_45a_dun_laoghaire).state.c_str());
-      } else {
-        it.printf(center_col_x + center_col_width, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "--");
-      }
+      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s",
+                format_bus(id(bus_oldcourt_45a_dun_laoghaire).has_state(), id(bus_oldcourt_45a_dun_laoghaire).state, "45A").c_str());
       bus_row_y += bus_row_h;
 
       // ===== OPEN DOORS/WINDOWS (below the bus departures, same column) =====
