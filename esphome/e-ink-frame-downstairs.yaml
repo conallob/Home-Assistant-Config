@@ -874,11 +874,12 @@ display:
       // The direction arrow already conveys which stop a row is for, so
       // rows only need the route code, not the stop name.
       //
-      // Sensor state is an ISO8601 UTC timestamp, e.g.
-      // "2026-09-01T15:08:28+00:00" (Transit app convention - if a sensor
-      // ever reports a non-UTC offset instead this will render a wrong
-      // time, since the offset itself is never read, only the first 19
-      // characters). Formats it as "<route> in <N> min (<local HH:MM>)".
+      // Sensor state is an ISO8601 timestamp, e.g.
+      // "2026-09-01T15:08:28+00:00", already in the same timezone as the
+      // device's own clock (its offset suffix is decorative and never
+      // read - only the first 19 characters are parsed). So this is a
+      // plain local-to-local diff, no UTC conversion involved. Formats
+      // it as "<route> in <N> min (<HH:MM>)".
       auto format_bus = [&](bool has_state, const std::string &raw, const char *route) -> std::string {
         char buf[32];
         if (!has_state || raw.size() < 19) {
@@ -892,11 +893,10 @@ display:
           snprintf(buf, sizeof(buf), "%s --", route);
           return std::string(buf);
         }
-        dep.recalc_timestamp_utc(false);
+        dep.recalc_timestamp_local();
         int mins = (int) ((dep.timestamp - id(homeassistant_time).now().timestamp) / 60);
         if (mins < 0) mins = 0;
-        ESPTime local_dep = ESPTime::from_epoch_local(dep.timestamp);
-        snprintf(buf, sizeof(buf), "%s in %d min (%02d:%02d)", route, mins, local_dep.hour, local_dep.minute);
+        snprintf(buf, sizeof(buf), "%s in %d min (%02d:%02d)", route, mins, dep.hour, dep.minute);
         return std::string(buf);
       };
 
