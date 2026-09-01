@@ -636,9 +636,8 @@ display:
 
       // Open doors/windows - HKC alarm contact sensors (text state,
       // "Open" or "Closed"). IR/motion zones are deliberately not part
-      // of this list. Drawn below the electricity histogram (center
-      // column), computed here since it doesn't depend on that column's
-      // layout.
+      // of this list. Drawn below the bus departures (center column),
+      // computed here since it doesn't depend on that column's layout.
       const char* open_labels[9] = {"Back", "Front", "F.Room", "Garage", "Kitchen", "Roller", "Shack", "Sitting", "Up Win"};
       bool open_state[9] = {
         id(door_back).has_state() && id(door_back).state == "Open",
@@ -869,12 +868,7 @@ display:
       }
 
       // ===== NEXT BUS DEPARTURES =====
-      // Replaces the electricity usage histogram that used to live here -
-      // that config wasn't deleted, just moved out of this device's
-      // lambda (see git history / a sibling e-ink display config for its
-      // reuse) rather than kept here commented out.
-      // Row/gap sizing below is a first estimate sized to match the
-      // vertical budget the histogram used to occupy - check against the
+      // Row/gap sizing below is a first estimate - check against the
       // physical display and adjust bus_row_h/the gap before OPEN
       // DOORS/WINDOWS if either section crowds the footer.
       int bus_y = util_y + util_row + 10;
