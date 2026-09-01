@@ -387,7 +387,7 @@ font:
       - "\U000F140B" # mdi:solar-power
       - "\U000F004D" # mdi:arrow-left (bus direction)
       - "\U000F0054" # mdi:arrow-right (bus direction)
-      - "\U000F0042" # mdi:arrow-bottom-left (bus direction)
+      - "\U000F17A1" # mdi:arrow-down-left (bus direction)
 
 # Binary sensors for Home Assistant data
 binary_sensor:
@@ -917,7 +917,7 @@ display:
       bus_row_y += bus_row_h;
 
       // Oldcourt - 45A to Dun Laoghaire
-      it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0042");
+      it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F17A1");
       it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Oldcourt 45A");
       if (id(bus_oldcourt_45a_dun_laoghaire).has_state()) {
         it.printf(center_col_x + center_col_width, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
