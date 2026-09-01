@@ -1,12 +1,12 @@
 name: Home Assistant Configuration Check
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
+  # Also callable as a job dependency from deploy.yml, so deploy can wait
+  # on this check's actual completion instead of racing it via workflow_run.
+  workflow_call:
 
 jobs:
   validate:

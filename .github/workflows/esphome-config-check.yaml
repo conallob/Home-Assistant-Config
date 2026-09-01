@@ -1,18 +1,15 @@
 name: ESPHome Configuration Check
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'esphome/**'
-      - '.github/workflows/esphome-config-check.yaml'
   pull_request:
     branches:
       - main
     paths:
       - 'esphome/**'
       - '.github/workflows/esphome-config-check.yaml'
+  # Also callable as a job dependency from deploy.yml, so deploy can wait
+  # on this check's actual completion instead of racing it via workflow_run.
+  workflow_call:
 
 jobs:
   validate:
