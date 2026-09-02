@@ -804,34 +804,39 @@ display:
                   "%.1f°", hot_water_temp);
       }
 
-      // ===== REVOLUT KIDS (bottom-left corner, pinned above the footer) =====
-      int kids_row_h = 22;
-      int kids_block_h = 22 + 8 + kids_row_h * 2;  // header line + gap + 2 rows
-      int kids_header_y = (SCREEN_HEIGHT - 35) - 10 - kids_block_h;
+      // ===== REVOLUT BALANCES bubble (bottom-left corner, pinned above the footer) =====
+      // Bordered like the header row bubbles - a plain text list here was
+      // hard to read from across the room. Taller than the old KIDS block
+      // it replaces, so clearance from the HOME list above is tighter
+      // than before (~7px estimated) - check against the physical
+      // display and trim a HOME row's height if it overlaps.
+      const int REVOLUT_BUBBLE_HEIGHT = 86;
+      int revolut_bubble_y = (SCREEN_HEIGHT - 35) - 10 - REVOLUT_BUBBLE_HEIGHT;
 
-      it.printf(left_col_x, kids_header_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "KIDS");
-      it.line(left_col_x, kids_header_y + 22, left_col_x + left_col_width, kids_header_y + 22, id(color_red));
+      it.rectangle(left_col_x, revolut_bubble_y, left_col_width, REVOLUT_BUBBLE_HEIGHT, id(color_black));
+      it.printf(left_col_x + 8, revolut_bubble_y + 8, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "REVOLUT");
 
-      int kids_y = kids_header_y + 30;
+      int revolut_row_h = 22;
+      int revolut_y = revolut_bubble_y + 34;
 
       // Genevieve Account Balance
-      it.printf(left_col_x, kids_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Gen");
+      it.printf(left_col_x + 8, revolut_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Gen");
       if (id(genevieve_account_balance).has_state()) {
-        it.printf(left_col_x + left_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(left_col_x + left_col_width - 8, revolut_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
                   "€%.2f", id(genevieve_account_balance).state);
       } else {
-        it.printf(left_col_x + left_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
+        it.printf(left_col_x + left_col_width - 8, revolut_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
       }
 
-      kids_y += kids_row_h;
+      revolut_y += revolut_row_h;
 
       // Reuben Account Balance
-      it.printf(left_col_x, kids_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Reu");
+      it.printf(left_col_x + 8, revolut_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Reu");
       if (id(reuben_account_balance).has_state()) {
-        it.printf(left_col_x + left_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(left_col_x + left_col_width - 8, revolut_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT,
                   "€%.2f", id(reuben_account_balance).state);
       } else {
-        it.printf(left_col_x + left_col_width, kids_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
+        it.printf(left_col_x + left_col_width - 8, revolut_y, id(font_currency), id(color_black), TextAlign::TOP_RIGHT, "--");
       }
 
       // ===== CENTER COLUMN (Utilities) =====
@@ -870,76 +875,102 @@ display:
         it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
       }
 
-      // ===== NEXT BUS DEPARTURES =====
-      // Row/gap sizing below is a first estimate - check against the
-      // physical display and adjust bus_row_h/the gap before OPEN
-      // DOORS/WINDOWS if either section crowds the footer.
-      // The direction arrow already conveys which stop a row is for, so
-      // rows only need the route code, not the stop name.
+      // ===== BUS DEPARTURE BUBBLES =====
+      // Bordered like the header row bubbles - a plain text list here was
+      // hard to read from across the room. 45A and the Fairyhill E1
+      // (towards Ballywaltrim) each get their own bubble; the two
+      // Killarney Road services (E1 towards Northwood, L12 towards Bray
+      // Station) share one double-wide bubble since they leave from the
+      // same stop. The direction arrow is always visible in its bubble,
+      // so a stop name isn't needed alongside it.
       //
       // Sensor state is an ISO8601 timestamp, e.g.
       // "2026-09-01T15:08:28+00:00", already in the same timezone as the
       // device's own clock (its offset suffix is decorative and never
       // read - only the first 19 characters are parsed). So this is a
-      // plain local-to-local diff, no UTC conversion involved. Formats
-      // it as "<route> in <N> min (<HH:MM>)".
-      auto format_bus = [&](bool has_state, const std::string &raw, const char *route) -> std::string {
-        char buf[32];
+      // plain local-to-local diff, no UTC conversion involved.
+      auto format_bus = [&](bool has_state, const std::string &raw) -> std::pair<std::string, std::string> {
+        char line1[16];
+        char line2[16];
+        line2[0] = '\0';
         if (!has_state || raw.size() < 19) {
-          snprintf(buf, sizeof(buf), "%s --", route);
-          return std::string(buf);
+          snprintf(line1, sizeof(line1), "--");
+          return {std::string(line1), std::string(line2)};
         }
         std::string clean = raw.substr(0, 19);
         clean[10] = ' ';  // "YYYY-MM-DDTHH:MM:SS" -> "YYYY-MM-DD HH:MM:SS" for strptime
         ESPTime dep{};
         if (!ESPTime::strptime(clean.c_str(), clean.size(), dep)) {
-          snprintf(buf, sizeof(buf), "%s --", route);
-          return std::string(buf);
+          snprintf(line1, sizeof(line1), "--");
+          return {std::string(line1), std::string(line2)};
         }
         dep.recalc_timestamp_local();
         int mins = (int) ((dep.timestamp - id(homeassistant_time).now().timestamp) / 60);
         if (mins < 0) mins = 0;
-        snprintf(buf, sizeof(buf), "%s in %d min (%02d:%02d)", route, mins, dep.hour, dep.minute);
-        return std::string(buf);
+        snprintf(line1, sizeof(line1), "in %d min", mins);
+        snprintf(line2, sizeof(line2), "(%02d:%02d)", dep.hour, dep.minute);
+        return {std::string(line1), std::string(line2)};
       };
 
-      int bus_y = util_y + util_row + 10;
-      it.printf(center_col_x, bus_y, id(font_small), id(color_red), TextAlign::TOP_LEFT, "NEXT BUS");
+      // Single-route bubble: icon top-left, route code big and bold
+      // top-right (mirrors the header bubbles' icon+value layout), then
+      // "in N min" / "(HH:MM)" stacked below - a narrow bubble can't fit
+      // all of that on one line.
+      auto draw_bus_bubble = [&](int bx, int by, int bw, int bh, const char *icon, bool has_state, const std::string &raw, const char *route) {
+        it.rectangle(bx, by, bw, bh, id(color_black));
+        it.printf(bx + 8, by + 8, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "%s", icon);
+        it.printf(bx + bw - 8, by + 6, id(font_bubble_value), id(color_black), TextAlign::TOP_RIGHT, "%s", route);
+        auto eta = format_bus(has_state, raw);
+        it.printf(bx + 8, by + 48, id(font_bubble_label), id(color_black), TextAlign::TOP_LEFT, "%s", eta.first.c_str());
+        if (!eta.second.empty()) {
+          it.printf(bx + 8, by + 72, id(font_small), id(color_black), TextAlign::TOP_LEFT, "%s", eta.second.c_str());
+        }
+      };
 
-      int bus_row_y = bus_y + 22;
-      int bus_row_h = 24;
+      // One row inside the double-wide Killarney Road bubble: icon + the
+      // full "<route> in <N> min (<HH:MM>)" on one line, since that
+      // bubble has the width for it.
+      auto draw_bus_row = [&](int rx, int ry, const char *icon, bool has_state, const std::string &raw, const char *route) {
+        it.printf(rx, ry, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "%s", icon);
+        auto eta = format_bus(has_state, raw);
+        std::string combined = std::string(route) + " " + eta.first;
+        if (!eta.second.empty()) combined += " " + eta.second;
+        it.printf(rx + 36, ry + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s", combined.c_str());
+      };
 
-      // Fairyhill -> Ballywaltrim
-      it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F004D");
-      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s",
-                format_bus(id(bus_fairyhill_e1_ballywaltrim).has_state(), id(bus_fairyhill_e1_ballywaltrim).state, "E1").c_str());
-      bus_row_y += bus_row_h;
+      const int BUS_BUBBLE_HEIGHT = 96;
+      const int BUS_BUBBLE_GAP = 10;
+      // 4 equal-width units across the row: 45A (1) + Fairyhill E1 (1) +
+      // Killarney Road (2, double-wide).
+      int bus_bubble_w = (center_col_width - 3 * BUS_BUBBLE_GAP) / 4;
+      int bus_double_w = center_col_width - 2 * bus_bubble_w - 2 * BUS_BUBBLE_GAP;
 
-      // Killarney Road -> Northwood
-      it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0054");
-      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s",
-                format_bus(id(bus_killarney_road_e1_northwood).has_state(), id(bus_killarney_road_e1_northwood).state, "E1").c_str());
-      bus_row_y += bus_row_h;
+      int bus_bubble_y = util_y + util_row + 14;
+      int bus_45a_x = center_col_x;
+      int bus_fairyhill_x = bus_45a_x + bus_bubble_w + BUS_BUBBLE_GAP;
+      int bus_killarney_x = bus_fairyhill_x + bus_bubble_w + BUS_BUBBLE_GAP;
 
-      // Killarney Road -> Bray Station
-      it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0054");
-      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s",
-                format_bus(id(bus_killarney_road_l12_bray_station).has_state(), id(bus_killarney_road_l12_bray_station).state, "L12").c_str());
-      bus_row_y += bus_row_h;
+      draw_bus_bubble(bus_45a_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F17A1",
+                       id(bus_oldcourt_45a_dun_laoghaire).has_state(), id(bus_oldcourt_45a_dun_laoghaire).state, "45A");
 
-      // Oldcourt -> Dun Laoghaire
-      it.printf(center_col_x, bus_row_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F17A1");
-      it.printf(center_col_x + 40, bus_row_y + 2, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s",
-                format_bus(id(bus_oldcourt_45a_dun_laoghaire).has_state(), id(bus_oldcourt_45a_dun_laoghaire).state, "45A").c_str());
-      bus_row_y += bus_row_h;
+      draw_bus_bubble(bus_fairyhill_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F004D",
+                       id(bus_fairyhill_e1_ballywaltrim).has_state(), id(bus_fairyhill_e1_ballywaltrim).state, "E1");
 
-      // ===== OPEN DOORS/WINDOWS (below the bus departures, same column) =====
-      int open_y = bus_row_y + 6;
-      it.printf(center_col_x, open_y, id(font_small), id(color_red), TextAlign::TOP_LEFT, "OPEN DOORS/WINDOWS");
+      it.rectangle(bus_killarney_x, bus_bubble_y, bus_double_w, BUS_BUBBLE_HEIGHT, id(color_black));
+      draw_bus_row(bus_killarney_x + 8, bus_bubble_y + 12, "\U000F0054",
+                   id(bus_killarney_road_e1_northwood).has_state(), id(bus_killarney_road_e1_northwood).state, "E1");
+      draw_bus_row(bus_killarney_x + 8, bus_bubble_y + 50, "\U000F0054",
+                   id(bus_killarney_road_l12_bray_station).has_state(), id(bus_killarney_road_l12_bray_station).state, "L12");
+
+      // ===== OPEN DOORS/WINDOWS bubble (below the bus bubbles, same column) =====
+      int open_bubble_y = bus_bubble_y + BUS_BUBBLE_HEIGHT + 10;
+      int open_bubble_h = 54;
+      it.rectangle(center_col_x, open_bubble_y, center_col_width, open_bubble_h, id(color_black));
+      it.printf(center_col_x + 8, open_bubble_y + 8, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "OPEN DOORS/WINDOWS");
       if (open_count == 0) {
-        it.printf(center_col_x, open_y + 18, id(font_body), id(color_black), TextAlign::TOP_LEFT, "All closed");
+        it.printf(center_col_x + 8, open_bubble_y + 30, id(font_body), id(color_black), TextAlign::TOP_LEFT, "All closed");
       } else {
-        it.printf(center_col_x, open_y + 18, id(font_body), id(color_red), TextAlign::TOP_LEFT, "%s", open_names.c_str());
+        it.printf(center_col_x + 8, open_bubble_y + 30, id(font_body), id(color_red), TextAlign::TOP_LEFT, "%s", open_names.c_str());
       }
 
       // ===== FOOTER =====
