@@ -846,33 +846,36 @@ display:
       // that freed width instead of a fixed ~2/3 split.
       int center_col_width = SCREEN_WIDTH - 2 * MARGIN - left_col_width - SECTION_GAP;
 
-      // Utilities section header
-      it.printf(center_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "UTILITIES");
-      it.line(center_col_x, content_y + 26, center_col_x + center_col_width, content_y + 26, id(color_red));
+      // ===== UTILITIES bubble =====
+      // Bordered like the header row bubbles - a plain header + underline
+      // here was hard to read from across the room.
+      const int UTIL_BUBBLE_HEIGHT = 106;
+      it.rectangle(center_col_x, content_y, center_col_width, UTIL_BUBBLE_HEIGHT, id(color_black));
+      it.printf(center_col_x + 8, content_y + 8, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "UTILITIES");
 
-      int util_y = content_y + 40;
+      int util_y = content_y + 34;
       int util_row = 38;
 
       // Grid Energy Today (daily kWh, matching Solar Today's units)
-      it.printf(center_col_x, util_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0A72");
-      it.printf(center_col_x + 40, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Grid Today");
+      it.printf(center_col_x + 8, util_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0A72");
+      it.printf(center_col_x + 48, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Grid Today");
       if (id(daily_grid_energy).has_state()) {
-        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(center_col_x + center_col_width - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f kWh", id(daily_grid_energy).state);
       } else {
-        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
+        it.printf(center_col_x + center_col_width - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
       }
 
       util_y += util_row;
 
       // Solar Yield Today
-      it.printf(center_col_x, util_y, id(font_icons_medium), id(color_yellow), TextAlign::TOP_LEFT, "\U000F05A8");
-      it.printf(center_col_x + 40, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Solar Today");
+      it.printf(center_col_x + 8, util_y, id(font_icons_medium), id(color_yellow), TextAlign::TOP_LEFT, "\U000F05A8");
+      it.printf(center_col_x + 48, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Solar Today");
       if (id(solar_today).has_state()) {
-        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(center_col_x + center_col_width - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f kWh", id(solar_today).state);
       } else {
-        it.printf(center_col_x + center_col_width, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
+        it.printf(center_col_x + center_col_width - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
       }
 
       // ===== BUS DEPARTURE BUBBLES =====
@@ -945,7 +948,7 @@ display:
       int bus_bubble_w = (center_col_width - 3 * BUS_BUBBLE_GAP) / 4;
       int bus_double_w = center_col_width - 2 * bus_bubble_w - 2 * BUS_BUBBLE_GAP;
 
-      int bus_bubble_y = util_y + util_row + 14;
+      int bus_bubble_y = content_y + UTIL_BUBBLE_HEIGHT + 14;
       int bus_45a_x = center_col_x;
       int bus_fairyhill_x = bus_45a_x + bus_bubble_w + BUS_BUBBLE_GAP;
       int bus_killarney_x = bus_fairyhill_x + bus_bubble_w + BUS_BUBBLE_GAP;
