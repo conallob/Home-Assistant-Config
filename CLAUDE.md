@@ -227,7 +227,9 @@ External video streaming service integration at `http://ratchet.int.taku.ie:1984
 
 ### E-Ink Info Displays
 
-ESPHome e-ink displays (e.g. `esphome/e-ink-frame-downstairs.yaml`) use a row of bordered "info bubbles" (TRMNL/bubble-UI style) across the top for glanceable data like time, date, and weather. Keep this row to **at most 4 bubbles** - beyond that, bubble width drops too low for legible text on these panels. If a new piece of glanceable info is needed, either replace/consolidate an existing bubble or place it elsewhere in the layout (e.g. as its own section further down the display) rather than adding a 5th bubble.
+ESPHome e-ink displays (e.g. `esphome/e-ink-frame-downstairs.yaml`) use bordered "info bubbles" (TRMNL/bubble-UI style) for glanceable data - not just the header row (time, date, weather), but every related-info block on the display (utilities, account balances, bus departures, open doors/windows, etc). Plain text lists/headers were repeatedly found hard to read from across the room, so **any new info block added to these displays should be its own bordered bubble** (`it.rectangle(...)` around it) rather than a bare label + underline or an unbordered list, matching whatever bubbles are already on that display.
+
+Keep the top header row to **at most 4 bubbles** - beyond that, bubble width drops too low for legible text on these panels. If a new piece of glanceable info is needed there, either replace/consolidate an existing bubble or place it elsewhere in the layout (e.g. as its own bubble further down the display) rather than adding a 5th header bubble. Bubbles below the header row aren't subject to that same 4-bubble cap, but should still be sized generously enough to keep their text legible at a distance - split a bubble's content across multiple lines, or make it double-width, rather than shrinking the font to fit everything on one line.
 
 ## File Naming Conventions
 
