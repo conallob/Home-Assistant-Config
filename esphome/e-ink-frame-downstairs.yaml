@@ -846,11 +846,19 @@ display:
       // that freed width instead of a fixed ~2/3 split.
       int center_col_width = SCREEN_WIDTH - 2 * MARGIN - left_col_width - SECTION_GAP;
 
-      // ===== UTILITIES bubble =====
+      // ===== UTILITIES + OPEN DOORS/WINDOWS bubbles, side by side =====
       // Bordered like the header row bubbles - a plain header + underline
-      // here was hard to read from across the room.
+      // here was hard to read from across the room. UTILITIES only ever
+      // has 2 short rows, so a full-width bubble for it alone wasted a
+      // lot of vertical space; pairing it with OPEN DOORS/WINDOWS (which
+      // needs even less) in the same row height uses that space instead
+      // of stacking them as two separate full-width bubbles.
       const int UTIL_BUBBLE_HEIGHT = 106;
-      it.rectangle(center_col_x, content_y, center_col_width, UTIL_BUBBLE_HEIGHT, id(color_black));
+      const int TOP_ROW_GAP = 10;
+      int top_row_bubble_w = (center_col_width - TOP_ROW_GAP) / 2;
+      int open_bubble_x = center_col_x + top_row_bubble_w + TOP_ROW_GAP;
+
+      it.rectangle(center_col_x, content_y, top_row_bubble_w, UTIL_BUBBLE_HEIGHT, id(color_black));
       it.printf(center_col_x + 8, content_y + 8, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "UTILITIES");
 
       int util_y = content_y + 34;
@@ -860,10 +868,10 @@ display:
       it.printf(center_col_x + 8, util_y, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "\U000F0A72");
       it.printf(center_col_x + 48, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Grid Today");
       if (id(daily_grid_energy).has_state()) {
-        it.printf(center_col_x + center_col_width - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(center_col_x + top_row_bubble_w - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f kWh", id(daily_grid_energy).state);
       } else {
-        it.printf(center_col_x + center_col_width - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
+        it.printf(center_col_x + top_row_bubble_w - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
       }
 
       util_y += util_row;
@@ -872,10 +880,21 @@ display:
       it.printf(center_col_x + 8, util_y, id(font_icons_medium), id(color_yellow), TextAlign::TOP_LEFT, "\U000F05A8");
       it.printf(center_col_x + 48, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "Solar Today");
       if (id(solar_today).has_state()) {
-        it.printf(center_col_x + center_col_width - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(center_col_x + top_row_bubble_w - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f kWh", id(solar_today).state);
       } else {
-        it.printf(center_col_x + center_col_width - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
+        it.printf(center_col_x + top_row_bubble_w - 8, util_y + 4, id(font_body), id(color_black), TextAlign::TOP_RIGHT, "-- kWh");
+      }
+
+      // OPEN DOORS/WINDOWS - was its own full-width bubble below the bus
+      // row; moved up alongside UTILITIES since its content (a label plus
+      // one line) never needed a whole row's height to itself.
+      it.rectangle(open_bubble_x, content_y, top_row_bubble_w, UTIL_BUBBLE_HEIGHT, id(color_black));
+      it.printf(open_bubble_x + 8, content_y + 8, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "OPEN DOORS/WINDOWS");
+      if (open_count == 0) {
+        it.printf(open_bubble_x + 8, content_y + 34, id(font_body), id(color_black), TextAlign::TOP_LEFT, "All closed");
+      } else {
+        it.printf(open_bubble_x + 8, content_y + 34, id(font_body), id(color_red), TextAlign::TOP_LEFT, "%s", open_names.c_str());
       }
 
       // ===== BUS DEPARTURE BUBBLES =====
@@ -965,17 +984,6 @@ display:
 
       draw_bus_bubble(bus_killarney_l12_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F0054",
                        id(bus_killarney_road_l12_bray_station).has_state(), id(bus_killarney_road_l12_bray_station).state, "L12");
-
-      // ===== OPEN DOORS/WINDOWS bubble (below the bus bubbles, same column) =====
-      int open_bubble_y = bus_bubble_y + BUS_BUBBLE_HEIGHT + 10;
-      int open_bubble_h = 54;
-      it.rectangle(center_col_x, open_bubble_y, center_col_width, open_bubble_h, id(color_black));
-      it.printf(center_col_x + 8, open_bubble_y + 8, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "OPEN DOORS/WINDOWS");
-      if (open_count == 0) {
-        it.printf(center_col_x + 8, open_bubble_y + 30, id(font_body), id(color_black), TextAlign::TOP_LEFT, "All closed");
-      } else {
-        it.printf(center_col_x + 8, open_bubble_y + 30, id(font_body), id(color_red), TextAlign::TOP_LEFT, "%s", open_names.c_str());
-      }
 
       // ===== FOOTER =====
       int footer_y = SCREEN_HEIGHT - 35;
