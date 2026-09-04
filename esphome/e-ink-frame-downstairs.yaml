@@ -880,18 +880,29 @@ display:
 
       // ===== BUS DEPARTURE BUBBLES =====
       // Bordered like the header row bubbles - a plain text list here was
-      // hard to read from across the room. 45A and the Fairyhill E1
-      // (towards Ballywaltrim) each get their own bubble; the two
-      // Killarney Road services (E1 towards Northwood, L12 towards Bray
-      // Station) share one double-wide bubble since they leave from the
-      // same stop. The direction arrow is always visible in its bubble,
-      // so a stop name isn't needed alongside it.
+      // hard to read from across the room. Four equal bubbles: 45A,
+      // Fairyhill E1 (towards Ballywaltrim), and the two Killarney Road
+      // services (E1 towards Northwood, L12 towards Bray Station) - the
+      // Killarney pair started out sharing one double-wide bubble, but
+      // that read as clunky in practice, so each route gets its own. The
+      // direction arrow is always visible in its bubble, so a stop name
+      // isn't needed alongside it.
       //
-      // Sensor state is an ISO8601 timestamp, e.g.
-      // "2026-09-01T15:08:28+00:00", already in the same timezone as the
-      // device's own clock (its offset suffix is decorative and never
-      // read - only the first 19 characters are parsed). So this is a
-      // plain local-to-local diff, no UTC conversion involved.
+      // Sensor state is an ISO8601 UTC timestamp, e.g.
+      // "2026-09-01T15:08:28+00:00" (the "+00:00" is genuine - Transit
+      // app reports these in UTC, not local time; only the first 19
+      // characters are parsed since the offset is always +00:00). An
+      // earlier version of this code treated the digits as already-local
+      // and skipped the UTC conversion, which put every displayed
+      // departure about an hour in the past (Ireland is UTC+1 for most
+      // of the year) and permanently clamped "in N min" to 0 - confirmed
+      // from a physical-display photo where "(15:43)" etc. only make
+      // sense as UTC 16:43 local, a few minutes after the 16:30 shown as
+      // the current time, not literally 15:43. Fixed by parsing as UTC
+      // (recalc_timestamp_utc - unambiguous, no DST involved) and
+      // converting to local only for display (from_epoch_local, which
+      // resolves DST correctly because it's applied to a definite
+      // instant rather than to bare wall-clock digits).
       auto format_bus = [&](bool has_state, const std::string &raw) -> std::pair<std::string, std::string> {
         char line1[16];
         char line2[16];
@@ -907,11 +918,13 @@ display:
           snprintf(line1, sizeof(line1), "--");
           return {std::string(line1), std::string(line2)};
         }
-        dep.recalc_timestamp_local();
+        dep.recalc_timestamp_utc(false);
+
         int mins = (int) ((dep.timestamp - id(homeassistant_time).now().timestamp) / 60);
         if (mins < 0) mins = 0;
+        ESPTime local_dep = ESPTime::from_epoch_local(dep.timestamp);
         snprintf(line1, sizeof(line1), "in %d min", mins);
-        snprintf(line2, sizeof(line2), "(%02d:%02d)", dep.hour, dep.minute);
+        snprintf(line2, sizeof(line2), "(%02d:%02d)", local_dep.hour, local_dep.minute);
         return {std::string(line1), std::string(line2)};
       };
 
@@ -930,28 +943,16 @@ display:
         }
       };
 
-      // One row inside the double-wide Killarney Road bubble: icon + the
-      // full "<route> in <N> min (<HH:MM>)" on one line, since that
-      // bubble has the width for it.
-      auto draw_bus_row = [&](int rx, int ry, const char *icon, bool has_state, const std::string &raw, const char *route) {
-        it.printf(rx, ry, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "%s", icon);
-        auto eta = format_bus(has_state, raw);
-        std::string combined = std::string(route) + " " + eta.first;
-        if (!eta.second.empty()) combined += " " + eta.second;
-        it.printf(rx + 36, ry + 4, id(font_body), id(color_black), TextAlign::TOP_LEFT, "%s", combined.c_str());
-      };
-
       const int BUS_BUBBLE_HEIGHT = 96;
       const int BUS_BUBBLE_GAP = 10;
-      // 4 equal-width units across the row: 45A (1) + Fairyhill E1 (1) +
-      // Killarney Road (2, double-wide).
+      // 4 equal-width bubbles across the row.
       int bus_bubble_w = (center_col_width - 3 * BUS_BUBBLE_GAP) / 4;
-      int bus_double_w = center_col_width - 2 * bus_bubble_w - 2 * BUS_BUBBLE_GAP;
 
       int bus_bubble_y = content_y + UTIL_BUBBLE_HEIGHT + 14;
       int bus_45a_x = center_col_x;
       int bus_fairyhill_x = bus_45a_x + bus_bubble_w + BUS_BUBBLE_GAP;
-      int bus_killarney_x = bus_fairyhill_x + bus_bubble_w + BUS_BUBBLE_GAP;
+      int bus_killarney_e1_x = bus_fairyhill_x + bus_bubble_w + BUS_BUBBLE_GAP;
+      int bus_killarney_l12_x = bus_killarney_e1_x + bus_bubble_w + BUS_BUBBLE_GAP;
 
       draw_bus_bubble(bus_45a_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F17A1",
                        id(bus_oldcourt_45a_dun_laoghaire).has_state(), id(bus_oldcourt_45a_dun_laoghaire).state, "45A");
@@ -959,11 +960,11 @@ display:
       draw_bus_bubble(bus_fairyhill_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F004D",
                        id(bus_fairyhill_e1_ballywaltrim).has_state(), id(bus_fairyhill_e1_ballywaltrim).state, "E1");
 
-      it.rectangle(bus_killarney_x, bus_bubble_y, bus_double_w, BUS_BUBBLE_HEIGHT, id(color_black));
-      draw_bus_row(bus_killarney_x + 8, bus_bubble_y + 12, "\U000F0054",
-                   id(bus_killarney_road_e1_northwood).has_state(), id(bus_killarney_road_e1_northwood).state, "E1");
-      draw_bus_row(bus_killarney_x + 8, bus_bubble_y + 50, "\U000F0054",
-                   id(bus_killarney_road_l12_bray_station).has_state(), id(bus_killarney_road_l12_bray_station).state, "L12");
+      draw_bus_bubble(bus_killarney_e1_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F0054",
+                       id(bus_killarney_road_e1_northwood).has_state(), id(bus_killarney_road_e1_northwood).state, "E1");
+
+      draw_bus_bubble(bus_killarney_l12_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F0054",
+                       id(bus_killarney_road_l12_bray_station).has_state(), id(bus_killarney_road_l12_bray_station).state, "L12");
 
       // ===== OPEN DOORS/WINDOWS bubble (below the bus bubbles, same column) =====
       int open_bubble_y = bus_bubble_y + BUS_BUBBLE_HEIGHT + 10;
