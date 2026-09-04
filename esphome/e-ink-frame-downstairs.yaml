@@ -326,28 +326,43 @@ font:
     id: font_bubble_label
     size: 20
 
-  # Medium-large for the (now compact) header time display
+  # Medium-large for the (now compact) header time display. Bumped from
+  # 48 - kept within the fixed 186px-wide Time/Date bubble (5 chars incl.
+  # colon at ~0.62em/char needs to stay under ~170px usable width after
+  # padding; 54 was the largest that comfortably fit without clipping).
   - file: "gfonts://Roboto@700"
     id: font_time
-    size: 48
+    size: 54
 
   # Bold for section headers
   - file: "gfonts://Roboto@700"
     id: font_header
     size: 24
 
-  # Extra large for temperature
+  # Extra large - the header weather bubble's temperature and AQI number
+  # (previously defined but unused).
   - file: "gfonts://Roboto@700"
     id: font_temp_large
     size: 56
 
+  # Huge, for the Date bubble's tear-off-calendar-style day-of-month
+  # number - the bubble's dominant element, similar to a paper desk
+  # calendar page.
+  - file: "gfonts://Roboto@700"
+    id: font_calendar_day
+    size: 64
+
   # Material Design Icons - Weather, sized for the header weather bubble.
   # font_icons_medium doesn't include the weather glyphs at all - using it
-  # for weather icons previously rendered as blank squares.
+  # for weather icons previously rendered as blank squares. Bumped from
+  # 42 to 56 now that the bubble is single-line (icon + temp only, no
+  # condition/feels-like/humidity text below it needing the space) - also
+  # carries the AQI icon so it matches the weather icon's size.
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf'
     id: font_icons_weather
-    size: 42
+    size: 56
     glyphs:
+      - "\U000F0D43" # mdi:air-filter (AQI)
       - "\U000F0590" # mdi:weather-cloudy
       - "\U000F0591" # mdi:weather-fog
       - "\U000F0592" # mdi:weather-hail
@@ -493,19 +508,15 @@ sensor:
     entity_id: weather.home
     attribute: temperature
 
-  - platform: homeassistant
-    id: weather_humidity
-    entity_id: weather.home
-    attribute: humidity
-
   # Outside temperature (OpenWeatherMap)
   - platform: homeassistant
     id: outside_temperature
     entity_id: sensor.openweathermap_temperature
 
+  # Air Quality Index (WAQI integration, Bray station)
   - platform: homeassistant
-    id: outside_feels_like
-    entity_id: sensor.openweathermap_apparent_temperature
+    id: air_quality_index
+    entity_id: sensor.bray_ireland_air_quality_index
 
   # Indoor temperatures - key rooms
   - platform: homeassistant
@@ -676,7 +687,7 @@ display:
       // Fonts here are bold and larger than the rest of the display -
       // readability from ~2.5m away was the point of this bubble row.
       const int BUBBLE_TOP = 6;
-      const int BUBBLE_HEIGHT = 135;  // tall enough for the full weather bubble (icon/temp/condition/feels/humidity)
+      const int BUBBLE_HEIGHT = 135;  // tall enough for the Date bubble's calendar-page styling (month/big day/weekday)
       const int BUBBLE_GAP = 10;
       int bubble_w = (SCREEN_WIDTH - 2 * MARGIN - BUBBLE_GAP * 3) / 4;  // Time/Date keep the original single-bubble width
 
@@ -685,62 +696,65 @@ display:
       int bubble3_x = bubble2_x + bubble_w + BUBBLE_GAP;
       int bubble3_w = SCREEN_WIDTH - MARGIN - bubble3_x;  // Weather absorbs everything left over
 
-      // Bubble 1: Time
+      // Bubble 1: Time - font bumped to the largest size that still fits
+      // the fixed bubble width without clipping (see font_time).
       it.rectangle(bubble1_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
       it.printf(bubble1_x + 8, BUBBLE_TOP + 6, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "TIME");
-      it.printf(bubble1_x + 8, BUBBLE_TOP + 30, id(font_time), id(color_black), TextAlign::TOP_LEFT,
+      it.printf(bubble1_x + 8, BUBBLE_TOP + 52, id(font_time), id(color_black), TextAlign::TOP_LEFT,
                 "%02d:%02d", time.hour, time.minute);
 
-      // Bubble 2: Date (weekday label, day + abbreviated month as the value -
-      // a fixed-width format regardless of month name length)
+      // Bubble 2: Date, styled like a tear-off desk calendar page - small
+      // month header, a huge day-of-month number dominating the bubble,
+      // small weekday footer, with a dashed "perforation" line either
+      // side of the big number standing in for the page-tear edges.
+      int bubble2_center_x = bubble2_x + bubble_w / 2;
       it.rectangle(bubble2_x, BUBBLE_TOP, bubble_w, BUBBLE_HEIGHT, id(color_black));
-      it.strftime(bubble2_x + 8, BUBBLE_TOP + 6, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "%A", time);
-      it.strftime(bubble2_x + 8, BUBBLE_TOP + 30, id(font_bubble_value), id(color_black), TextAlign::TOP_LEFT, "%d %b", time);
+      it.strftime(bubble2_center_x, BUBBLE_TOP + 4, id(font_bubble_label), id(color_red), TextAlign::TOP_CENTER, "%b", time);
 
-      // Bubble 3: Weather (icon, temperature, condition, feels-like, humidity -
-      // consolidated here from the old separate WEATHER column, which was
-      // dropped to avoid showing the same weather info twice. Uses
-      // font_icons_weather (not font_icons_medium, which doesn't have the
-      // weather glyphs and rendered as a blank square).
+      int date_perf1_y = BUBBLE_TOP + 24;
+      for (int dx = bubble2_x + 6; dx < bubble2_x + bubble_w - 6; dx += 8) {
+        it.line(dx, date_perf1_y, dx + 4, date_perf1_y, id(color_red));
+      }
+
+      it.strftime(bubble2_center_x, BUBBLE_TOP + 28, id(font_calendar_day), id(color_black), TextAlign::TOP_CENTER, "%d", time);
+
+      int date_perf2_y = BUBBLE_TOP + 100;
+      for (int dx = bubble2_x + 6; dx < bubble2_x + bubble_w - 6; dx += 8) {
+        it.line(dx, date_perf2_y, dx + 4, date_perf2_y, id(color_red));
+      }
+
+      it.strftime(bubble2_center_x, BUBBLE_TOP + 104, id(font_small), id(color_black), TextAlign::TOP_CENTER, "%A", time);
+
+      // Bubble 3: Weather - condensed to one line (icon + temperature,
+      // icon + AQI) per feedback that the previous icon/temp/condition/
+      // feels-like/humidity stack was too much to read at a glance;
+      // condition text and feels-like/humidity are dropped rather than
+      // relocated. AQI icon shares font_icons_weather so it matches the
+      // weather icon's size; AQI number colored by rough severity band
+      // (this panel only has 4 inks, so there are only two thresholds:
+      // >100 red, >50 yellow, otherwise black).
       it.rectangle(bubble3_x, BUBBLE_TOP, bubble3_w, BUBBLE_HEIGHT, id(color_black));
       it.printf(bubble3_x + 8, BUBBLE_TOP + 6, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "WEATHER");
-      it.printf(bubble3_x + 8, BUBBLE_TOP + 28, id(font_icons_weather), id(color_black), TextAlign::TOP_LEFT,
+
+      int weather_row_y = BUBBLE_TOP + 55;
+      it.printf(bubble3_x + 8, weather_row_y, id(font_icons_weather), id(color_black), TextAlign::TOP_LEFT,
                 "%s", weather_icon.c_str());
       if (id(outside_temperature).has_state()) {
-        it.printf(bubble3_x + bubble3_w - 8, BUBBLE_TOP + 34, id(font_bubble_value), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(bubble3_x + 72, weather_row_y + 4, id(font_temp_large), id(color_black), TextAlign::TOP_LEFT,
                   "%.0f°C", id(outside_temperature).state);
       } else {
-        it.printf(bubble3_x + bubble3_w - 8, BUBBLE_TOP + 34, id(font_bubble_value), id(color_black), TextAlign::TOP_RIGHT, "--°C");
+        it.printf(bubble3_x + 72, weather_row_y + 4, id(font_temp_large), id(color_black), TextAlign::TOP_LEFT, "--°C");
       }
 
-      // Weather condition text
-      if (id(weather_condition).has_state()) {
-        std::string cond = id(weather_condition).state;
-        if (cond.length() > 0) {
-          cond[0] = toupper(cond[0]);
-        }
-        it.printf(bubble3_x + 8, BUBBLE_TOP + 78, id(font_bubble_label), id(color_black), TextAlign::TOP_LEFT,
-                  "%s", cond.c_str());
-      }
-
-      // Feels-like and humidity, combined onto one line - kept at the
-      // regular (non-bold) small font since this is supplementary detail,
-      // not the headline info this bubble row needed to be readable.
-      if (id(outside_feels_like).has_state() || id(weather_humidity).has_state()) {
-        std::string feels_humidity = "";
-        if (id(outside_feels_like).has_state()) {
-          char buf[16];
-          snprintf(buf, sizeof(buf), "Feels %.0f°", id(outside_feels_like).state);
-          feels_humidity += buf;
-        }
-        if (id(weather_humidity).has_state()) {
-          if (!feels_humidity.empty()) feels_humidity += "  ";
-          char buf[16];
-          snprintf(buf, sizeof(buf), "%.0f%% RH", id(weather_humidity).state);
-          feels_humidity += buf;
-        }
-        it.printf(bubble3_x + 8, BUBBLE_TOP + 104, id(font_small), id(color_black), TextAlign::TOP_LEFT,
-                  "%s", feels_humidity.c_str());
+      int aqi_icon_x = bubble3_x + bubble3_w / 2 + 36;
+      it.printf(aqi_icon_x, weather_row_y, id(font_icons_weather), id(color_black), TextAlign::TOP_LEFT, "\U000F0D43");
+      if (id(air_quality_index).has_state()) {
+        float aqi = id(air_quality_index).state;
+        Color aqi_color = aqi > 100 ? id(color_red) : (aqi > 50 ? id(color_yellow) : id(color_black));
+        it.printf(bubble3_x + bubble3_w - 8, weather_row_y + 4, id(font_temp_large), aqi_color, TextAlign::TOP_RIGHT,
+                  "%.0f", aqi);
+      } else {
+        it.printf(bubble3_x + bubble3_w - 8, weather_row_y + 4, id(font_temp_large), id(color_black), TextAlign::TOP_RIGHT, "--");
       }
 
       // ===== LEFT COLUMN (Home Sensors) =====
