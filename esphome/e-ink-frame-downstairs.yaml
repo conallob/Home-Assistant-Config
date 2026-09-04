@@ -314,12 +314,14 @@ font:
     id: font_medium
     size: 28
 
-  # Bold for the top bubble row's headline values (date, weather temp) -
-  # readable from across a room, per feedback that the previous regular-
-  # weight font_medium wasn't legible at ~2.5m.
+  # Bold, for the bus bubbles' route codes (originally also used for the
+  # top bubble row's date/weather-temp values, both since moved to their
+  # own dedicated fonts). Bumped 34 -> 40 alongside font_icons_bus once
+  # the bus bubbles grew tall enough to make both worth enlarging - see
+  # the BUS DEPARTURE BUBBLES comment for the width math behind the size.
   - file: "gfonts://Roboto@700"
     id: font_bubble_value
-    size: 34
+    size: 40
 
   # Bold for the top bubble row's labels and weather condition text
   - file: "gfonts://Roboto@700"
@@ -399,13 +401,24 @@ font:
       - "\U000F0A72" # mdi:transmission-tower (grid)
       - "\U000F05A8" # mdi:white-balance-sunny (solar)
       - "\U000F140B" # mdi:solar-power
-      - "\U000F004D" # mdi:arrow-left (bus direction)
-      - "\U000F0054" # mdi:arrow-right (bus direction)
-      - "\U000F17A1" # mdi:arrow-down-left (bus direction)
       - "\U000F0079" # mdi:battery (footer fuel gauge indicator)
       - "\U000F007E" # mdi:battery-50 (footer fuel gauge indicator)
       - "\U000F007B" # mdi:battery-20 (footer fuel gauge indicator)
       - "\U000F10CD" # mdi:battery-alert-variant-outline (footer fuel gauge indicator)
+
+  # Material Design Icons - bus direction arrows, sized to match the
+  # bus bubbles' font_bubble_value route-code text (see the width math
+  # in the BUS DEPARTURE BUBBLES comment). Split out from
+  # font_icons_medium (size 32) since these bubbles grew tall enough to
+  # size their icons up independently, without affecting the grid/solar/
+  # wifi/battery icons that still share font_icons_medium.
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf'
+    id: font_icons_bus
+    size: 40
+    glyphs:
+      - "\U000F004D" # mdi:arrow-left
+      - "\U000F0054" # mdi:arrow-right
+      - "\U000F17A1" # mdi:arrow-down-left
 
 # Binary sensors for Home Assistant data
 binary_sensor:
@@ -762,49 +775,55 @@ display:
       int left_col_width = 130;
       int content_y = BUBBLE_TOP + BUBBLE_HEIGHT + 12;
 
-      // Home section header
-      it.printf(left_col_x, content_y, id(font_header), id(color_red), TextAlign::TOP_LEFT, "HOME");
-      it.line(left_col_x, content_y + 26, left_col_x + left_col_width, content_y + 26, id(color_red));
+      // ===== HOME bubble =====
+      // Bordered like every other section on this display - this one was
+      // still a bare label + underline, the one holdout once the rest
+      // moved to the bordered "bubble" style.
+      const int REVOLUT_BUBBLE_HEIGHT = 86;
+      int revolut_bubble_y = (SCREEN_HEIGHT - 35) - 10 - REVOLUT_BUBBLE_HEIGHT;
+      int home_bubble_h = revolut_bubble_y - content_y - 6;
+      it.rectangle(left_col_x, content_y, left_col_width, home_bubble_h, id(color_black));
+      it.printf(left_col_x + 8, content_y + 8, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "HOME");
 
-      int home_y = content_y + 35;
+      int home_y = content_y + 34;
       int row_height = 26;
 
       // Heating status (current -> target)
       if (id(thermostat_current).has_state() && id(thermostat_target).has_state()) {
-        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Heat");
-        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(left_col_x + 8, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Heat");
+        it.printf(left_col_x + left_col_width - 8, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
                   "%.0f→%.0f°", id(thermostat_current).state, id(thermostat_target).state);
       }
       home_y += row_height + 4;
 
       // Hall
       if (id(hall_temperature).has_state()) {
-        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Hall");
-        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(left_col_x + 8, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Hall");
+        it.printf(left_col_x + left_col_width - 8, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f°", id(hall_temperature).state);
       }
       home_y += row_height;
 
       // Sitting Room
       if (id(sitting_room_temperature).has_state()) {
-        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Sitting");
-        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(left_col_x + 8, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Sitting");
+        it.printf(left_col_x + left_col_width - 8, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f°", id(sitting_room_temperature).state);
       }
       home_y += row_height;
 
       // Kitchen
       if (id(kitchen_temperature).has_state()) {
-        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Kitchen");
-        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(left_col_x + 8, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Kitchen");
+        it.printf(left_col_x + left_col_width - 8, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f°", id(kitchen_temperature).state);
       }
       home_y += row_height;
 
       // Family Room
       if (id(family_room_temperature).has_state()) {
-        it.printf(left_col_x, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Family");
-        it.printf(left_col_x + left_col_width, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+        it.printf(left_col_x + 8, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Family");
+        it.printf(left_col_x + left_col_width - 8, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
                   "%.1f°", id(family_room_temperature).state);
       }
       home_y += row_height;
@@ -813,20 +832,15 @@ display:
       if (id(hot_water_temperature).has_state()) {
         float hot_water_temp = id(hot_water_temperature).state;
         Color hot_water_color = hot_water_temp > 35.0f ? id(color_red) : id(color_black);
-        it.printf(left_col_x, home_y, id(font_small), hot_water_color, TextAlign::TOP_LEFT, "Water");
-        it.printf(left_col_x + left_col_width, home_y, id(font_small), hot_water_color, TextAlign::TOP_RIGHT,
+        it.printf(left_col_x + 8, home_y, id(font_small), hot_water_color, TextAlign::TOP_LEFT, "Water");
+        it.printf(left_col_x + left_col_width - 8, home_y, id(font_small), hot_water_color, TextAlign::TOP_RIGHT,
                   "%.1f°", hot_water_temp);
       }
 
       // ===== REVOLUT BALANCES bubble (bottom-left corner, pinned above the footer) =====
-      // Bordered like the header row bubbles - a plain text list here was
-      // hard to read from across the room. Taller than the old KIDS block
-      // it replaces, so clearance from the HOME list above is tighter
-      // than before (~7px estimated) - check against the physical
-      // display and trim a HOME row's height if it overlaps.
-      const int REVOLUT_BUBBLE_HEIGHT = 86;
-      int revolut_bubble_y = (SCREEN_HEIGHT - 35) - 10 - REVOLUT_BUBBLE_HEIGHT;
-
+      // revolut_bubble_y/REVOLUT_BUBBLE_HEIGHT are declared up in the HOME
+      // bubble above, which needs them to size itself to fit exactly
+      // above this one.
       it.rectangle(left_col_x, revolut_bubble_y, left_col_width, REVOLUT_BUBBLE_HEIGHT, id(color_black));
       it.printf(left_col_x + 8, revolut_bubble_y + 8, id(font_bubble_label), id(color_red), TextAlign::TOP_LEFT, "REVOLUT");
 
@@ -962,26 +976,35 @@ display:
       };
 
       // Single-route bubble: icon top-left, route code big and bold
-      // top-right (mirrors the header bubbles' icon+value layout), then
-      // "in N min" / "(HH:MM)" stacked below - a narrow bubble can't fit
-      // all of that on one line.
+      // top-right (mirrors the header bubbles' icon+value layout, both
+      // now sized up via font_icons_bus/font_bubble_value - see the size
+      // math below), then "in N min" / "(HH:MM)" stacked below with the
+      // extra breathing room the taller bubble (below) now has, once
+      // UTILITIES/OPEN DOORS/WINDOWS stopped needing this row's full
+      // height.
       auto draw_bus_bubble = [&](int bx, int by, int bw, int bh, const char *icon, bool has_state, const std::string &raw, const char *route) {
         it.rectangle(bx, by, bw, bh, id(color_black));
-        it.printf(bx + 8, by + 8, id(font_icons_medium), id(color_black), TextAlign::TOP_LEFT, "%s", icon);
-        it.printf(bx + bw - 8, by + 6, id(font_bubble_value), id(color_black), TextAlign::TOP_RIGHT, "%s", route);
+        it.printf(bx + 10, by + 10, id(font_icons_bus), id(color_black), TextAlign::TOP_LEFT, "%s", icon);
+        it.printf(bx + bw - 10, by + 8, id(font_bubble_value), id(color_black), TextAlign::TOP_RIGHT, "%s", route);
         auto eta = format_bus(has_state, raw);
-        it.printf(bx + 8, by + 48, id(font_bubble_label), id(color_black), TextAlign::TOP_LEFT, "%s", eta.first.c_str());
+        it.printf(bx + 10, by + 72, id(font_bubble_label), id(color_black), TextAlign::TOP_LEFT, "%s", eta.first.c_str());
         if (!eta.second.empty()) {
-          it.printf(bx + 8, by + 72, id(font_small), id(color_black), TextAlign::TOP_LEFT, "%s", eta.second.c_str());
+          it.printf(bx + 10, by + 100, id(font_small), id(color_black), TextAlign::TOP_LEFT, "%s", eta.second.c_str());
         }
       };
 
-      const int BUS_BUBBLE_HEIGHT = 96;
       const int BUS_BUBBLE_GAP = 10;
       // 4 equal-width bubbles across the row.
       int bus_bubble_w = (center_col_width - 3 * BUS_BUBBLE_GAP) / 4;
 
       int bus_bubble_y = content_y + UTIL_BUBBLE_HEIGHT + 14;
+      // Grows to fill the vertical space UTILITIES/OPEN DOORS/WINDOWS
+      // freed up by sharing one row instead of stacking full-width -
+      // route code/icon sizes above (font_bubble_value 40, font_icons_bus
+      // 40) were picked to roughly fit this bubble's ~151px width with
+      // ~10-20px clearance between the two (icon left, route code
+      // right): icon_size + 1.8*route_size <~ bubble_w - 2*padding.
+      const int BUS_BUBBLE_HEIGHT = (SCREEN_HEIGHT - 35) - bus_bubble_y - 10;
       int bus_45a_x = center_col_x;
       int bus_fairyhill_x = bus_45a_x + bus_bubble_w + BUS_BUBBLE_GAP;
       int bus_killarney_e1_x = bus_fairyhill_x + bus_bubble_w + BUS_BUBBLE_GAP;
