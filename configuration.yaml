@@ -124,23 +124,6 @@ notify:
 #    host: 192.168.0.204
 #    device_id: QzvVfdhT
 
-#switch:
-#  # timeular.com - Stop Current Activity Button
-#  - platform: rest
-#    resource: "https://api.timeular.com/api/v3/tracking/stop"
-#    name: "timeular_stop"
-#    method: POST
-#    headers:
-#      Content-Type: application/json
-#      Authorization: >
-#        Bearer !secret timeular_api_token
-#      User-Agent: "Home Assistant Rest Command"
-#    verify_ssl: true
-
-#timeular:
-#api_key: !secret timeular_api_key
-#api_secret: !secret timeular_api_secret
-
 keyboard_remote:
   # Green 8BitDo Micro - update device_descriptor path after pairing
   # Run: ls -la /dev/input/by-id/ to find the stable symlink
