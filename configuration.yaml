@@ -43,13 +43,6 @@ rest_command: !include_dir_named /config/rest_command
 
 media_player: !include media_player.yaml
 
-http:
-  server_port: 8123
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - 192.168.1.2  # Megatron
-    - 192.168.2.2  # Megatron
-
 prometheus:
 
 # https://www.home-assistant.io/integrations/recorder/
@@ -66,10 +59,6 @@ binary_sensor:
 # Logging per integration controls
 logger:
   default: warning
-  logs:
-    homeassistant.components.rest: debug
-    homeassistant.components.rest_command: debug
-    homeassistant.components.tcp: debug
 
 mqtt:
 
@@ -160,6 +149,3 @@ keyboard_remote:
       - 'key_up'
       - 'key_down'
       - 'key_hold'
-
-go2rtc:
-  url: http://ratchet.int.taku.ie:1984
