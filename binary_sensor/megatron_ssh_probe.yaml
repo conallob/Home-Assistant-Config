@@ -1,0 +1,6 @@
+platform: tcp
+name: "Megatron SSH Probe"
+host: homeassistant@192.168.1.2
+port: 22
+timeout: 5
+payload: "\n\n~."
