@@ -971,20 +971,25 @@ display:
       // converting to local only for display (from_epoch_local, which
       // resolves DST correctly because it's applied to a definite
       // instant rather than to bare wall-clock digits).
-      auto format_bus = [&](bool has_state, const std::string &raw) -> std::pair<std::string, std::string> {
+      struct BusEta {
+        std::string line1;
+        std::string line2;
+        int mins;  // -1 when unavailable (no state, parse failure, or already departed)
+      };
+      auto format_bus = [&](bool has_state, const std::string &raw) -> BusEta {
         char line1[16];
         char line2[16];
         line2[0] = '\0';
         if (!has_state || raw.size() < 19) {
           snprintf(line1, sizeof(line1), "--");
-          return {std::string(line1), std::string(line2)};
+          return {std::string(line1), std::string(line2), -1};
         }
         std::string clean = raw.substr(0, 19);
         clean[10] = ' ';  // "YYYY-MM-DDTHH:MM:SS" -> "YYYY-MM-DD HH:MM:SS" for strptime
         ESPTime dep{};
         if (!ESPTime::strptime(clean.c_str(), clean.size(), dep)) {
           snprintf(line1, sizeof(line1), "--");
-          return {std::string(line1), std::string(line2)};
+          return {std::string(line1), std::string(line2), -1};
         }
         dep.recalc_timestamp_utc(false);
 
@@ -996,12 +1001,12 @@ display:
           // instead of surfacing this, which looked identical to a
           // genuine imminent departure). Surface as unavailable instead.
           snprintf(line1, sizeof(line1), "--");
-          return {std::string(line1), std::string(line2)};
+          return {std::string(line1), std::string(line2), -1};
         }
         ESPTime local_dep = ESPTime::from_epoch_local(dep.timestamp);
         snprintf(line1, sizeof(line1), "in %d min", mins);
         snprintf(line2, sizeof(line2), "(%02d:%02d)", local_dep.hour, local_dep.minute);
-        return {std::string(line1), std::string(line2)};
+        return {std::string(line1), std::string(line2), mins};
       };
 
       // Single-route bubble: icon top-left, route code big and bold
@@ -1011,14 +1016,16 @@ display:
       // extra breathing room the taller bubble (below) now has, once
       // UTILITIES/OPEN DOORS/WINDOWS stopped needing this row's full
       // height.
-      auto draw_bus_bubble = [&](int bx, int by, int bw, int bh, const char *icon, bool has_state, const std::string &raw, const char *route) {
+      auto draw_bus_bubble = [&](int bx, int by, int bw, int bh, const char *icon, bool has_state, const std::string &raw, const char *route, int imminent_threshold_min) {
         it.rectangle(bx, by, bw, bh, id(color_black));
         it.printf(bx + 10, by + 10, id(font_icons_bus), id(color_black), TextAlign::TOP_LEFT, "%s", icon);
-        it.printf(bx + bw - 10, by + 8, id(font_bubble_value), id(color_black), TextAlign::TOP_RIGHT, "%s", route);
         auto eta = format_bus(has_state, raw);
-        it.printf(bx + 10, by + 72, id(font_bubble_label), id(color_black), TextAlign::TOP_LEFT, "%s", eta.first.c_str());
-        if (!eta.second.empty()) {
-          it.printf(bx + 10, by + 100, id(font_small), id(color_black), TextAlign::TOP_LEFT, "%s", eta.second.c_str());
+        bool imminent = eta.mins >= 0 && eta.mins <= imminent_threshold_min;
+        auto eta_color = imminent ? id(color_red) : id(color_black);
+        it.printf(bx + bw - 10, by + 8, id(font_bubble_value), eta_color, TextAlign::TOP_RIGHT, "%s", route);
+        it.printf(bx + 10, by + 72, id(font_bubble_label), eta_color, TextAlign::TOP_LEFT, "%s", eta.line1.c_str());
+        if (!eta.line2.empty()) {
+          it.printf(bx + 10, by + 100, id(font_small), eta_color, TextAlign::TOP_LEFT, "%s", eta.line2.c_str());
         }
       };
 
@@ -1039,17 +1046,20 @@ display:
       int bus_killarney_e1_x = bus_fairyhill_x + bus_bubble_w + BUS_BUBBLE_GAP;
       int bus_killarney_l12_x = bus_killarney_e1_x + bus_bubble_w + BUS_BUBBLE_GAP;
 
+      // 45A is a longer, less frequent route (Oldcourt -> Dun Laoghaire)
+      // so it gets a longer "imminent" window (15 min) than the other,
+      // more frequent routes (5 min).
       draw_bus_bubble(bus_45a_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F17A1",
-                       id(bus_oldcourt_45a_dun_laoghaire).has_state(), id(bus_oldcourt_45a_dun_laoghaire).state, "45A");
+                       id(bus_oldcourt_45a_dun_laoghaire).has_state(), id(bus_oldcourt_45a_dun_laoghaire).state, "45A", 15);
 
       draw_bus_bubble(bus_fairyhill_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F004D",
-                       id(bus_fairyhill_e1_ballywaltrim).has_state(), id(bus_fairyhill_e1_ballywaltrim).state, "E1");
+                       id(bus_fairyhill_e1_ballywaltrim).has_state(), id(bus_fairyhill_e1_ballywaltrim).state, "E1", 5);
 
       draw_bus_bubble(bus_killarney_e1_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F0054",
-                       id(bus_killarney_road_e1_northwood).has_state(), id(bus_killarney_road_e1_northwood).state, "E1");
+                       id(bus_killarney_road_e1_northwood).has_state(), id(bus_killarney_road_e1_northwood).state, "E1", 5);
 
       draw_bus_bubble(bus_killarney_l12_x, bus_bubble_y, bus_bubble_w, BUS_BUBBLE_HEIGHT, "\U000F0054",
-                       id(bus_killarney_road_l12_bray_station).has_state(), id(bus_killarney_road_l12_bray_station).state, "L12");
+                       id(bus_killarney_road_l12_bray_station).has_state(), id(bus_killarney_road_l12_bray_station).state, "L12", 5);
 
       // ===== FOOTER =====
       int footer_y = SCREEN_HEIGHT - 35;
