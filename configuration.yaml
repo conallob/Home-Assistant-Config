@@ -48,13 +48,7 @@ prometheus:
 # https://www.home-assistant.io/integrations/recorder/
 recorder:
 
-binary_sensor:
-  - platform: tcp
-    name: "Megatron SSH Probe"
-    host: homeassistant@192.168.1.2
-    port: 22
-    timeout: 5
-    payload: "\n\n~."
+binary_sensor: !include_dir_list /config/binary_sensor
 
 # Logging per integration controls
 logger:

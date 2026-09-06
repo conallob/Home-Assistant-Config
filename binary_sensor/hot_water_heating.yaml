@@ -1,0 +1,15 @@
+platform: trend
+sensors:
+  hot_water_heating:
+    entity_id: sensor.hot_water_tank_temperature
+    unique_id: hot_water_heating_trend
+    device_class: heat
+    # "Heating" is defined as the tank temperature trending upward over
+    # the last 10 minutes, regardless of what's actually heating it
+    # (immersion, boiler, etc) - trend's min_gradient is in sensor units
+    # per SECOND, not per minute, so 0.0005/s ~= 0.03 degC/min ~= 0.3 degC
+    # over the 10 minute sample_duration. Chosen as a first estimate to
+    # catch genuine heating while filtering sensor noise - tune based on
+    # observed behavior once this has been live for a while.
+    sample_duration: 600
+    min_gradient: 0.0005

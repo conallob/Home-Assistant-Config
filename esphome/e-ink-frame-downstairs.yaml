@@ -436,6 +436,20 @@ binary_sensor:
               - delay: 2s  # Allow log message to be sent
               - deep_sleep.enter: deep_sleep_control
 
+  # Downstairs heating demand (any downstairs TRV calling for heat) -
+  # colors the HOME bubble's Heat row red when active.
+  - platform: homeassistant
+    id: downstairs_heating_demand
+    entity_id: binary_sensor.downstairs_heating_demand
+
+  # Hot water tank actively heating - defined as the tank temperature
+  # trending upward over the last 10 minutes (binary_sensor/hot_water_heating.yaml,
+  # a trend sensor), regardless of what's actually heating it. Colors the
+  # HOME bubble's Water row red when active.
+  - platform: homeassistant
+    id: hot_water_heating
+    entity_id: binary_sensor.hot_water_heating
+
 # Text sensors for Home Assistant data
 text_sensor:
   # Weather condition
@@ -788,10 +802,12 @@ display:
       int home_y = content_y + 34;
       int row_height = 26;
 
-      // Heating status (current -> target)
+      // Heating status (current -> target) - red while any downstairs TRV
+      // is actively calling for heat (binary_sensor.downstairs_heating_demand).
       if (id(thermostat_current).has_state() && id(thermostat_target).has_state()) {
-        it.printf(left_col_x + 8, home_y, id(font_small), id(color_black), TextAlign::TOP_LEFT, "Heat");
-        it.printf(left_col_x + left_col_width - 8, home_y, id(font_small), id(color_black), TextAlign::TOP_RIGHT,
+        Color heat_color = (id(downstairs_heating_demand).has_state() && id(downstairs_heating_demand).state) ? id(color_red) : id(color_black);
+        it.printf(left_col_x + 8, home_y, id(font_small), heat_color, TextAlign::TOP_LEFT, "Heat");
+        it.printf(left_col_x + left_col_width - 8, home_y, id(font_small), heat_color, TextAlign::TOP_RIGHT,
                   "%.0f→%.0f°", id(thermostat_current).state, id(thermostat_target).state);
       }
       home_y += row_height + 4;
@@ -828,10 +844,15 @@ display:
       }
       home_y += row_height;
 
-      // Hot Water (bottom item in this list - red when > 35°C)
+      // Hot Water (bottom item in this list) - red while the tank is
+      // actively heating, defined as its temperature trending upward
+      // over the last 10 minutes (binary_sensor.hot_water_heating, a
+      // trend sensor - see binary_sensor/hot_water_heating.yaml) rather
+      // than a fixed temperature threshold, so this tracks heating
+      // regardless of what's doing the heating.
       if (id(hot_water_temperature).has_state()) {
         float hot_water_temp = id(hot_water_temperature).state;
-        Color hot_water_color = hot_water_temp > 35.0f ? id(color_red) : id(color_black);
+        Color hot_water_color = (id(hot_water_heating).has_state() && id(hot_water_heating).state) ? id(color_red) : id(color_black);
         it.printf(left_col_x + 8, home_y, id(font_small), hot_water_color, TextAlign::TOP_LEFT, "Water");
         it.printf(left_col_x + left_col_width - 8, home_y, id(font_small), hot_water_color, TextAlign::TOP_RIGHT,
                   "%.1f°", hot_water_temp);
