@@ -989,7 +989,15 @@ display:
         dep.recalc_timestamp_utc(false);
 
         int mins = (int) ((dep.timestamp - id(homeassistant_time).now().timestamp) / 60);
-        if (mins < 0) mins = 0;
+        if (mins < 0) {
+          // Sensor hasn't rolled over to the next departure yet - showing
+          // "in 0 min" here would misleadingly read as "departing now"
+          // when it's actually already gone (was previously clamped to 0
+          // instead of surfacing this, which looked identical to a
+          // genuine imminent departure). Surface as unavailable instead.
+          snprintf(line1, sizeof(line1), "--");
+          return {std::string(line1), std::string(line2)};
+        }
         ESPTime local_dep = ESPTime::from_epoch_local(dep.timestamp);
         snprintf(line1, sizeof(line1), "in %d min", mins);
         snprintf(line2, sizeof(line2), "(%02d:%02d)", local_dep.hour, local_dep.minute);
