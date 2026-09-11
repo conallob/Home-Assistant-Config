@@ -14,7 +14,7 @@ binary_sensor:
       {{ is_state('binary_sensor.utility_bluetooth_proxy_presence', 'on') }}
     icon: >
       {% if is_state('binary_sensor.huck_in_utility_bed', 'on') %}
-        mdi:dog-side
+        mdi:cat
       {% else %}
-        mdi:dog-side-off
+        mdi:paw-off
       {% endif %}
