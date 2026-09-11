@@ -78,6 +78,15 @@ text_sensor:
     version:
       name: "Presence Sensor Firmware Version"
 
+switch:
+  - platform: ld2410
+    engineering_mode:
+      name: "Presence Sensor Engineering Mode"
+      # Turn on temporarily while tuning gate thresholds above - it makes
+      # the per-gate Moving/Still Energy sensors report live values instead
+      # of just the aggregate ones, which makes it much easier to see which
+      # gate covers the bed. Turn back off once tuned to reduce UART chatter.
+
 button:
   - platform: ld2410
     restart:
@@ -91,3 +100,29 @@ number:
       name: "Presence Sensor Max Move Distance"
     max_still_distance_gate:
       name: "Presence Sensor Max Still Distance"
+    # Per-gate sensitivity (gates are ~0.75m bands from the sensor).
+    # Flakiness is usually a still_threshold set too high for the gate(s)
+    # covering the bed, causing brief drop-outs while Huck is lying still.
+    # Tune via the HA UI: watch the "Still Energy"/"Moving Energy" sensors
+    # while he's in and out of the bed, then set the still/move thresholds
+    # for the bed's gate(s) just below the "in bed" energy readings.
+    g0:
+      move_threshold:
+        name: "Presence Sensor G0 Move Threshold"
+      still_threshold:
+        name: "Presence Sensor G0 Still Threshold"
+    g1:
+      move_threshold:
+        name: "Presence Sensor G1 Move Threshold"
+      still_threshold:
+        name: "Presence Sensor G1 Still Threshold"
+    g2:
+      move_threshold:
+        name: "Presence Sensor G2 Move Threshold"
+      still_threshold:
+        name: "Presence Sensor G2 Still Threshold"
+    g3:
+      move_threshold:
+        name: "Presence Sensor G3 Move Threshold"
+      still_threshold:
+        name: "Presence Sensor G3 Still Threshold"
