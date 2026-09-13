@@ -1,6 +1,6 @@
 id: '1698610029172'
 alias: Taku Bedtime
-description: ''
+description: Puts the house to sleep for the night - turns off the front garden, back garden, downstairs and bathroom lights, then enables the Bathroom Bedtime On scene in Hue.
 trigger:
 - device_id: b14b7c6afc5785c4323a208916939bb2
   domain: hue
@@ -12,32 +12,21 @@ condition:
 - condition: sun
   after: sunset
 action:
-- target:
-    entity_id: scene.bathroom_bedtime_on_nightlight
-  metadata: {}
-  action: scene.turn_on
-- data:
-    brightness: 65
-  target:
-    area_id:
-    - genevieve
-    - reuben
-  action: hue.activate_scene
 - metadata: {}
   data: {}
   target:
     area_id:
-    - back_garden
     - front_garden
+    - back_garden
     - sitting_room
+    - kitchen
+    - hall
+    - family_room
+    - home_cinema
+    - bathroom
   action: light.turn_off
-- device_id: e354b73952d92f0f0f0435c385b48817
-  domain: number
-  entity_id: b6e5f287839b92a49f8c397e1d19ed71
-  type: set_value
-  value: 33
-- type: turn_off
-  device_id: 9233e835156235aa3b24411e13487ccf
-  entity_id: ebecc732ac944d9d00bfebb4fa89b61b
-  domain: light
+- target:
+    entity_id: scene.bathroom_bedtime_on_nightlight
+  metadata: {}
+  action: scene.turn_on
 mode: single
