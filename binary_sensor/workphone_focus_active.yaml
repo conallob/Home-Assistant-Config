@@ -1,0 +1,11 @@
+# True whenever Conall's WorkPhone (iPhone 15 Pro) has any custom Focus
+# enabled - i.e. sensor.workphone_focus_source (see template/workphone_focus_source.yaml)
+# reports something other than "Not Active"/unavailable/unknown.
+platform: template
+sensors:
+  workphone_focus_active:
+    friendly_name: "WorkPhone Focus Active"
+    icon_template: mdi:cellphone-cog
+    value_template: >
+      {{ states('sensor.workphone_focus_source') | lower
+         not in ['not active', 'unavailable', 'unknown', 'none', ''] }}

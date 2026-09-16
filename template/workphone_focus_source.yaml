@@ -1,0 +1,9 @@
+# Single point of indirection for WorkPhone's iOS Focus sensor. Everything
+# else in this feature (binary_sensor/workphone_focus_active.yaml,
+# automation/workphone_focus_activity_toggle.yaml) references this alias
+# rather than the raw entity, so if the real entity ID turns out to differ
+# from sensor.workphone_focus, only this file needs updating.
+sensor:
+  - name: "WorkPhone Focus Source"
+    unique_id: workphone_focus_source
+    state: "{{ states('sensor.workphone_focus') }}"
