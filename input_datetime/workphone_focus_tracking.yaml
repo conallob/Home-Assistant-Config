@@ -1,0 +1,10 @@
+workphone_working_hours_start:
+  name: "WorkPhone - Working Hours Start"
+  has_date: false
+  has_time: true
+  initial: "10:00:00"
+workphone_working_hours_end:
+  name: "WorkPhone - Working Hours End"
+  has_date: false
+  has_time: true
+  initial: "18:00:00"

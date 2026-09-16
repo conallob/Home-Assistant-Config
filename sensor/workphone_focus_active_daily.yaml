@@ -1,0 +1,10 @@
+# Total time today that Conall has had any Focus mode active on WorkPhone -
+# used alongside workphone_focus_outside_hours_daily to see what fraction of
+# phone usage falls outside working hours.
+platform: history_stats
+name: "WorkPhone Focus Active Today"
+entity_id: binary_sensor.workphone_focus_active
+state: "on"
+type: time
+start: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) }}"
+end: "{{ now() }}"

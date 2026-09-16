@@ -1,0 +1,10 @@
+# Total time today that Conall has used a Focus mode on WorkPhone outside his
+# configured working hours (input_datetime.workphone_working_hours_start/end)
+# - quantifies the "work phone after hours" habit.
+platform: history_stats
+name: "WorkPhone Focus Outside Working Hours Today"
+entity_id: binary_sensor.workphone_focus_outside_working_hours
+state: "on"
+type: time
+start: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) }}"
+end: "{{ now() }}"
