@@ -32,15 +32,22 @@ wifi:
 # VBUS and GND on GND, so Lego LED kits just plug in. Note VBUS is only 3.3V
 # here and each pin should stay under ~20mA (40mA abs max) of LED load.
 #
+# Per the shield's own pinout diagram, only 8 of the XIAO's pins are broken
+# out to Grove/JST sockets (D3 and D10 are on the raw header only, not a
+# Grove socket, so they can't be USB-A ports and aren't defined below):
+#   - D0, D1, D2, D8, D9  - single-pin Grove sockets
+#   - D5 (labelled A5/I2C) - a standalone single-pin Grove socket
+#   - D4 (SDA) + D5 (SCL)  - one Grove socket, both pins broken out (I2C combo)
+#   - D6 (TX) + D7 (RX)    - one Grove socket, both pins broken out (UART combo)
+# That's 9 GPIOs across 8 physical sockets: D5 is wired to two different
+# sockets (the standalone A5/I2C one and the SCL pin of the I2C combo), so
+# whichever two USB-A ports sit on those sockets will toggle together.
+#
 # Port -> GPIO mapping is still being discovered with a USB LED, so for now
-# every XIAO header pin is exposed as its own switch, named by XIAO pin.
-# Once each USB port is identified, rename these to "USB Port N" and drop
-# any pins that aren't wired to a port.
+# every Grove-accessible pin is exposed as its own switch, named by XIAO
+# pin. Once each USB port is identified, rename these to "USB Port N".
 #
 # Caveats:
-#   - Grove signal pin 1 (yellow) is the one most adapters use. On the two
-#     I2C ports that is SCL (D5) and on the UART port it is RX (D7), so both
-#     I2C-port USB sockets will likely toggle together.
 #   - Avoid GPIO3/GPIO14 (RF switch/antenna select), GPIO15 (user LED) and
 #     GPIO8/GPIO9 (strapping) - none are on the XIAO header anyway.
 #   - Logger uses USB-Serial-JTAG on the C6, so D6/D7 (UART0) are free.
@@ -61,11 +68,6 @@ switch:
     name: "D2 (GPIO2)"
     restore_mode: ALWAYS_OFF
   - platform: gpio
-    pin: GPIO21
-    id: xiao_d3
-    name: "D3 (GPIO21)"
-    restore_mode: ALWAYS_OFF
-  - platform: gpio
     pin: GPIO22
     id: xiao_d4
     name: "D4 SDA (GPIO22)"
@@ -73,7 +75,7 @@ switch:
   - platform: gpio
     pin: GPIO23
     id: xiao_d5
-    name: "D5 SCL (GPIO23)"
+    name: "D5 SCL / A5 (GPIO23)"
     restore_mode: ALWAYS_OFF
   - platform: gpio
     pin: GPIO16
@@ -94,9 +96,4 @@ switch:
     pin: GPIO20
     id: xiao_d9
     name: "D9 (GPIO20)"
-    restore_mode: ALWAYS_OFF
-  - platform: gpio
-    pin: GPIO18
-    id: xiao_d10
-    name: "D10 (GPIO18)"
     restore_mode: ALWAYS_OFF
