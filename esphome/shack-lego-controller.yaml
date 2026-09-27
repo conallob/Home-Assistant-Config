@@ -27,12 +27,76 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
+# Hardware: Seeed XIAO ESP32C6 on a Grove Shield for Seeeduino XIAO, with
+# Grove (JST) -> USB-A female adapters. Each USB-A port carries one GPIO on
+# VBUS and GND on GND, so Lego LED kits just plug in. Note VBUS is only 3.3V
+# here and each pin should stay under ~20mA (40mA abs max) of LED load.
+#
+# Port -> GPIO mapping is still being discovered with a USB LED, so for now
+# every XIAO header pin is exposed as its own switch, named by XIAO pin.
+# Once each USB port is identified, rename these to "USB Port N" and drop
+# any pins that aren't wired to a port.
+#
+# Caveats:
+#   - Grove signal pin 1 (yellow) is the one most adapters use. On the two
+#     I2C ports that is SCL (D5) and on the UART port it is RX (D7), so both
+#     I2C-port USB sockets will likely toggle together.
+#   - Avoid GPIO3/GPIO14 (RF switch/antenna select), GPIO15 (user LED) and
+#     GPIO8/GPIO9 (strapping) - none are on the XIAO header anyway.
+#   - Logger uses USB-Serial-JTAG on the C6, so D6/D7 (UART0) are free.
 switch:
   - platform: gpio
     pin: GPIO0
-    id: usb_port_0
-    name: "USB Port 0"
+    id: xiao_d0
+    name: "D0 (GPIO0)"
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: GPIO1
+    id: xiao_d1
+    name: "D1 (GPIO1)"
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: GPIO2
+    id: xiao_d2
+    name: "D2 (GPIO2)"
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: GPIO21
+    id: xiao_d3
+    name: "D3 (GPIO21)"
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: GPIO22
+    id: xiao_d4
+    name: "D4 SDA (GPIO22)"
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: GPIO23
+    id: xiao_d5
+    name: "D5 SCL (GPIO23)"
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: GPIO16
+    id: xiao_d6
+    name: "D6 TX (GPIO16)"
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: GPIO17
+    id: xiao_d7
+    name: "D7 RX (GPIO17)"
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: GPIO19
+    id: xiao_d8
+    name: "D8 (GPIO19)"
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: GPIO20
+    id: xiao_d9
+    name: "D9 (GPIO20)"
+    restore_mode: ALWAYS_OFF
   - platform: gpio
     pin: GPIO18
-    id: usb_port_10
-    name: "USB Port 1"
+    id: xiao_d10
+    name: "D10 (GPIO18)"
+    restore_mode: ALWAYS_OFF
