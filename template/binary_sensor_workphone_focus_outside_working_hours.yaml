@@ -1,10 +1,9 @@
 # True when Conall is actively using a Focus mode on WorkPhone outside his
 # configured working hours - the habit this feature exists to quantify.
-platform: template
-sensors:
-  workphone_focus_outside_working_hours:
-    friendly_name: "WorkPhone Focus Outside Working Hours"
-    icon_template: mdi:alert-octagon-outline
-    value_template: >
+binary_sensor:
+  - name: "WorkPhone Focus Outside Working Hours"
+    unique_id: workphone_focus_outside_working_hours
+    icon: mdi:alert-octagon-outline
+    state: >
       {{ is_state('binary_sensor.workphone_focus_active', 'on')
          and is_state('binary_sensor.workphone_working_hours', 'off') }}
