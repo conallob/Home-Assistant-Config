@@ -1,12 +1,11 @@
 # True during Conall's configured WorkPhone working hours (weekdays only).
 # Window is adjustable without editing this file via
 # input_datetime.workphone_working_hours_start / _end.
-platform: template
-sensors:
-  workphone_working_hours:
-    friendly_name: "WorkPhone Working Hours"
-    icon_template: mdi:briefcase-clock
-    value_template: >
+binary_sensor:
+  - name: "WorkPhone Working Hours"
+    unique_id: workphone_working_hours
+    icon: mdi:briefcase-clock
+    state: >
       {{ now().isoweekday() in range(1, 6)
          and (now().strftime('%H:%M:%S'))
              >= (states('input_datetime.workphone_working_hours_start'))
