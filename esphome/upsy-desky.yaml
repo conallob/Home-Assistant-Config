@@ -10,6 +10,11 @@ esphome:
 network:
     enable_ipv6: true
 
+# Encrypt the Home Assistant API connection
+api:
+  encryption:
+    key: !secret api_encryption_key_upsy_desky
+
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
