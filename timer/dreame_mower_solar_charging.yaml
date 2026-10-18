@@ -1,0 +1,8 @@
+dreame_mower_charging_override:
+  name: "Dreame Mower - Charging Override"
+  # While active, the Solar-Aware Charging automation leaves the mower's
+  # charging window alone. Started automatically when a manual change is
+  # detected in the Dreame app, or manually via timer.start.
+  duration: "24:00:00"
+  restore: true
+  icon: mdi:hand-back-left

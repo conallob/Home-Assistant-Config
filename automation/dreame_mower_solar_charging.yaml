@@ -1,0 +1,111 @@
+alias: Dreame Mower - Solar-Aware Charging
+description: >
+  Controls the A2 mower's "Off-Peak Charging" schedule (the charging window
+  shown in the Dreame app).
+
+  Night mode (default): charging is restricted to the window set by
+  input_datetime.dreame_mower_night_charge_start / _end (cheap night tariff).
+
+  Solar mode: when sensor.solis_ac_output_total_power stays above
+  input_number.dreame_mower_solar_high_w for 15 minutes, the restriction is
+  switched off so the mower can charge from free solar power at any time. It
+  reverts to night mode once output has stayed below
+  input_number.dreame_mower_solar_low_w for 15 minutes.
+
+  Does nothing while timer.dreame_mower_charging_override is active (24h).
+  That timer is started by "Dreame Mower - Manual Charging Override" when the
+  schedule is changed in the Dreame app, or manually via timer.start. When it
+  ends (or is cancelled) the desired mode is re-applied.
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.solis_ac_output_total_power
+    above: input_number.dreame_mower_solar_high_w
+    for:
+      minutes: 15
+    id: solar_high
+  - trigger: numeric_state
+    entity_id: sensor.solis_ac_output_total_power
+    below: input_number.dreame_mower_solar_low_w
+    for:
+      minutes: 15
+    id: solar_low
+  # The inverter typically goes unavailable overnight rather than reading 0 W
+  - trigger: state
+    entity_id: sensor.solis_ac_output_total_power
+    to:
+      - unavailable
+      - unknown
+    for:
+      minutes: 15
+    id: solar_low
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.dreame_mower_charging_override
+    id: override_end
+  - trigger: event
+    event_type: timer.cancelled
+    event_data:
+      entity_id: timer.dreame_mower_charging_override
+    id: override_end
+  # Bootstrap: only acts while the mode is still "unknown" (first run)
+  - trigger: time_pattern
+    minutes: "/30"
+    id: poll
+  - trigger: homeassistant
+    event: start
+    id: poll
+conditions:
+  - condition: state
+    entity_id: timer.dreame_mower_charging_override
+    state: idle
+  - condition: template
+    value_template: >
+      {{ states('switch.a2_frank_off_peak_charging') in ['on', 'off'] }}
+variables:
+  pv: "{{ states('sensor.solis_ac_output_total_power') | float(0) }}"
+  high: "{{ states('input_number.dreame_mower_solar_high_w') | float(1500) }}"
+  low: "{{ states('input_number.dreame_mower_solar_low_w') | float(500) }}"
+  mode: "{{ states('input_select.dreame_mower_charging_mode') }}"
+  # Hysteresis: enter solar at >= high, stay in it until <= low
+  desired: >
+    {% if pv >= high or (mode == 'solar' and pv > low) %}solar{% else %}night{% endif %}
+actions:
+  - condition: template
+    value_template: >
+      {{ (trigger.id == 'override_end' or desired != mode)
+         and (trigger.id != 'poll' or mode == 'unknown') }}
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ desired == 'solar' }}"
+        sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.a2_frank_off_peak_charging
+    default:
+      # Set the window first, then enable the restriction
+      - action: time.set_value
+        target:
+          entity_id: time.a2_frank_off_peak_charging_start
+        data:
+          time: "{{ states('input_datetime.dreame_mower_night_charge_start') }}"
+      - delay:
+          seconds: 2
+      - action: time.set_value
+        target:
+          entity_id: time.a2_frank_off_peak_charging_end
+        data:
+          time: "{{ states('input_datetime.dreame_mower_night_charge_end') }}"
+      - delay:
+          seconds: 2
+      - action: switch.turn_on
+        target:
+          entity_id: switch.a2_frank_off_peak_charging
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.dreame_mower_charging_mode
+    data:
+      option: "{{ desired }}"
+mode: queued
+max: 3
