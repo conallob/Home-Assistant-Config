@@ -1,0 +1,17 @@
+dreame_mower_charging_override:
+  name: "Dreame Mower - Charging Override"
+  # While active, the Solar-Aware Charging automation leaves the mower's
+  # charging window alone. Started automatically when a manual change is
+  # detected in the Dreame app, or manually via timer.start.
+  duration: "24:00:00"
+  restore: true
+  icon: mdi:hand-back-left
+dreame_mower_dock_charge_override:
+  name: "Dreame Mower - Charge After Return To Base"
+  # Started when the mower returns to base during the day, with a duration
+  # running until the night charging window starts (23:00). While active the
+  # mower may charge at any time, except in the peak blackout when the house
+  # is on grid power.
+  duration: "12:00:00"
+  restore: true
+  icon: mdi:home-battery

@@ -1,0 +1,20 @@
+dreame_mower_night_charge_start:
+  name: "Dreame Mower - Night Charging Start"
+  has_date: false
+  has_time: true
+  initial: "23:00:00"
+dreame_mower_night_charge_end:
+  name: "Dreame Mower - Night Charging End"
+  has_date: false
+  has_time: true
+  initial: "08:00:00"
+dreame_mower_peak_block_start:
+  name: "Dreame Mower - Peak Charging Blackout Start"
+  has_date: false
+  has_time: true
+  initial: "17:00:00"
+dreame_mower_peak_block_end:
+  name: "Dreame Mower - Peak Charging Blackout End"
+  has_date: false
+  has_time: true
+  initial: "19:00:00"

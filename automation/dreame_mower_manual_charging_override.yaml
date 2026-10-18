@@ -1,0 +1,49 @@
+alias: Dreame Mower - Manual Charging Override
+description: >
+  Detects when the mower's off-peak charging schedule has been changed outside
+  of the "Dreame Mower - Solar-Aware Charging" automation (e.g. in the Dreame
+  app) and starts timer.dreame_mower_charging_override for 24 hours, during
+  which the solar-aware automation will not touch the schedule.
+
+  "Changed" means the live schedule no longer matches the mode last applied
+  (input_select.dreame_mower_charging_mode): solar = restriction off; night =
+  restriction on with the night start/end times; peak = restriction on with
+  the window running from the end of the peak blackout to its start.
+triggers:
+  - trigger: template
+    value_template: >
+      {% set mode = states('input_select.dreame_mower_charging_mode') %}
+      {% set sw = states('switch.a2_frank_off_peak_charging') %}
+      {% set start = states('time.a2_frank_off_peak_charging_start') %}
+      {% set end = states('time.a2_frank_off_peak_charging_end') %}
+      {% if mode not in ['night', 'solar'] or sw not in ['on', 'off'] %}
+        false
+      {% elif mode == 'solar' %}
+        {{ sw != 'off' }}
+      {% elif mode == 'peak' %}
+        {{ not (sw == 'on'
+                and start[:5] == states('input_datetime.dreame_mower_peak_block_end')[:5]
+                and end[:5] == states('input_datetime.dreame_mower_peak_block_start')[:5]) }}
+      {% else %}
+        {{ not (sw == 'on'
+                and start[:5] == states('input_datetime.dreame_mower_night_charge_start')[:5]
+                and end[:5] == states('input_datetime.dreame_mower_night_charge_end')[:5]) }}
+      {% endif %}
+    # Longer than the few seconds the solar-aware automation takes to apply a mode
+    for:
+      seconds: 45
+conditions:
+  - condition: state
+    entity_id: timer.dreame_mower_charging_override
+    state: idle
+actions:
+  - action: timer.start
+    target:
+      entity_id: timer.dreame_mower_charging_override
+  - action: notify.conall_phone
+    data:
+      title: Dreame Mower
+      message: >
+        Charging schedule changed manually. Solar-aware control is paused for
+        24 hours.
+mode: single
