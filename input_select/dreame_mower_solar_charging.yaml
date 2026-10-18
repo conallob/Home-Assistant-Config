@@ -3,8 +3,11 @@ dreame_mower_charging_mode:
   # Mode last applied by the Solar-Aware Charging automation. "unknown" until
   # the first evaluation after helper creation; used to tell automation-made
   # changes apart from manual changes made in the Dreame app.
+  # night = restricted to night window; solar = charge any time;
+  # peak = charge any time except the peak blackout window.
   options:
     - unknown
     - night
     - solar
+    - peak
   icon: mdi:battery-clock

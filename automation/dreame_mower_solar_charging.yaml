@@ -1,21 +1,31 @@
 alias: Dreame Mower - Solar-Aware Charging
 description: >
   Controls the A2 mower's "Off-Peak Charging" schedule (the charging window
-  shown in the Dreame app).
+  shown in the Dreame app). Modes, tracked in
+  input_select.dreame_mower_charging_mode:
 
-  Night mode (default): charging is restricted to the window set by
+  night (default): charging is restricted to the window set by
   input_datetime.dreame_mower_night_charge_start / _end (cheap night tariff).
 
-  Solar mode: when sensor.solis_ac_output_total_power stays above
-  input_number.dreame_mower_solar_high_w for 15 minutes, the restriction is
-  switched off so the mower can charge from free solar power at any time. It
-  reverts to night mode once output has stayed below
-  input_number.dreame_mower_solar_low_w for 15 minutes.
+  solar: the restriction is switched off so the mower can charge at any time.
+  Entered when sensor.solis_ac_output_total_power stays above
+  input_number.dreame_mower_solar_high_w for 15 minutes, or while
+  timer.dreame_mower_dock_charge_override is running (the mower was sent back
+  to base, see "Dreame Mower - Charge After Return To Base"). Left once output
+  has stayed below input_number.dreame_mower_solar_low_w for 15 minutes and
+  the dock timer is not running.
+
+  peak: like solar, but with a daily charging blackout between
+  input_datetime.dreame_mower_peak_block_start and _end (17:00-19:00),
+  implemented as the app window 19:00 -> 17:00. Used instead of solar during
+  the blackout when grid power (sensor.grid_em_channel_1_power, + import) is
+  above input_number.dreame_mower_grid_threshold_w, i.e. the house is running
+  off, or close to running off, the grid.
 
   Does nothing while timer.dreame_mower_charging_override is active (24h).
   That timer is started by "Dreame Mower - Manual Charging Override" when the
   schedule is changed in the Dreame app, or manually via timer.start. When it
-  ends (or is cancelled) the desired mode is re-applied.
+  ends or is cancelled, the desired mode is re-applied.
 triggers:
   - trigger: numeric_state
     entity_id: sensor.solis_ac_output_total_power
@@ -38,16 +48,48 @@ triggers:
     for:
       minutes: 15
     id: solar_low
+  # Grid dependence only matters during the peak blackout window
+  - trigger: numeric_state
+    entity_id: sensor.grid_em_channel_1_power
+    above: input_number.dreame_mower_grid_threshold_w
+    for:
+      minutes: 5
+    id: grid_change
+  - trigger: numeric_state
+    entity_id: sensor.grid_em_channel_1_power
+    below: input_number.dreame_mower_grid_threshold_w
+    for:
+      minutes: 5
+    id: grid_change
+  - trigger: time
+    at: input_datetime.dreame_mower_peak_block_start
+    id: grid_change
+  - trigger: time
+    at: input_datetime.dreame_mower_peak_block_end
+    id: grid_change
+  # Return-to-base override started/ended (ending also covers 23:00)
   - trigger: event
-    event_type: timer.finished
+    event_type:
+      - timer.started
+      - timer.restarted
+    event_data:
+      entity_id: timer.dreame_mower_dock_charge_override
+    id: forced
+  - trigger: event
+    event_type:
+      - timer.finished
+      - timer.cancelled
+    event_data:
+      entity_id: timer.dreame_mower_dock_charge_override
+    id: forced
+  # Manual override ended; re-apply even if the recorded mode is unchanged
+  - trigger: event
+    event_type:
+      - timer.finished
+      - timer.cancelled
     event_data:
       entity_id: timer.dreame_mower_charging_override
-    id: override_end
-  - trigger: event
-    event_type: timer.cancelled
-    event_data:
-      entity_id: timer.dreame_mower_charging_override
-    id: override_end
+    id: forced
   # Bootstrap: only acts while the mode is still "unknown" (first run)
   - trigger: time_pattern
     minutes: "/30"
@@ -66,14 +108,27 @@ variables:
   pv: "{{ states('sensor.solis_ac_output_total_power') | float(0) }}"
   high: "{{ states('input_number.dreame_mower_solar_high_w') | float(1500) }}"
   low: "{{ states('input_number.dreame_mower_solar_low_w') | float(500) }}"
+  # Unavailable grid sensor counts as grid-dependent (the safe choice)
+  grid_w: "{{ states('sensor.grid_em_channel_1_power') | float(9999) }}"
+  grid_limit: "{{ states('input_number.dreame_mower_grid_threshold_w') | float(-200) }}"
   mode: "{{ states('input_select.dreame_mower_charging_mode') }}"
+  dock_charge: "{{ is_state('timer.dreame_mower_dock_charge_override', 'active') }}"
+  in_blackout: >-
+    {%- set t = now().strftime('%H:%M') -%}
+    {{- states('input_datetime.dreame_mower_peak_block_start')[:5] <= t
+        < states('input_datetime.dreame_mower_peak_block_end')[:5] -}}
   # Hysteresis: enter solar at >= high, stay in it until <= low
-  desired: >
-    {% if pv >= high or (mode == 'solar' and pv > low) %}solar{% else %}night{% endif %}
+  solar_active: >-
+    {{ dock_charge or pv >= high or (mode in ['solar', 'peak'] and pv > low) }}
+  desired: >-
+    {%- if not solar_active -%}night
+    {%- elif in_blackout and grid_w > grid_limit -%}peak
+    {%- else -%}solar
+    {%- endif -%}
 actions:
   - condition: template
     value_template: >
-      {{ (trigger.id == 'override_end' or desired != mode)
+      {{ (trigger.id == 'forced' or desired != mode)
          and (trigger.id != 'poll' or mode == 'unknown') }}
   - choose:
       - conditions:
@@ -81,6 +136,28 @@ actions:
             value_template: "{{ desired == 'solar' }}"
         sequence:
           - action: switch.turn_off
+            target:
+              entity_id: switch.a2_frank_off_peak_charging
+      - conditions:
+          - condition: template
+            value_template: "{{ desired == 'peak' }}"
+        sequence:
+          # Allowed window runs from the end of the blackout to its start
+          - action: time.set_value
+            target:
+              entity_id: time.a2_frank_off_peak_charging_start
+            data:
+              time: "{{ states('input_datetime.dreame_mower_peak_block_end') }}"
+          - delay:
+              seconds: 2
+          - action: time.set_value
+            target:
+              entity_id: time.a2_frank_off_peak_charging_end
+            data:
+              time: "{{ states('input_datetime.dreame_mower_peak_block_start') }}"
+          - delay:
+              seconds: 2
+          - action: switch.turn_on
             target:
               entity_id: switch.a2_frank_off_peak_charging
     default:
@@ -108,4 +185,4 @@ actions:
     data:
       option: "{{ desired }}"
 mode: queued
-max: 3
+max: 5

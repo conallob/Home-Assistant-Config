@@ -16,3 +16,14 @@ dreame_mower_solar_low_w:
   initial: 500
   unit_of_measurement: "W"
   icon: mdi:solar-power-variant-outline
+dreame_mower_grid_threshold_w:
+  name: "Dreame Mower - Peak Blackout Grid Threshold"
+  # Grid power (+ import, - export). During the peak blackout window, if grid
+  # power is above this value the house is (nearly) running off the grid and
+  # charging is blocked. -200 means "not exporting at least 200 W".
+  min: -2000
+  max: 1000
+  step: 50
+  initial: -200
+  unit_of_measurement: "W"
+  icon: mdi:transmission-tower

@@ -1,0 +1,34 @@
+alias: Dreame Mower - Charge After Return To Base
+description: >
+  When the mower is sent back to (or returns to) its charging base during the
+  day, allow it to charge straight away instead of waiting for the night
+  window: starts timer.dreame_mower_dock_charge_override, running until the
+  night charging window starts (input_datetime.dreame_mower_night_charge_start,
+  23:00). "Dreame Mower - Solar-Aware Charging" reacts to that timer, still
+  applying the 17:00-19:00 peak blackout when the house is on grid power, and
+  restores the normal mode when the timer ends.
+
+  Any pending 24h manual override is cancelled, since sending the mower home
+  is an explicit request to charge. Note: the mower returning by itself (low
+  battery, rain, finished schedule) also counts.
+triggers:
+  - trigger: state
+    entity_id: lawn_mower.a2_frank
+    to: returning
+conditions:
+  # Only outside the night window (08:00 - 23:00), when charging is restricted
+  - condition: template
+    value_template: >
+      {{ today_at(states('input_datetime.dreame_mower_night_charge_end')) <= now()
+         < today_at(states('input_datetime.dreame_mower_night_charge_start')) }}
+actions:
+  - action: timer.start
+    target:
+      entity_id: timer.dreame_mower_dock_charge_override
+    data:
+      duration: >
+        {{ (today_at(states('input_datetime.dreame_mower_night_charge_start')) - now()).total_seconds() | int }}
+  - action: timer.cancel
+    target:
+      entity_id: timer.dreame_mower_charging_override
+mode: single

@@ -7,7 +7,8 @@ description: >
 
   "Changed" means the live schedule no longer matches the mode last applied
   (input_select.dreame_mower_charging_mode): solar = restriction off; night =
-  restriction on with the configured night start/end times.
+  restriction on with the night start/end times; peak = restriction on with
+  the window running from the end of the peak blackout to its start.
 triggers:
   - trigger: template
     value_template: >
@@ -19,6 +20,10 @@ triggers:
         false
       {% elif mode == 'solar' %}
         {{ sw != 'off' }}
+      {% elif mode == 'peak' %}
+        {{ not (sw == 'on'
+                and start[:5] == states('input_datetime.dreame_mower_peak_block_end')[:5]
+                and end[:5] == states('input_datetime.dreame_mower_peak_block_start')[:5]) }}
       {% else %}
         {{ not (sw == 'on'
                 and start[:5] == states('input_datetime.dreame_mower_night_charge_start')[:5]
