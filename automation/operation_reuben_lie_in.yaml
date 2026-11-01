@@ -1,21 +1,68 @@
 id: '1664193605389'
 alias: Operation Reuben Lie In
-description: ''
+description: >
+  Keeps Reuben's room warm from 04:00 until 07:30 every day so the room is not
+  cold at 05:30 (when he otherwise wakes). Sets everything labelled heating
+  back to 14C, then holds Reuben's TRV and Nest at 20C, and re-asserts that if
+  anything (e.g. the heating blueprint schedule) lowers the TRV in the window.
+  The 18C floor in "Reuben Room - Minimum Temperature Guard" applies at all times.
 triggers:
-- at: 04:00:00
-  trigger: time
+  - at: 04:00:00
+    trigger: time
+    id: start
+  - trigger: state
+    entity_id: climate.reuben_trv
+    attribute: temperature
+    id: drift
+  - trigger: state
+    entity_id: climate.reuben
+    attribute: temperature
+    id: drift
 conditions: []
 actions:
-- metadata: {}
-  data:
-    temperature: 14
-  action: climate.set_temperature
-  target:
-    label_id: heating
-- metadata: {}
-  data:
-    temperature: 20
-  action: climate.set_temperature
-  target:
-    entity_id: climate.reuben_trv
-mode: single
+  - if:
+      - condition: trigger
+        id: start
+    then:
+      - action: climate.set_temperature
+        target:
+          label_id: heating
+        data:
+          temperature: 14
+  - if:
+      - condition: or
+        conditions:
+          - condition: trigger
+            id: start
+          - condition: and
+            conditions:
+              - condition: trigger
+                id: drift
+              - condition: time
+                after: '04:00:00'
+                before: '07:30:00'
+    then:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.reuben_away_mode
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.reuben
+        data:
+          hvac_mode: heat
+      - if:
+          - condition: template
+            value_template: >
+              {{ state_attr('climate.reuben_trv', 'temperature') | float(0) != 20
+                 or state_attr('climate.reuben', 'temperature') | float(0) != 20
+                 or trigger.id == 'start' }}
+        then:
+          - action: climate.set_temperature
+            target:
+              entity_id:
+                - climate.reuben_trv
+                - climate.reuben
+            data:
+              temperature: 20
+mode: queued
+max: 3
