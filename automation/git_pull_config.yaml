@@ -14,4 +14,15 @@ actions:
   data: {}
 - action: rest.reload
   data: {}
+# git pull only updates files on disk; each domain needs reloading to pick them up.
+# Order matters: helpers and templates first, since automations reference them.
+# automation.reload goes last because it reloads this automation too.
+- action: input_number.reload
+  data: {}
+- action: input_datetime.reload
+  data: {}
+- action: template.reload
+  data: {}
+- action: automation.reload
+  data: {}
 mode: single
