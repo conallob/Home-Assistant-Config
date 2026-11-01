@@ -60,7 +60,7 @@ There are multiple ways to validate Home Assistant configuration:
 Changes merged to the `main` branch are automatically deployed:
 - A webhook triggers `git pull` on the live system when commits are merged to `main`
 - Valid configuration changes take effect within seconds
-- The system automatically reloads configuration where possible
+- After `git pull`, the `Git Pull Configs from Github Actions` automation reloads REST, `input_number`, `input_datetime`, template and automation config. Any other domain (e.g. a new `input_boolean` or `counter`) needs adding to that automation, or a manual reload/restart, or the change sits on disk unloaded
 
 ### Contribution Guidelines
 
