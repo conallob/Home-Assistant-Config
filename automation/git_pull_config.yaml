@@ -1,6 +1,12 @@
 id: '1768775775753'
 alias: Git Pull Configs from Github Actions
-description: Update Configuration on Github Push Event
+description: >
+  Deploy webhook. Pulls main, validates the config, then reloads only the
+  requested categories. Body is JSON: {"categories": ["automation", "template"]}.
+  A missing body or categories key means "all"; an empty list means pull only.
+  Category "restart" sends a phone notification (a change HA can't hot-reload).
+  Progress is tracked in input_select.deploy_status so that the
+  "Config Deploy Watchdog" automation can notify when a step fails.
 triggers:
 - webhook_id: github_git_pull_config
   local_only: false
@@ -8,10 +14,72 @@ triggers:
   allowed_methods:
   - POST
   - PUT
+variables:
+  requested: >
+    {% set j = trigger.json if trigger.json is defined else none %}
+    {% set c = j.categories if j is mapping and j.categories is defined else ['all'] %}
+    {{ c if c is list else [c] }}
+  # Reload order matters: helpers and templates first, automations last
+  # (they reference the others).
+  reload_services:
+    input_select: input_select.reload
+    input_number: input_number.reload
+    input_datetime: input_datetime.reload
+    timer: timer.reload
+    template: template.reload
+    script: script.reload
+    scene: scene.reload
+    rest: rest.reload
+    rest_command: rest_command.reload
+    themes: frontend.reload_themes
+    automation: automation.reload
 conditions: []
 actions:
+- action: input_select.select_option
+  target:
+    entity_id: input_select.deploy_status
+  data:
+    option: pulling
 - action: shell_command.git_pull_config
-  data: {}
-- action: rest.reload
-  data: {}
-mode: single
+  response_variable: pull
+- if: "{{ pull.returncode != 0 }}"
+  then:
+  - stop: "git pull failed: {{ pull.stderr }}"
+    error: true
+- action: input_select.select_option
+  target:
+    entity_id: input_select.deploy_status
+  data:
+    option: checking
+# Raises (and so stops the run, leaving status at "checking") on invalid config
+- action: homeassistant.check_config
+- repeat:
+    for_each: "{{ reload_services.keys() | list }}"
+    sequence:
+    - if: "{{ 'all' in requested or repeat.item in requested }}"
+      then:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.deploy_status
+        data:
+          option: "reload_{{ repeat.item }}"
+      # No continue_on_error: a failed reload must stop the run so the
+      # watchdog sees the stuck status instead of a false "ok".
+      - action: "{{ reload_services[repeat.item] }}"
+- if: "{{ 'restart' in requested }}"
+  then:
+  - action: notify.conall_phone
+    data:
+      title: Home Assistant restart needed
+      message: >
+        The latest deploy changed config that can't be hot-reloaded
+        (configuration.yaml, sensor/, binary_sensor/, groups or custom_components).
+# Reloading automations can replace this run mid-flight; the watchdog also
+# marks "ok" on the automation_reloaded event, so this is best-effort.
+- action: input_select.select_option
+  target:
+    entity_id: input_select.deploy_status
+  data:
+    option: ok
+mode: queued
+max: 3
