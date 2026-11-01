@@ -20,7 +20,7 @@ conditions:
 actions:
   - action: switch.turn_off
     target:
-      entity_id: switch.reuben_thermostat_away_mode
+      entity_id: switch.reuben_away_mode
   - action: climate.set_hvac_mode
     target:
       entity_id:
