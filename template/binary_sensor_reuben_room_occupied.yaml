@@ -1,0 +1,20 @@
+# event.reuben_motion (camera) only fires discrete events - it has no on/off
+# state - so latch it into an occupancy sensor that stays on for a while after
+# the last motion event. When the mmWave sensor exists, OR it into the state
+# (and keep this as the "recent movement" half) for reliable still-presence.
+triggers:
+  - trigger: state
+    entity_id: event.reuben_motion
+    not_from:
+      - unavailable
+      - unknown
+    not_to:
+      - unavailable
+      - unknown
+binary_sensor:
+  - name: "Reuben Room Occupied"
+    unique_id: reuben_room_occupied
+    device_class: occupancy
+    state: "true"
+    auto_off:
+      minutes: 15
