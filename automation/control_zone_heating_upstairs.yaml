@@ -12,7 +12,7 @@ actions:
       state: 'on'
     sequence:
     - target:
-        entity_id: climate.reuben_2
+        entity_id: climate.reuben
       data:
         hvac_mode: heat
       action: climate.set_hvac_mode
@@ -22,7 +22,7 @@ actions:
       state: 'off'
     sequence:
     - target:
-        entity_id: climate.reuben_2
+        entity_id: climate.reuben
       data:
         hvac_mode: 'off'
       action: climate.set_hvac_mode

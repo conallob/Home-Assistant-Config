@@ -1,0 +1,52 @@
+id: '1767000000001'
+alias: Reuben Room - Minimum Temperature Guard
+description: >
+  Keeps Reuben's room from dipping below the minimum (default 18C). Overrides
+  Nest away/eco and any lower setpoint (e.g. from the heating blueprint) on
+  both the Nest and the TRV. Independent of presence by design.
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.reuben_sensor_temperature
+    below: input_number.reuben_room_floor_temp
+    for:
+      minutes: 5
+  # numeric_state only fires on a crossing, so re-check while still cold
+  - trigger: time_pattern
+    minutes: "/15"
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.reuben_sensor_temperature
+    below: input_number.reuben_room_floor_temp
+actions:
+  - action: switch.turn_off
+    target:
+      entity_id: switch.reuben_away_mode
+  - action: climate.set_hvac_mode
+    target:
+      entity_id:
+        - climate.reuben
+        - climate.reuben_trv
+    data:
+      hvac_mode: heat
+  - action: climate.set_temperature
+    target:
+      entity_id:
+        - climate.reuben
+        - climate.reuben_trv
+    data:
+      temperature: "{{ states('input_number.reuben_room_floor_setpoint') | float(20) }}"
+  # Still cold after 30 minutes of heating: something is wrong, tell a human
+  - delay:
+      minutes: 30
+  - if:
+      - condition: numeric_state
+        entity_id: sensor.reuben_sensor_temperature
+        below: input_number.reuben_room_floor_temp
+    then:
+      - action: persistent_notification.create
+        data:
+          title: Reuben's room is cold
+          message: >
+            {{ states('sensor.reuben_sensor_temperature') }}C, still below
+            {{ states('input_number.reuben_room_floor_temp') }}C after 30 minutes of heating.
+mode: single
