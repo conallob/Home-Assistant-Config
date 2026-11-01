@@ -1,0 +1,23 @@
+# Progress marker for the deploy webhook automation. Each step records itself
+# here before running, so a step that fails (and stops the run) leaves its name
+# behind and the "Config Deploy Watchdog" automation can report where it died.
+deploy_status:
+  name: "Deploy Status"
+  icon: mdi:rocket-launch
+  initial: idle
+  options:
+    - idle
+    - pulling
+    - checking
+    - reload_input_select
+    - reload_input_number
+    - reload_input_datetime
+    - reload_timer
+    - reload_template
+    - reload_script
+    - reload_scene
+    - reload_rest
+    - reload_rest_command
+    - reload_themes
+    - reload_automation
+    - ok

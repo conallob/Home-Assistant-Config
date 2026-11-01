@@ -60,7 +60,10 @@ There are multiple ways to validate Home Assistant configuration:
 Changes merged to the `main` branch are automatically deployed:
 - A webhook triggers `git pull` on the live system when commits are merged to `main`
 - Valid configuration changes take effect within seconds
-- After `git pull`, the `Git Pull Configs from Github Actions` automation reloads REST, `input_number`, `input_datetime`, template and automation config. Any other domain (e.g. a new `input_boolean` or `counter`) needs adding to that automation, or a manual reload/restart, or the change sits on disk unloaded
+- The deploy workflow works out which config categories changed (automation, template, input_number, script, ...) and sends them to the webhook as JSON, e.g. `{"categories": ["automation"]}`. `Git Pull Configs from Github Actions` pulls, runs `homeassistant.check_config`, then reloads only those categories (a missing body means all; `[]` means pull only).
+- Changes that can't be hot-reloaded (`configuration.yaml`, `sensor/`, `binary_sensor/`, `groups.yaml`, `custom_components/`) send a "restart needed" notification to the phone instead.
+- Each deploy step records itself in `input_select.deploy_status`; if a step fails, `Config Deploy Watchdog` notifies the phone with the step it stopped at. A new category needs adding to the `reload_services` map in `automation/git_pull_config.yaml`, to `input_select/deploy_status.yaml` and to the workflow's path mapping.
+- Manual targeted reload: `curl -X POST -H 'Content-Type: application/json' -d '{"categories": ["template"]}' "$HOME_ASSISTANT_WEBHOOK_URL"`
 
 ### Contribution Guidelines
 
