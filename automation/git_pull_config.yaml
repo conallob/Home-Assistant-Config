@@ -1,14 +1,20 @@
 id: '1768775775753'
 alias: Git Pull Configs from Github Actions
 description: >-
-  Update Configuration on Github Push Event. The webhook body may carry
-  {"sha": "<40-char commit hash>"} to sync the live checkout to exactly that
-  commit (fast-forward only, must be on origin/main). With no sha it pulls
-  the latest main, as before. A sha that is present but malformed aborts
-  rather than falling back to a full pull. NOTE: the webhook is reachable
-  without authentication (local_only: false) - the webhook id is the only
-  secret - which is why the sha is strictly validated before it reaches a
-  shell command.
+  Deploy webhook. Syncs the live checkout, validates the config, then reloads
+  only the requested categories. Body is JSON:
+  {"sha": "<40-char commit hash>", "categories": ["automation", "template"]}.
+  SHA: with a sha the checkout fast-forwards to exactly that commit (must be on
+  origin/main); with no sha it pulls the latest main. A sha that is present but
+  malformed aborts rather than falling back to a full pull. CATEGORIES: a
+  missing body or categories key means "all"; an empty list means sync only;
+  "restart" sends a phone notification (a change HA can't hot-reload).
+  Progress is tracked in input_select.deploy_status so the "Config Deploy
+  Watchdog" automation can notify the phone when a step fails. NOTE: the webhook
+  is reachable without authentication (local_only: false) - the webhook id is
+  the only secret - which is why the sha is strictly validated before it
+  reaches a shell command, and categories are only ever compared against a
+  fixed map, never used to build a command.
 triggers:
 - webhook_id: github_git_pull_config
   local_only: false
@@ -24,7 +30,31 @@ variables:
     {% set body = trigger.json if trigger.json is defined and trigger.json is mapping else {} %}
     {% set v = body.get('sha') %}
     {{ '' if v is none else (v | trim if v is string else 'invalid') }}
+  # No JSON body, or no categories key -> ['all'].
+  requested: >-
+    {% set body = trigger.json if trigger.json is defined and trigger.json is mapping else {} %}
+    {% set c = body.get('categories') %}
+    {{ ['all'] if c is none else (c if c is list else [c]) }}
+  # Reload order matters: helpers and templates first, automations last
+  # (they reference the others).
+  reload_services:
+    input_select: input_select.reload
+    input_number: input_number.reload
+    input_datetime: input_datetime.reload
+    timer: timer.reload
+    template: template.reload
+    script: script.reload
+    scene: scene.reload
+    rest: rest.reload
+    rest_command: rest_command.reload
+    themes: frontend.reload_themes
+    automation: automation.reload
 actions:
+- action: input_select.select_option
+  target:
+    entity_id: input_select.deploy_status
+  data:
+    option: pulling
 - choose:
   # A well-formed sha: sync to exactly that commit.
   - conditions:
@@ -52,6 +82,51 @@ actions:
   default:
   - action: shell_command.git_pull_config
     data: {}
-- action: rest.reload
-  data: {}
-mode: single
+    response_variable: pull_result
+  - if:
+    - condition: template
+      value_template: "{{ pull_result.returncode != 0 }}"
+    then:
+    - stop: "git_pull_config failed (returncode {{ pull_result.returncode }}): {{ pull_result.stderr }}"
+      error: true
+- action: input_select.select_option
+  target:
+    entity_id: input_select.deploy_status
+  data:
+    option: checking
+# Raises (and so stops the run, leaving status at "checking") on invalid config
+- action: homeassistant.check_config
+- repeat:
+    for_each: "{{ reload_services.keys() | list }}"
+    sequence:
+    - if:
+      - condition: template
+        value_template: "{{ 'all' in requested or repeat.item in requested }}"
+      then:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.deploy_status
+        data:
+          option: "reload_{{ repeat.item }}"
+      # No continue_on_error: a failed reload must stop the run so the
+      # watchdog sees the stuck status instead of a false "ok".
+      - action: "{{ reload_services[repeat.item] }}"
+- if:
+  - condition: template
+    value_template: "{{ 'restart' in requested }}"
+  then:
+  - action: notify.conall_phone
+    data:
+      title: Home Assistant restart needed
+      message: >-
+        The latest deploy changed config that can't be hot-reloaded
+        (configuration.yaml, sensor/, binary_sensor/, groups or custom_components).
+# Reloading automations can replace this run mid-flight; the watchdog also
+# marks "ok" on the automation_reloaded event, so this is best-effort.
+- action: input_select.select_option
+  target:
+    entity_id: input_select.deploy_status
+  data:
+    option: ok
+mode: queued
+max: 3

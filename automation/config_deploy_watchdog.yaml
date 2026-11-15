@@ -1,0 +1,55 @@
+id: '1768775775754'
+alias: Config Deploy Watchdog
+description: >
+  Notifies the phone when a deploy (or a targeted reload) stops part way.
+  The deploy automation records each step in input_select.deploy_status and
+  only reaches "ok" if every step succeeded; a failed step leaves its name there.
+triggers:
+- trigger: event
+  event_type: automation_reloaded
+  id: automations_reloaded
+- trigger: state
+  entity_id: input_select.deploy_status
+  for: "00:02:00"
+  id: stuck
+conditions: []
+actions:
+- choose:
+  # A successful automation reload is the last step and may cancel the deploy
+  # run itself, so close out the status here.
+  - conditions:
+    - condition: trigger
+      id: automations_reloaded
+    - condition: state
+      entity_id: input_select.deploy_status
+      state: reload_automation
+    sequence:
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.deploy_status
+      data:
+        option: ok
+  - conditions:
+    - condition: trigger
+      id: stuck
+    - condition: not
+      conditions:
+      - condition: state
+        entity_id: input_select.deploy_status
+        state:
+        - idle
+        - ok
+    sequence:
+    - action: notify.conall_phone
+      data:
+        title: Config deploy failed
+        message: >
+          Stopped at "{{ states('input_select.deploy_status') }}". Check the trace of
+          "Git Pull Configs from Github Actions".
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.deploy_status
+      data:
+        option: idle
+mode: queued
+max: 5
