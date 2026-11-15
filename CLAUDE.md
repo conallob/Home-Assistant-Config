@@ -95,6 +95,15 @@ esphome config esphome/device-name.yaml
 
 ESPHome secrets are stored separately in `esphome/secrets.yaml`.
 
+#### ESPHome CI validation scope
+
+`.github/workflows/esphome-config-check.yaml` behaves differently depending on context:
+
+- **Pull requests:** only the configs the PR changes (or that reference a changed shared file such as `esphome/packages/*.yaml`) are validated, and block merging. This stops an unrelated broken config from blocking unrelated work. All other configs are still validated *non-blocking*; failures appear as CI warnings and in the job summary.
+- **Pushes to `main` (via `deploy.yml`):** **all** configs are validated, and any failure blocks deployment. The deploy webhook runs `git pull`, which brings in *every* change on `main`, not selected files, so a config that is broken on `main` holds up the deploy of everything else.
+
+A green PR check therefore does **not** guarantee a green deploy. If a PR check shows a warning about a config the PR doesn't touch, fix that config (or pin/repair its upstream package) before or soon after merging, otherwise the next deploy is blocked.
+
 ### Custom Components
 
 Custom components are typically installed and managed via HACS (Home Assistant Community Store). The `custom_components/` directory contains third-party integrations that extend Home Assistant's capabilities. Each component has its own structure with Python code, translations, and service definitions.

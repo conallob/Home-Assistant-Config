@@ -1,5 +1,17 @@
 name: ESPHome Configuration Check
 
+# Validation scope - IMPORTANT:
+#  - Pull requests: only the configs the PR touches are validated (blocking),
+#    so an unrelated broken config doesn't block unrelated development.
+#    The remaining configs are validated too, but NON-blocking: failures
+#    show up as CI warnings (see "Warn about other broken configs").
+#  - Pushes to main (deploy.yml calls this workflow): ALL configs are
+#    validated and any failure blocks deployment. Deployment runs
+#    `git pull`, which brings in every change on main, not selected files,
+#    so a config that is broken on main blocks the deploy of everything
+#    until it is fixed. A green PR check therefore does NOT guarantee a
+#    green deploy. See "ESPHome CI validation scope" in CLAUDE.md.
+
 on:
   pull_request:
     branches:
@@ -84,9 +96,15 @@ jobs:
           fi
 
           echo "Configurations to validate:"; echo "$selected"
+
+          # Everything not selected (validated non-blocking, as warnings only)
+          others=$(comm -23 <(sort <<<"$all_configs") <(sort <<<"$selected") | sed '/^$/d')
           {
             echo "files<<EOF"
             echo "$selected"
+            echo "EOF"
+            echo "others<<EOF"
+            echo "$others"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -111,3 +129,39 @@ jobs:
           done
 
           exit $exit_code
+
+      - name: Warn about other broken configs (non-blocking)
+        # Only meaningful on pull requests, where unrelated configs are
+        # skipped above. Never fails the job: it exists so that a config that
+        # is broken on the base branch is visible here, rather than first
+        # surfacing as a blocked deploy after merge.
+        if: github.event_name == 'pull_request'
+        env:
+          OTHERS: ${{ steps.select.outputs.others }}
+        run: |
+          if [[ -z "${OTHERS//[[:space:]]/}" ]]; then
+            exit 0
+          fi
+
+          broken=""
+          for file in $OTHERS; do
+            if ! esphome config "$file" >/dev/null 2>&1; then
+              echo "::warning file=$file::This config is NOT part of this PR but fails validation. The deploy workflow validates ALL ESPHome configs and runs git pull for all changes on main, so merging this PR will not deploy until this is fixed. See CLAUDE.md, 'ESPHome CI validation scope'."
+              broken+="- \`$file\`"$'\n'
+            fi
+          done
+
+          {
+            echo "### ESPHome validation scope"
+            echo "This PR only blocks on the configs it touches. Deploy (push to main) validates **all** configs and pulls **all** changes, so any broken config blocks deployment."
+            if [[ -n "$broken" ]]; then
+              echo
+              echo "⚠️ Configs not in this PR that currently fail validation (deploy will be blocked until fixed):"
+              echo "$broken"
+            else
+              echo
+              echo "✅ All other ESPHome configs validate."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit 0
