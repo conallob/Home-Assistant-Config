@@ -92,11 +92,24 @@ substitutions:
   longitude: !secret taku_coords_lon
   timezone: "Europe/Dublin"
 
+  # Feature flag: "true" pulls in packages/e-ink-frame-downstairs-debug-true.yaml
+  # (diagnostic sensors, web UI/HA debug controls, refresh bookkeeping);
+  # "false" pulls in the -false.yaml variant, which only supplies no-op
+  # versions of the hooks below. Must be exactly "true" or "false".
+  debug: "true"
+
   # Display - Waveshare 7.3" e-Paper HAT (G) 4-Color (800x480)
   # Actual display: HAT (G) with Black, White, Red, Yellow
   # Using 7.30in-f driver (no native HAT G support yet)
   # Color mapping applied in color: section to correct for driver differences
   waveshare_model: "7.30in-f"
+
+# Debug feature flag - see `debug` substitution above. Both variants define
+# the same hook points (globals test_pattern_requested/scheduled_enabled,
+# scripts do_refresh/note_boot/note_decision/note_draw) so the rest of this
+# file works either way.
+packages:
+  debug_features: !include packages/e-ink-frame-downstairs-debug-${debug}.yaml
 
 esphome:
   name: ${device_name}
@@ -113,15 +126,7 @@ esphome:
   on_boot:
     priority: -100  # Run after everything is initialized
     then:
-      # Restore the persisted last-refresh timestamp so the HA sensor isn't
-      # blank after every reboot/deep-sleep wake.
-      - lambda: |-
-          if (id(last_refresh_epoch) > 0) {
-            ESPTime t = ESPTime::from_epoch_utc(id(last_refresh_epoch));
-            id(last_refresh_text).publish_state(t.strftime("%Y-%m-%dT%H:%M:%SZ"));
-          }
-          id(refresh_trigger).publish_state("(none since boot)");
-          id(refresh_decision).publish_state("(none since boot)");
+      - script.execute: note_boot
       - delay: 5s  # Wait for HA connection and sensor updates
       - if:
           condition:
@@ -157,15 +162,8 @@ ota:
   - platform: esphome
     password: !secret ota_password_e_ink_frame_downstairs
 
-# Web UI (http://e-ink-frame-downstairs.local/) lists every named entity
-# below (diagnostics, switches, buttons) and streams the live log.
 web_server:
   port: 80
-  log: true
-
-# Heap / loop-time / reset-reason diagnostics (see sensor: and text_sensor:)
-debug:
-  update_interval: 60s
 
 # SPI Configuration for e-ink display
 spi:
@@ -182,26 +180,6 @@ i2c:
 # Global to track if initial refresh has happened
 globals:
   - id: initial_refresh_done
-    type: bool
-    restore_value: no
-    initial_value: 'false'
-
-  # Unix timestamp (UTC) of the last time the display lambda ran. Persisted
-  # to flash so it survives reboots - lets you tell "stopped refreshing at
-  # X" apart from "just rebooted".
-  - id: last_refresh_epoch
-    type: int
-    restore_value: yes
-    initial_value: '0'
-
-  # Number of display updates since boot
-  - id: refresh_counter
-    type: int
-    restore_value: no
-    initial_value: '0'
-
-  # One-shot: next display update draws a test pattern instead of the dashboard
-  - id: test_pattern_requested
     type: bool
     restore_value: no
     initial_value: 'false'
@@ -244,18 +222,6 @@ time:
 
 # Script to handle conditional refresh
 script:
-  # Single entry point for every display update - records WHY it was
-  # triggered (shown in HA / web UI) before kicking the display.
-  - id: do_refresh
-    mode: queued
-    parameters:
-      reason: string
-    then:
-      - lambda: |-
-          ESP_LOGI("display", "Refresh requested: %s", reason.c_str());
-          id(refresh_trigger).publish_state(reason);
-      - component.update: eink_display
-
   - id: scheduled_refresh
     then:
       - if:
@@ -264,11 +230,11 @@ script:
               auto time = id(homeassistant_time).now();
               auto skip = [&](const char *why) {
                 ESP_LOGI("display", "Skipping refresh: %s", why);
-                id(refresh_decision).publish_state(std::string("Skipped: ") + why);
+                id(note_decision).execute(std::string("Skipped: ") + why);
                 return false;
               };
 
-              if (!id(scheduled_refresh_enabled).state) return skip("scheduled refresh switch is off");
+              if (!id(scheduled_enabled)) return skip("scheduled refresh switch is off");
 
               // Skip refresh after 23:00 (11 PM)
               if (time.hour >= 23) return skip("after 23:00");
@@ -287,7 +253,7 @@ script:
               }
 
               ESP_LOGI("display", "Scheduled refresh: conditions met, updating display");
-              id(refresh_decision).publish_state("Refreshed: conditions met");
+              id(note_decision).execute(std::string("Refreshed: conditions met"));
               return true;
           then:
             - script.execute:
@@ -501,52 +467,8 @@ binary_sensor:
     id: hot_water_heating
     entity_id: binary_sensor.hot_water_heating
 
-# Switches (also exposed in the web UI)
-switch:
-  # Master enable for the scheduled (every ~7.5 min) refresh. Manual
-  # buttons ignore this. Useful to stop the panel flashing while debugging.
-  - platform: template
-    id: scheduled_refresh_enabled
-    name: "${friendly_name} Scheduled Refresh"
-    icon: "mdi:timer-refresh"
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_ON
-
 # Text sensors for Home Assistant data
 text_sensor:
-  # ---- Diagnostics (visible in HA + web UI) ----
-  # NOTE: "Last Refresh" is stamped when the draw lambda runs, i.e. when
-  # the ESP asked the panel to update. It can't confirm the panel physically
-  # changed - if this advances but the screen doesn't, suspect the panel,
-  # ribbon cable or wiring (check the log for BUSY timeouts).
-  - platform: template
-    id: last_refresh_text
-    name: "${friendly_name} Last Refresh"
-    device_class: timestamp
-    entity_category: diagnostic
-
-  - platform: template
-    id: refresh_trigger
-    name: "${friendly_name} Last Refresh Trigger"
-    icon: "mdi:gesture-tap"
-    entity_category: diagnostic
-
-  - platform: template
-    id: refresh_decision
-    name: "${friendly_name} Last Scheduled Refresh Decision"
-    icon: "mdi:help-rhombus"
-    entity_category: diagnostic
-
-  - platform: debug
-    reset_reason:
-      name: "${friendly_name} Reset Reason"
-
-  - platform: wifi_info
-    ip_address:
-      name: "${friendly_name} IP Address"
-    bssid:
-      name: "${friendly_name} Connected BSSID"
-
   # Weather condition
   - platform: homeassistant
     id: weather_condition
@@ -689,38 +611,6 @@ sensor:
     id: reuben_account_balance
     entity_id: sensor.reuben_current_account_balance
 
-  # ---- Diagnostics ----
-  - platform: uptime
-    name: "${friendly_name} Uptime"
-    entity_category: diagnostic
-
-  - platform: template
-    name: "${friendly_name} Refresh Count Since Boot"
-    icon: "mdi:counter"
-    entity_category: diagnostic
-    accuracy_decimals: 0
-    state_class: total_increasing
-    update_interval: 60s
-    lambda: 'return id(refresh_counter);'
-
-  - platform: template
-    name: "${friendly_name} Minutes Since Last Refresh"
-    icon: "mdi:timer-sand"
-    unit_of_measurement: "min"
-    entity_category: diagnostic
-    accuracy_decimals: 0
-    update_interval: 60s
-    lambda: |-
-      auto now = id(homeassistant_time).now();
-      if (!now.is_valid() || id(last_refresh_epoch) <= 0) return NAN;
-      return (float) (now.timestamp - id(last_refresh_epoch)) / 60.0f;
-
-  - platform: debug
-    free:
-      name: "${friendly_name} Free Heap"
-    loop_time:
-      name: "${friendly_name} Loop Time"
-
   # WiFi Signal Sensor
   - platform: wifi_signal
     id: wifi_signal_strength
@@ -776,15 +666,10 @@ display:
         return;
       }
 
-      // Diagnostics: stamp this draw (persisted + published to HA/web UI)
-      id(last_refresh_epoch) = time.timestamp;
-      id(refresh_counter)++;
-      {
-        ESPTime t = ESPTime::from_epoch_utc(time.timestamp);
-        id(last_refresh_text).publish_state(t.strftime("%Y-%m-%dT%H:%M:%SZ"));
-      }
+      // Diagnostics hook (no-op unless the `debug` flag is true)
+      id(note_draw).execute();
 
-      // One-shot hardware test pattern (button in HA / web UI): solid bars
+      // One-shot hardware test pattern (debug button in HA / web UI): solid bars
       // of every ink, so a dead/partial panel is obvious without any
       // dependence on HA data.
       if (id(test_pattern_requested)) {
@@ -1276,39 +1161,6 @@ button:
         - script.execute:
             id: do_refresh
             reason: "manual button"
-
-  - platform: template
-    name: "${friendly_name} Test Pattern"
-    icon: "mdi:checkerboard"
-    entity_category: diagnostic
-    on_press:
-      then:
-        - globals.set:
-            id: test_pattern_requested
-            value: 'true'
-        - script.execute:
-            id: do_refresh
-            reason: "test pattern button"
-
-  - platform: template
-    name: "${friendly_name} Log Diagnostics"
-    icon: "mdi:text-box-search"
-    entity_category: diagnostic
-    on_press:
-      then:
-        - lambda: |-
-            auto now = id(homeassistant_time).now();
-            ESP_LOGI("diag", "uptime=%lus refreshes_since_boot=%d last_refresh_epoch=%d now_epoch=%d time_valid=%s",
-                     (unsigned long) (millis() / 1000), id(refresh_counter), id(last_refresh_epoch),
-                     (int) now.timestamp, now.is_valid() ? "yes" : "no");
-            ESP_LOGI("diag", "scheduled_refresh=%s sleep_mode=%s alarm=%s home_persons=%s",
-                     id(scheduled_refresh_enabled).state ? "on" : "off",
-                     id(taku_sleep_mode).has_state() ? (id(taku_sleep_mode).state ? "on" : "off") : "unknown",
-                     id(alarm_state).has_state() ? id(alarm_state).state.c_str() : "unknown",
-                     id(zone_home_persons).has_state() ? id(zone_home_persons).state.c_str() : "unknown");
-            ESP_LOGI("diag", "wifi_rssi=%.0f battery=%.0f%% (%.2fV)",
-                     id(wifi_signal_strength).state, id(fuel_gauge_level).state, id(fuel_gauge_voltage).state);
-            ESP_LOGI("diag", "free_heap=%u", (unsigned) esp_get_free_heap_size());
 
   - platform: template
     name: "${friendly_name} Deep Sleep"
