@@ -1,5 +1,17 @@
 name: ESPHome Configuration Check
 
+# Validation scope - IMPORTANT:
+#  - Pull requests: only the configs the PR touches are validated (blocking),
+#    so an unrelated broken config doesn't block unrelated development.
+#    The remaining configs are validated too, but NON-blocking: failures
+#    show up as CI warnings (see "Warn about other broken configs").
+#  - Pushes to main (deploy.yml calls this workflow): ALL configs are
+#    validated and any failure blocks deployment. Deployment runs
+#    `git pull`, which brings in every change on main, not selected files,
+#    so a config that is broken on main blocks the deploy of everything
+#    until it is fixed. A green PR check therefore does NOT guarantee a
+#    green deploy. See "ESPHome CI validation scope" in CLAUDE.md.
+
 on:
   pull_request:
     branches:
@@ -18,6 +30,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Full history so pull requests can diff against the base branch
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,18 +47,78 @@ jobs:
           # Use fake secrets for CI validation
           cp esphome/fakesecrets.testdata esphome/secrets.yaml
 
-      - name: Validate ESPHome configurations
+      - name: Select ESPHome configurations to validate
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          # Find all YAML files in esphome/ directory (excluding secrets and archive)
-          # and validate each one
-          exit_code=0
-          for file in esphome/*.yaml; do
-            # Skip secrets files
-            if [[ "$file" == *"secrets.yaml"* ]] || [[ "$file" == *"fakesecrets.yaml"* ]]; then
-              echo "Skipping $file (secrets file)"
-              continue
-            fi
+          # Top-level device configs (secrets files excluded)
+          all_configs=$(ls esphome/*.yaml | grep -v -e 'secrets.yaml' -e 'fakesecrets.yaml' || true)
 
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            # Deploy (push to main) or manual call: validate everything.
+            echo "Not a pull request - validating all configurations"
+            selected="$all_configs"
+          else
+            # Pull request: only validate configs touched by this PR, so
+            # unrelated breakages elsewhere don't block it.
+            changed=$(git diff --name-only --diff-filter=d "origin/${BASE_REF}...HEAD")
+            echo "Changed files:"; echo "$changed"
+
+            if grep -qx '.github/workflows/esphome-config-check.yaml' <<<"$changed"; then
+              echo "Workflow itself changed - validating all configurations"
+              selected="$all_configs"
+            else
+              selected=""
+              while IFS= read -r path; do
+                [[ "$path" == esphome/* ]] || continue
+                rel="${path#esphome/}"
+                if [[ "$rel" != */* ]]; then
+                  # Top-level file: a device config itself (or a secrets file)
+                  if grep -qxF "$path" <<<"$all_configs"; then
+                    selected+="$path"$'\n'
+                  fi
+                else
+                  # Shared file in a subdirectory (packages/, archive/, ...):
+                  # validate the top-level configs that reference it.
+                  # archive/ is never validated.
+                  [[ "$rel" == archive/* ]] && continue
+                  while IFS= read -r cfg; do
+                    if grep -qF -- "$rel" "$cfg"; then
+                      selected+="$cfg"$'\n'
+                    fi
+                  done <<<"$all_configs"
+                fi
+              done <<<"$changed"
+              selected=$(sort -u <<<"$selected" | sed '/^$/d')
+            fi
+          fi
+
+          echo "Configurations to validate:"; echo "$selected"
+
+          # Everything not selected (validated non-blocking, as warnings only)
+          others=$(comm -23 <(sort <<<"$all_configs") <(sort <<<"$selected") | sed '/^$/d')
+          {
+            echo "files<<EOF"
+            echo "$selected"
+            echo "EOF"
+            echo "others<<EOF"
+            echo "$others"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate ESPHome configurations
+        env:
+          FILES: ${{ steps.select.outputs.files }}
+        run: |
+          if [[ -z "${FILES//[[:space:]]/}" ]]; then
+            echo "No ESPHome configurations affected by this change - nothing to validate"
+            exit 0
+          fi
+
+          exit_code=0
+          for file in $FILES; do
             echo "Validating $file..."
             if ! esphome config "$file"; then
               echo "❌ Validation failed for $file"
@@ -54,3 +129,39 @@ jobs:
           done
 
           exit $exit_code
+
+      - name: Warn about other broken configs (non-blocking)
+        # Only meaningful on pull requests, where unrelated configs are
+        # skipped above. Never fails the job: it exists so that a config that
+        # is broken on the base branch is visible here, rather than first
+        # surfacing as a blocked deploy after merge.
+        if: github.event_name == 'pull_request'
+        env:
+          OTHERS: ${{ steps.select.outputs.others }}
+        run: |
+          if [[ -z "${OTHERS//[[:space:]]/}" ]]; then
+            exit 0
+          fi
+
+          broken=""
+          for file in $OTHERS; do
+            if ! esphome config "$file" >/dev/null 2>&1; then
+              echo "::warning file=$file::This config is NOT part of this PR but fails validation. The deploy workflow validates ALL ESPHome configs and runs git pull for all changes on main, so merging this PR will not deploy until this is fixed. See CLAUDE.md, 'ESPHome CI validation scope'."
+              broken+="- \`$file\`"$'\n'
+            fi
+          done
+
+          {
+            echo "### ESPHome validation scope"
+            echo "This PR only blocks on the configs it touches. Deploy (push to main) validates **all** configs and pulls **all** changes, so any broken config blocks deployment."
+            if [[ -n "$broken" ]]; then
+              echo
+              echo "⚠️ Configs not in this PR that currently fail validation (deploy will be blocked until fixed):"
+              echo "$broken"
+            else
+              echo
+              echo "✅ All other ESPHome configs validate."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit 0
