@@ -1,0 +1,32 @@
+# Debug feature flag OFF for e-ink-frame-downstairs.yaml: no diagnostic
+# entities, just no-op versions of the hooks the main file calls.
+# Keep the hook names/signatures in sync with the -true.yaml variant.
+
+globals:
+  - id: test_pattern_requested
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: scheduled_enabled
+    type: bool
+    restore_value: no
+    initial_value: 'true'
+
+script:
+  - id: do_refresh
+    mode: queued
+    parameters:
+      reason: string
+    then:
+      - component.update: eink_display
+  - id: note_boot
+    then:
+      - delay: 0ms
+  - id: note_decision
+    parameters:
+      text: string
+    then:
+      - delay: 0ms
+  - id: note_draw
+    then:
+      - delay: 0ms

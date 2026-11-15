@@ -1,0 +1,190 @@
+# Debug feature flag ON for e-ink-frame-downstairs.yaml: diagnostics and
+# debug controls, visible in the ESPHome web UI and Home Assistant.
+# Keep the hook names/signatures in sync with the -false.yaml variant.
+#
+# NOTE: "Last Refresh" is stamped when the draw lambda runs, i.e. when the
+# ESP asked the panel to update. It can't confirm the panel physically
+# changed - if this advances but the screen doesn't, suspect the panel,
+# ribbon cable or wiring (check the log for BUSY timeouts).
+
+# Heap / loop-time / reset-reason diagnostics
+debug:
+  update_interval: 60s
+
+globals:
+  # Unix timestamp (UTC) of the last time the display lambda ran. Persisted
+  # to flash so it survives reboots.
+  - id: last_refresh_epoch
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  # Number of display updates since boot
+  - id: refresh_counter
+    type: int
+    restore_value: no
+    initial_value: '0'
+  # One-shot: next display update draws a test pattern instead of the dashboard
+  - id: test_pattern_requested
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  # Mirrors the "Scheduled Refresh" switch (read by scheduled_refresh)
+  - id: scheduled_enabled
+    type: bool
+    restore_value: no
+    initial_value: 'true'
+
+script:
+  # Single entry point for every display update - records WHY it was
+  # triggered before kicking the display.
+  - id: do_refresh
+    mode: queued
+    parameters:
+      reason: string
+    then:
+      - lambda: |-
+          ESP_LOGI("display", "Refresh requested: %s", reason.c_str());
+          id(refresh_trigger).publish_state(reason);
+      - component.update: eink_display
+
+  - id: note_boot
+    then:
+      # Restore the persisted last-refresh timestamp so the HA sensor isn't
+      # blank after every reboot/deep-sleep wake.
+      - lambda: |-
+          if (id(last_refresh_epoch) > 0) {
+            ESPTime t = ESPTime::from_epoch_utc(id(last_refresh_epoch));
+            id(last_refresh_text).publish_state(t.strftime("%Y-%m-%dT%H:%M:%SZ"));
+          }
+          id(refresh_trigger).publish_state("(none since boot)");
+          id(refresh_decision).publish_state("(none since boot)");
+
+  - id: note_decision
+    parameters:
+      text: string
+    then:
+      - lambda: 'id(refresh_decision).publish_state(text);'
+
+  # Called from the display lambda on every draw
+  - id: note_draw
+    then:
+      - lambda: |-
+          auto time = id(homeassistant_time).now();
+          if (!time.is_valid()) return;
+          id(last_refresh_epoch) = time.timestamp;
+          id(refresh_counter)++;
+          ESPTime t = ESPTime::from_epoch_utc(time.timestamp);
+          id(last_refresh_text).publish_state(t.strftime("%Y-%m-%dT%H:%M:%SZ"));
+
+switch:
+  # Master enable for the scheduled (every ~7.5 min) refresh. Manual
+  # buttons ignore this. Useful to stop the panel flashing while debugging.
+  - platform: template
+    id: scheduled_refresh_enabled
+    name: "${friendly_name} Scheduled Refresh"
+    icon: "mdi:timer-refresh"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - globals.set:
+          id: scheduled_enabled
+          value: 'true'
+    turn_off_action:
+      - globals.set:
+          id: scheduled_enabled
+          value: 'false'
+
+text_sensor:
+  - platform: template
+    id: last_refresh_text
+    name: "${friendly_name} Last Refresh"
+    device_class: timestamp
+    entity_category: diagnostic
+
+  - platform: template
+    id: refresh_trigger
+    name: "${friendly_name} Last Refresh Trigger"
+    icon: "mdi:gesture-tap"
+    entity_category: diagnostic
+
+  - platform: template
+    id: refresh_decision
+    name: "${friendly_name} Last Scheduled Refresh Decision"
+    icon: "mdi:help-rhombus"
+    entity_category: diagnostic
+
+  - platform: debug
+    reset_reason:
+      name: "${friendly_name} Reset Reason"
+
+  - platform: wifi_info
+    ip_address:
+      name: "${friendly_name} IP Address"
+    bssid:
+      name: "${friendly_name} Connected BSSID"
+
+sensor:
+  - platform: uptime
+    name: "${friendly_name} Uptime"
+    entity_category: diagnostic
+
+  - platform: template
+    name: "${friendly_name} Refresh Count Since Boot"
+    icon: "mdi:counter"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    state_class: total_increasing
+    update_interval: 60s
+    lambda: 'return id(refresh_counter);'
+
+  - platform: template
+    name: "${friendly_name} Minutes Since Last Refresh"
+    icon: "mdi:timer-sand"
+    unit_of_measurement: "min"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 60s
+    lambda: |-
+      auto now = id(homeassistant_time).now();
+      if (!now.is_valid() || id(last_refresh_epoch) <= 0) return NAN;
+      return (float) (now.timestamp - id(last_refresh_epoch)) / 60.0f;
+
+  - platform: debug
+    free:
+      name: "${friendly_name} Free Heap"
+    loop_time:
+      name: "${friendly_name} Loop Time"
+
+button:
+  - platform: template
+    name: "${friendly_name} Test Pattern"
+    icon: "mdi:checkerboard"
+    entity_category: diagnostic
+    on_press:
+      then:
+        - globals.set:
+            id: test_pattern_requested
+            value: 'true'
+        - script.execute:
+            id: do_refresh
+            reason: "test pattern button"
+
+  - platform: template
+    name: "${friendly_name} Log Diagnostics"
+    icon: "mdi:text-box-search"
+    entity_category: diagnostic
+    on_press:
+      then:
+        - lambda: |-
+            auto now = id(homeassistant_time).now();
+            ESP_LOGI("diag", "uptime=%lus refreshes_since_boot=%d last_refresh_epoch=%d now_epoch=%d time_valid=%s",
+                     (unsigned long) (millis() / 1000), id(refresh_counter), id(last_refresh_epoch),
+                     (int) now.timestamp, now.is_valid() ? "yes" : "no");
+            ESP_LOGI("diag", "scheduled_refresh=%s sleep_mode=%s alarm=%s home_persons=%s",
+                     id(scheduled_enabled) ? "on" : "off",
+                     id(taku_sleep_mode).has_state() ? (id(taku_sleep_mode).state ? "on" : "off") : "unknown",
+                     id(alarm_state).has_state() ? id(alarm_state).state.c_str() : "unknown",
+                     id(zone_home_persons).has_state() ? id(zone_home_persons).state.c_str() : "unknown");
+            ESP_LOGI("diag", "wifi_rssi=%.0f battery=%.0f%% (%.2fV)",
+                     id(wifi_signal_strength).state, id(fuel_gauge_level).state, id(fuel_gauge_voltage).state);
+            ESP_LOGI("diag", "free_heap=%u", (unsigned) esp_get_free_heap_size());

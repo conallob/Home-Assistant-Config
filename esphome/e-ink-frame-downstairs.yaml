@@ -92,11 +92,24 @@ substitutions:
   longitude: !secret taku_coords_lon
   timezone: "Europe/Dublin"
 
+  # Feature flag: "true" pulls in packages/e-ink-frame-downstairs-debug-true.yaml
+  # (diagnostic sensors, web UI/HA debug controls, refresh bookkeeping);
+  # "false" pulls in the -false.yaml variant, which only supplies no-op
+  # versions of the hooks below. Must be exactly "true" or "false".
+  debug: "true"
+
   # Display - Waveshare 7.3" e-Paper HAT (G) 4-Color (800x480)
   # Actual display: HAT (G) with Black, White, Red, Yellow
   # Using 7.30in-f driver (no native HAT G support yet)
   # Color mapping applied in color: section to correct for driver differences
   waveshare_model: "7.30in-f"
+
+# Debug feature flag - see `debug` substitution above. Both variants define
+# the same hook points (globals test_pattern_requested/scheduled_enabled,
+# scripts do_refresh/note_boot/note_decision/note_draw) so the rest of this
+# file works either way.
+packages:
+  debug_features: !include packages/e-ink-frame-downstairs-debug-${debug}.yaml
 
 esphome:
   name: ${device_name}
@@ -113,6 +126,7 @@ esphome:
   on_boot:
     priority: -100  # Run after everything is initialized
     then:
+      - script.execute: note_boot
       - delay: 5s  # Wait for HA connection and sensor updates
       - if:
           condition:
@@ -184,7 +198,9 @@ time:
             then:
               - logger.log: "Initial time sync - triggering first display refresh..."
               - delay: 3s  # Give sensors time to receive their initial values
-              - component.update: eink_display
+              - script.execute:
+                  id: do_refresh
+                  reason: "initial time sync"
               - globals.set:
                   id: initial_refresh_done
                   value: 'true'
@@ -212,36 +228,37 @@ script:
           condition:
             lambda: |-
               auto time = id(homeassistant_time).now();
+              auto skip = [&](const char *why) {
+                ESP_LOGI("display", "Skipping refresh: %s", why);
+                id(note_decision).execute(std::string("Skipped: ") + why);
+                return false;
+              };
+
+              if (!id(scheduled_enabled)) return skip("scheduled refresh switch is off");
 
               // Skip refresh after 23:00 (11 PM)
-              if (time.hour >= 23) {
-                ESP_LOGI("display", "Skipping refresh: after 23:00");
-                return false;
-              }
+              if (time.hour >= 23) return skip("after 23:00");
 
               // Skip refresh if alarm is armed away
               if (id(alarm_state).has_state()) {
                 std::string alarm = id(alarm_state).state;
-                if (alarm == "armed_away") {
-                  ESP_LOGI("display", "Skipping refresh: alarm armed away");
-                  return false;
-                }
+                if (alarm == "armed_away") return skip("alarm armed away");
               }
 
               // Skip refresh if nobody is home (zone.home persons is empty)
               if (id(zone_home_persons).has_state()) {
                 std::string persons = id(zone_home_persons).state;
                 // Empty list is "[]" or just empty
-                if (persons == "[]" || persons.empty()) {
-                  ESP_LOGI("display", "Skipping refresh: nobody home");
-                  return false;
-                }
+                if (persons == "[]" || persons.empty()) return skip("nobody home");
               }
 
               ESP_LOGI("display", "Scheduled refresh: conditions met, updating display");
+              id(note_decision).execute(std::string("Refreshed: conditions met"));
               return true;
           then:
-            - component.update: eink_display
+            - script.execute:
+                id: do_refresh
+                reason: "scheduled"
 
 # Sun component for sunrise/sunset
 sun:
@@ -646,6 +663,29 @@ display:
       if (!time.is_valid()) {
         it.printf(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, id(font_header), id(color_black), TextAlign::CENTER,
                   "Waiting for Home Assistant...");
+        return;
+      }
+
+      // Diagnostics hook (no-op unless the `debug` flag is true)
+      id(note_draw).execute();
+
+      // One-shot hardware test pattern (debug button in HA / web UI): solid bars
+      // of every ink, so a dead/partial panel is obvious without any
+      // dependence on HA data.
+      if (id(test_pattern_requested)) {
+        id(test_pattern_requested) = false;
+        ESP_LOGI("display", "Drawing test pattern");
+        it.fill(id(color_white));
+        int bar_w = SCREEN_WIDTH / 4;
+        it.filled_rectangle(0 * bar_w, 0, bar_w, SCREEN_HEIGHT / 2, id(color_black));
+        it.filled_rectangle(1 * bar_w, 0, bar_w, SCREEN_HEIGHT / 2, id(color_red));
+        it.filled_rectangle(2 * bar_w, 0, bar_w, SCREEN_HEIGHT / 2, id(color_yellow));
+        it.rectangle(3 * bar_w, 0, bar_w, SCREEN_HEIGHT / 2, id(color_black));
+        it.rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, id(color_black));
+        it.line(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, id(color_black));
+        it.line(0, SCREEN_HEIGHT - 1, SCREEN_WIDTH - 1, 0, id(color_red));
+        it.strftime(SCREEN_WIDTH / 2, SCREEN_HEIGHT * 3 / 4, id(font_header), id(color_black), TextAlign::CENTER,
+                    "TEST PATTERN  %H:%M:%S", time);
         return;
       }
 
@@ -1116,8 +1156,11 @@ button:
     icon: "mdi:refresh"
     on_press:
       then:
-        - logger.log: "Manual display refresh triggered"
-        - component.update: eink_display
+        # Always refreshes - ignores the scheduled-refresh conditions
+        # (time of day, alarm, presence, scheduled-refresh switch).
+        - script.execute:
+            id: do_refresh
+            reason: "manual button"
 
   - platform: template
     name: "${friendly_name} Deep Sleep"
