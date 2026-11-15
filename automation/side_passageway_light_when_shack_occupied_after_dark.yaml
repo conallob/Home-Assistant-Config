@@ -1,0 +1,32 @@
+id: side_passageway_light_when_shack_occupied_after_dark
+alias: Side Passageway Light - On When Shack Occupied After Dark
+description: >-
+  Ensures light.side_passageway_light is on for the walk back from the Shack
+  (home office) down the garden in the dark. Fires when presence is detected
+  in the Shack and there is not enough daylight, either because presence
+  starts after dark, or because it gets dark while the Shack is still
+  occupied (e.g. the light was manually turned on earlier in the day).
+trigger:
+- platform: state
+  entity_id: binary_sensor.shack_presence
+  to: 'on'
+- platform: numeric_state
+  entity_id: sun.sun
+  attribute: elevation
+  below: -2
+condition:
+- condition: state
+  entity_id: binary_sensor.shack_presence
+  state: 'on'
+- condition: numeric_state
+  entity_id: sun.sun
+  attribute: elevation
+  below: -2
+- condition: state
+  entity_id: light.side_passageway_light
+  state: 'off'
+action:
+- service: light.turn_on
+  target:
+    entity_id: light.side_passageway_light
+mode: single
