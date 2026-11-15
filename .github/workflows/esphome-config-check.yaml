@@ -18,6 +18,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Full history so pull requests can diff against the base branch
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,18 +35,72 @@ jobs:
           # Use fake secrets for CI validation
           cp esphome/fakesecrets.testdata esphome/secrets.yaml
 
-      - name: Validate ESPHome configurations
+      - name: Select ESPHome configurations to validate
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          # Find all YAML files in esphome/ directory (excluding secrets and archive)
-          # and validate each one
-          exit_code=0
-          for file in esphome/*.yaml; do
-            # Skip secrets files
-            if [[ "$file" == *"secrets.yaml"* ]] || [[ "$file" == *"fakesecrets.yaml"* ]]; then
-              echo "Skipping $file (secrets file)"
-              continue
-            fi
+          # Top-level device configs (secrets files excluded)
+          all_configs=$(ls esphome/*.yaml | grep -v -e 'secrets.yaml' -e 'fakesecrets.yaml' || true)
 
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            # Deploy (push to main) or manual call: validate everything.
+            echo "Not a pull request - validating all configurations"
+            selected="$all_configs"
+          else
+            # Pull request: only validate configs touched by this PR, so
+            # unrelated breakages elsewhere don't block it.
+            changed=$(git diff --name-only --diff-filter=d "origin/${BASE_REF}...HEAD")
+            echo "Changed files:"; echo "$changed"
+
+            if grep -qx '.github/workflows/esphome-config-check.yaml' <<<"$changed"; then
+              echo "Workflow itself changed - validating all configurations"
+              selected="$all_configs"
+            else
+              selected=""
+              while IFS= read -r path; do
+                [[ "$path" == esphome/* ]] || continue
+                rel="${path#esphome/}"
+                if [[ "$rel" != */* ]]; then
+                  # Top-level file: a device config itself (or a secrets file)
+                  if grep -qxF "$path" <<<"$all_configs"; then
+                    selected+="$path"$'\n'
+                  fi
+                else
+                  # Shared file in a subdirectory (packages/, archive/, ...):
+                  # validate the top-level configs that reference it.
+                  # archive/ is never validated.
+                  [[ "$rel" == archive/* ]] && continue
+                  while IFS= read -r cfg; do
+                    if grep -qF -- "$rel" "$cfg"; then
+                      selected+="$cfg"$'\n'
+                    fi
+                  done <<<"$all_configs"
+                fi
+              done <<<"$changed"
+              selected=$(sort -u <<<"$selected" | sed '/^$/d')
+            fi
+          fi
+
+          echo "Configurations to validate:"; echo "$selected"
+          {
+            echo "files<<EOF"
+            echo "$selected"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate ESPHome configurations
+        env:
+          FILES: ${{ steps.select.outputs.files }}
+        run: |
+          if [[ -z "${FILES//[[:space:]]/}" ]]; then
+            echo "No ESPHome configurations affected by this change - nothing to validate"
+            exit 0
+          fi
+
+          exit_code=0
+          for file in $FILES; do
             echo "Validating $file..."
             if ! esphome config "$file"; then
               echo "❌ Validation failed for $file"
