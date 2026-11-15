@@ -25,6 +25,7 @@ The `configuration.yaml` file serves as the entry point and uses `!include` and 
 - `automation/` - Production automations stored as individual YAML files (one per automation)
 - `input_number/` - `input_number` helpers, one file per feature (`!include_dir_merge_named`)
 - `input_datetime/` - `input_datetime` helpers, one file per feature (`!include_dir_merge_named`)
+- `utility_meter/` - `utility_meter` definitions, one file per feature (`!include_dir_merge_named`); electricity meters are split by day/peak/night tariff, with cost sensors in `template/electricity_cost.yaml`
 - `custom_components/` - Custom integrations installed via HACS or manually (e.g., hacs, frigate, anker_solix, spook, mass, icloud3)
 - `esphome/` - ESPHome device configurations for ESP32/ESP8266 devices (Bluetooth proxies, sensors, etc.)
   - `esphome/archive/` - Old/deprecated device configurations

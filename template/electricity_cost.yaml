@@ -1,0 +1,44 @@
+# Daily / monthly / annual grid import cost, from the per-band utility meters
+# (utility_meter/electricity.yaml) multiplied by the VAT-inclusive Day / Peak /
+# Night rates from ireland-electricity-tariffs
+# (template/ireland_electricity_tariffs.yaml).
+# Excludes standing charge, levies and export (microgeneration) credit.
+# A rate that is unavailable makes the sensor unavailable rather than silently
+# costing that band at 0.
+sensor:
+  - name: "Electricity Cost Today"
+    unique_id: electricity_cost_today
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+    availability: &rates_ok >
+      {{ ['sensor.electric_ireland_smart_duel_fuel_day_rate',
+          'sensor.electric_ireland_smart_duel_fuel_peak_rate',
+          'sensor.electric_ireland_smart_duel_fuel_night_rate']
+         | map('states') | map('is_number') | min }}
+    state: >
+      {{ (states('sensor.daily_electricity_energy_day') | float(0) * states('sensor.electric_ireland_smart_duel_fuel_day_rate') | float(0)
+        + states('sensor.daily_electricity_energy_peak') | float(0) * states('sensor.electric_ireland_smart_duel_fuel_peak_rate') | float(0)
+        + states('sensor.daily_electricity_energy_night') | float(0) * states('sensor.electric_ireland_smart_duel_fuel_night_rate') | float(0)) | round(2) }}
+
+  - name: "Electricity Cost This Month"
+    unique_id: electricity_cost_this_month
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+    availability: *rates_ok
+    state: >
+      {{ (states('sensor.monthly_electricity_energy_day') | float(0) * states('sensor.electric_ireland_smart_duel_fuel_day_rate') | float(0)
+        + states('sensor.monthly_electricity_energy_peak') | float(0) * states('sensor.electric_ireland_smart_duel_fuel_peak_rate') | float(0)
+        + states('sensor.monthly_electricity_energy_night') | float(0) * states('sensor.electric_ireland_smart_duel_fuel_night_rate') | float(0)) | round(2) }}
+
+  - name: "Electricity Cost This Year"
+    unique_id: electricity_cost_this_year
+    unit_of_measurement: "EUR"
+    device_class: monetary
+    state_class: measurement
+    availability: *rates_ok
+    state: >
+      {{ (states('sensor.yearly_electricity_energy_day') | float(0) * states('sensor.electric_ireland_smart_duel_fuel_day_rate') | float(0)
+        + states('sensor.yearly_electricity_energy_peak') | float(0) * states('sensor.electric_ireland_smart_duel_fuel_peak_rate') | float(0)
+        + states('sensor.yearly_electricity_energy_night') | float(0) * states('sensor.electric_ireland_smart_duel_fuel_night_rate') | float(0)) | round(2) }}

@@ -1,37 +1,43 @@
 id: '1678108862995'
 alias: Rotate Electricity Meter Counter
-description: Home Assistant respresentation of the ESB Networks Smart Meter Counters
-trigger:
-- platform: time
-  at: 08:00:00
-  variables:
-    tariff: day
-- platform: time
+description: >
+  Home Assistant representation of the ESB Networks Smart Meter counters.
+  Irish bands: night 23:00-08:00, peak 17:00-19:00, day otherwise. The band is
+  derived from the clock rather than from which trigger fired, so the meters are
+  also corrected on Home Assistant start and re-asserted every hour (a restart
+  or missed trigger would otherwise leave a band wrong until the next boundary).
+triggers:
+- trigger: time
+  at: '08:00:00'
+- trigger: time
   at: '17:00:00'
-  variables:
-    tariff: peak
-- platform: time
+- trigger: time
   at: '19:00:00'
-  variables:
-    tariff: day
-- platform: time
+- trigger: time
   at: '23:00:00'
-  variables:
-    tariff: night
-action:
-- target:
-    entity_id: select.daily_electricity_energy
+- trigger: time_pattern
+  minutes: '0'
+- trigger: homeassistant
+  event: start
+conditions: []
+actions:
+- if:
+  - condition: template
+    value_template: "{{ trigger.platform == 'homeassistant' }}"
+  then:
+  # Give the utility_meter selects time to be restored and registered.
+  - delay: '00:01:00'
+- variables:
+    tariff: >-
+      {% set h = now().hour %}
+      {{ 'night' if (h >= 23 or h < 8) else ('peak' if 17 <= h < 19 else 'day') }}
+- action: select.select_option
+  target:
+    entity_id:
+    - select.daily_electricity_energy
+    - select.monthly_electricity_energy
+    - select.yearly_electricity_energy
+    - select.current_electricity_tariff
   data:
     option: '{{ tariff }}'
-  action: select.select_option
-- target:
-    entity_id: select.monthly_electricity_energy
-  data:
-    option: '{{ tariff }}'
-  action: select.select_option
-- target:
-    entity_id: select.current_electricity_tariff
-  data:
-    option: '{{ tariff }}'
-  action: select.select_option
-mode: single
+mode: restart
