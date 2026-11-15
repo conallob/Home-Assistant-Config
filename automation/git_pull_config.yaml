@@ -1,6 +1,14 @@
 id: '1768775775753'
 alias: Git Pull Configs from Github Actions
-description: Update Configuration on Github Push Event
+description: >-
+  Update Configuration on Github Push Event. The webhook body may carry
+  {"sha": "<40-char commit hash>"} to sync the live checkout to exactly that
+  commit (fast-forward only, must be on origin/main). With no sha it pulls
+  the latest main, as before. A sha that is present but malformed aborts
+  rather than falling back to a full pull. NOTE: the webhook is reachable
+  without authentication (local_only: false) - the webhook id is the only
+  secret - which is why the sha is strictly validated before it reaches a
+  shell command.
 triggers:
 - webhook_id: github_git_pull_config
   local_only: false
@@ -9,9 +17,41 @@ triggers:
   - POST
   - PUT
 conditions: []
+variables:
+  # '' when the body isn't JSON or has no sha (-> pull latest). A sha of the
+  # wrong type becomes 'invalid' so it is refused rather than ignored.
+  sha: >-
+    {% set body = trigger.json if trigger.json is defined and trigger.json is mapping else {} %}
+    {% set v = body.get('sha') %}
+    {{ '' if v is none else (v | trim if v is string else 'invalid') }}
 actions:
-- action: shell_command.git_pull_config
-  data: {}
+- choose:
+  # A well-formed sha: sync to exactly that commit.
+  - conditions:
+    - condition: template
+      value_template: "{{ sha | regex_match('^[0-9a-f]{40}$') }}"
+    sequence:
+    - action: shell_command.git_sync_config
+      data:
+        sha: "{{ sha }}"
+      response_variable: sync_result
+    - if:
+      - condition: template
+        value_template: "{{ sync_result.returncode != 0 }}"
+      then:
+      - stop: "git_sync_config failed (returncode {{ sync_result.returncode }}): {{ sync_result.stderr }}"
+        error: true
+  # A sha was supplied but it isn't 40 lowercase hex chars: refuse.
+  - conditions:
+    - condition: template
+      value_template: "{{ sha != '' }}"
+    sequence:
+    - stop: "Refusing to deploy: 'sha' in webhook body is not a 40-character lowercase hex commit hash"
+      error: true
+  # No sha: previous behaviour, pull the latest main.
+  default:
+  - action: shell_command.git_pull_config
+    data: {}
 - action: rest.reload
   data: {}
 mode: single

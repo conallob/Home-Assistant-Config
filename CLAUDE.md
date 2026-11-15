@@ -58,7 +58,7 @@ There are multiple ways to validate Home Assistant configuration:
 ### Automatic Deployment
 
 Changes merged to the `main` branch are automatically deployed:
-- A webhook triggers `git pull` on the live system when commits are merged to `main`
+- A webhook syncs the live system when commits are merged to `main`. The deploy workflow POSTs `{"sha": "<commit>"}` and the live checkout fast-forwards to exactly that commit (it must already be on `origin/main`; it never resets or rolls back, so asking for an older commit is a no-op). A call with no `sha` falls back to a plain `git pull` of latest `main`; a `sha` that isn't a 40-character lowercase hex hash is refused. The webhook is reachable without authentication (the webhook id is the only secret), so the hash is validated both in `automation/git_pull_config.yaml` and in the `shell_command/git_pull_config.yaml` template before it reaches a shell.
 - Valid configuration changes take effect within seconds
 - The system automatically reloads configuration where possible
 
