@@ -1,0 +1,23 @@
+# Git pull integration (loaded via `shell_command: !include_dir_merge_named`).
+
+# Latest main - used when the webhook is called without a sha.
+git_pull_config: git config --global --add safe.directory /config && cd /config && git pull
+
+# Sync to a specific commit. Fast-forward only, and only to a commit that is
+# already on origin/main, so an unmerged branch commit can never be deployed
+# and local divergence (e.g. the UI-prototyped automations.yaml) is never
+# discarded. This never resets or rolls back: asking for a commit older than
+# the current HEAD is a successful no-op.
+#
+# `sha` is validated as 40 lowercase hex characters here at render time (anything
+# else becomes the literal "invalid", which git rejects) AND earlier by
+# automation/git_pull_config.yaml. Shell quoting alone is NOT sufficient - a
+# value containing a quote can break out of it - so the regex is what protects
+# the shell, and it must stay in the template itself so that any other caller
+# of this service is covered too.
+git_sync_config: >-
+  git config --global --add safe.directory /config &&
+  cd /config &&
+  git fetch origin main &&
+  git merge-base --is-ancestor '{{ sha if (sha | regex_match("^[0-9a-f]{40}$")) else "invalid" }}' origin/main &&
+  git merge --ff-only '{{ sha if (sha | regex_match("^[0-9a-f]{40}$")) else "invalid" }}'

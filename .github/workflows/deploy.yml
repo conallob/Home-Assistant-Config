@@ -55,4 +55,8 @@ jobs:
         uses: joelwmale/webhook-action@2.1.0
         with:
           url: ${{ secrets.HOME_ASSISTANT_WEBHOOK_URL }}
-          body: '{}'
+          # Sync the live checkout to exactly the commit this run validated
+          # (fast-forward only, must be on main - see
+          # automation/git_pull_config.yaml). Older HA configs ignore the
+          # body and just pull latest, so the order of rollout doesn't matter.
+          body: '{"sha": "${{ github.sha }}"}'
