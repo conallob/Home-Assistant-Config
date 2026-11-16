@@ -76,12 +76,12 @@ actions:
         {{ ((states('sensor.bedroom_sensor_temperature') | float(0) +
              states('sensor.landing_sensor_temperature') | float(0) +
              states('sensor.genevieve_sensor_temperature') | float(0) +
-             states('sensor.reuben_sensor_temperature') | float(0)) / 4) | round(1) }}
+             states('sensor.atc_f299_temperature') | float(0)) / 4) | round(1) }}
       avg_humidity: >
         {{ ((states('sensor.bedroom_sensor_humidity') | float(0) +
              states('sensor.landing_sensor_humidity') | float(0) +
              states('sensor.genevieve_sensor_humidity') | float(0) +
-             states('sensor.reuben_sensor_humidity') | float(0)) / 4) | round(1) }}
+             states('sensor.atc_f299_humidity') | float(0)) / 4) | round(1) }}
 
   # Notify before updating so the message accurately shows old → new.
   - action: "{{ notify_target }}"
