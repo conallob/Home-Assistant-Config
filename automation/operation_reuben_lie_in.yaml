@@ -15,7 +15,7 @@ triggers:
     attribute: temperature
     id: drift
   - trigger: state
-    entity_id: climate.reuben
+    entity_id: climate.nest_02aa01ac111507zc
     attribute: temperature
     id: drift
 conditions: []
@@ -42,26 +42,33 @@ actions:
                 after: '04:00:00'
                 before: '07:30:00'
     then:
-      - action: switch.turn_off
-        target:
-          entity_id: switch.reuben_away_mode
+      # The old "Away mode" switch is gone; the Nest now exposes away/eco as a preset.
+      - if:
+          - condition: template
+            value_template: "{{ state_attr('climate.nest_02aa01ac111507zc', 'preset_mode') != 'home' }}"
+        then:
+          - action: climate.set_preset_mode
+            target:
+              entity_id: climate.nest_02aa01ac111507zc
+            data:
+              preset_mode: home
       - action: climate.set_hvac_mode
         target:
-          entity_id: climate.reuben
+          entity_id: climate.nest_02aa01ac111507zc
         data:
           hvac_mode: heat
       - if:
           - condition: template
             value_template: >
               {{ state_attr('climate.reuben_trv', 'temperature') | float(0) != 20
-                 or state_attr('climate.reuben', 'temperature') | float(0) != 20
+                 or state_attr('climate.nest_02aa01ac111507zc', 'temperature') | float(0) != 20
                  or trigger.id == 'start' }}
         then:
           - action: climate.set_temperature
             target:
               entity_id:
                 - climate.reuben_trv
-                - climate.reuben
+                - climate.nest_02aa01ac111507zc
             data:
               temperature: 20
 mode: queued
