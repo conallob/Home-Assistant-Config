@@ -10,6 +10,7 @@ deploy_status:
     - pulling
     - checking
     - reload_input_select
+    - reload_input_text
     - reload_input_number
     - reload_input_datetime
     - reload_timer

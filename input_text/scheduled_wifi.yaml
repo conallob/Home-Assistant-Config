@@ -1,0 +1,10 @@
+# Today's passphrase for the "Scheduled" UniFi SSID. Written by
+# script.rotate_scheduled_wifi, never by hand. Feeds the QR payload sensor
+# (template/scheduled_wifi_qr_payload.yaml).
+scheduled_wifi_passphrase:
+  name: "Scheduled WiFi - Current Passphrase"
+  icon: mdi:wifi-lock
+  mode: password
+  min: 8
+  max: 63
+  initial: ""

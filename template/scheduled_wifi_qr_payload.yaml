@@ -1,0 +1,10 @@
+# Standard WiFi QR payload (WIFI:T:WPA;S:<ssid>;P:<pass>;;) for the "Scheduled"
+# SSID. Any QR renderer/display (dashboard card, e-ink, CYD, ...) can encode
+# this state as-is. The passphrase is alphanumeric only, so no escaping of
+# \ ; , : " is needed (see script.rotate_scheduled_wifi).
+sensor:
+  - name: "Scheduled WiFi QR Payload"
+    icon: mdi:qrcode
+    state: >-
+      {% set p = states('input_text.scheduled_wifi_passphrase') %}
+      {{ 'WIFI:T:WPA;S:Scheduled;P:' ~ p ~ ';;' if p | length >= 8 else 'unavailable' }}
