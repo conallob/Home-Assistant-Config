@@ -85,7 +85,7 @@ jobs:
       (needs.esphome_check.result == 'success' || needs.esphome_check.result == 'skipped')
     steps:
       - name: Deploy to Home Assistant
-        uses: joelwmale/webhook-action@2.1.0
+        uses: joelwmale/webhook-action@v2.4.2
         with:
           url: ${{ secrets.HOME_ASSISTANT_WEBHOOK_URL }}
           # Sync the live checkout to exactly the commit this run validated
