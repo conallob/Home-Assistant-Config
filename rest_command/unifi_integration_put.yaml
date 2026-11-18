@@ -1,0 +1,11 @@
+# PUT against the UniFi Network Integration API on the UDM Pro SE.
+# Usage: rest_command.unifi_integration_put with data {path: "...", body: {...}}.
+# See unifi_integration_get.yaml for the API key and address notes.
+url: "https://192.168.1.1/proxy/network/integration/v1/{{ path }}"
+method: PUT
+verify_ssl: false
+headers:
+  X-API-KEY: !secret unifi_api_key
+  Accept: "application/json"
+  Content-Type: "application/json"
+payload: "{{ body | tojson }}"

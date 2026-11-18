@@ -1,0 +1,40 @@
+alias: Scheduled WiFi Passphrase Rotation
+description: >-
+  Rotates the passphrase of the "Scheduled" SSID daily at
+  input_datetime.scheduled_wifi_rotation_time (script.rotate_scheduled_wifi),
+  so a WiFi-only device can only get back online when a parent scans today's
+  QR code. A second trigger two hours later is a watchdog: if the passphrase
+  has not been rotated in the last 26 hours (UniFi/API error, HA was down, ...)
+  it notifies the phone.
+id: scheduled_wifi_rotation
+mode: single
+triggers:
+  - trigger: time
+    at: input_datetime.scheduled_wifi_rotation_time
+    id: rotate
+  - trigger: time
+    at: input_datetime.scheduled_wifi_rotation_time
+    offset: "02:00:00"
+    id: watchdog
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: rotate
+        sequence:
+          - action: script.rotate_scheduled_wifi
+      - conditions:
+          - condition: trigger
+            id: watchdog
+          - condition: template
+            value_template: >-
+              {% set t = states('input_datetime.scheduled_wifi_last_rotated') | as_datetime(default=none) %}
+              {{ t is none or (now() - t | as_local).total_seconds() > 26 * 3600 }}
+        sequence:
+          - action: notify.conall_phone
+            data:
+              title: Scheduled WiFi was not rotated
+              message: >-
+                The "Scheduled" SSID passphrase has not rotated in over 26
+                hours. Check the Scheduled WiFi Passphrase Rotation automation
+                trace.

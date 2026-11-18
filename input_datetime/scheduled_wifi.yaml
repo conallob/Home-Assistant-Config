@@ -1,0 +1,13 @@
+# Parameters/bookkeeping for the daily "Scheduled" WiFi passphrase rotation
+# (automation/scheduled_wifi_rotation.yaml).
+scheduled_wifi_rotation_time:
+  name: "Scheduled WiFi - Rotation Time"
+  icon: mdi:clock-outline
+  has_date: false
+  has_time: true
+  initial: "03:00:00"
+scheduled_wifi_last_rotated:
+  name: "Scheduled WiFi - Last Rotated"
+  icon: mdi:history
+  has_date: true
+  has_time: true

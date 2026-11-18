@@ -7,6 +7,9 @@ input_boolean:
     name: "Taku Sleep Mode"
     icon: mdi:sleep
 
+# Input Texts — one file per feature under input_text/
+input_text: !include_dir_merge_named input_text
+
 # Input Numbers — tracked machine settings, one file per feature under input_number/
 input_number: !include_dir_merge_named input_number
 
