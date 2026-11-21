@@ -1,0 +1,29 @@
+name: Cloudprober Configuration Check
+
+# Validates cloudprober/base.cfg (and, via its `include` directives, every
+# file it pulls in) with `cloudprober --configtest`.
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'cloudprober/**'
+      - '.github/workflows/cloudprober-config-check.yaml'
+
+jobs:
+  validate:
+    name: Cloudprober Configuration Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate cloudprober/base.cfg
+        run: |
+          # Mount the whole directory so `include "internet_probeset.cfg"`
+          # resolves next to base.cfg.
+          docker run --rm \
+            -v "$PWD/cloudprober:/etc/cloudprober:ro" \
+            cloudprober/cloudprober:latest \
+            --configtest --config_file=/etc/cloudprober/base.cfg
