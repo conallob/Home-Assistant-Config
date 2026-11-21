@@ -9,6 +9,13 @@ git_pull_config: git config --global --add safe.directory /config && cd /config 
 # discarded. This never resets or rolls back: asking for a commit older than
 # the current HEAD is a successful no-op.
 #
+# NOTE: this command contains a template, so Home Assistant's shell_command does
+# NOT run it through a shell: it renders it, shlex-splits it and exec()s it
+# directly (see homeassistant/components/shell_command/services.py). A bare
+# `a && b` chain therefore reaches `git config` as literal arguments and fails
+# with return code 129. The chain must be wrapped in an explicit `sh -c "..."`.
+# (git_pull_config above has no template, so HA does use a shell for it.)
+#
 # `sha` is validated as 40 lowercase hex characters here at render time (anything
 # else becomes the literal "invalid", which git rejects) AND earlier by
 # automation/git_pull_config.yaml. Shell quoting alone is NOT sufficient - a
@@ -16,8 +23,8 @@ git_pull_config: git config --global --add safe.directory /config && cd /config 
 # the shell, and it must stay in the template itself so that any other caller
 # of this service is covered too.
 git_sync_config: >-
-  git config --global --add safe.directory /config &&
+  sh -c "git config --global --add safe.directory /config &&
   cd /config &&
   git fetch origin main &&
   git merge-base --is-ancestor '{{ sha if (sha | regex_match("^[0-9a-f]{40}$")) else "invalid" }}' origin/main &&
-  git merge --ff-only '{{ sha if (sha | regex_match("^[0-9a-f]{40}$")) else "invalid" }}'
+  git merge --ff-only '{{ sha if (sha | regex_match("^[0-9a-f]{40}$")) else "invalid" }}'"

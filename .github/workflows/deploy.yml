@@ -53,7 +53,7 @@ jobs:
               input_datetime/*) add input_datetime ;;
               timer/*) add timer ;;
               themes/*) add themes ;;
-              configuration.yaml|sensor/*|binary_sensor/*|groups.yaml|media_player.yaml|custom_components/*) add restart ;;
+              configuration.yaml|sensor/*|binary_sensor/*|shell_command/*|groups.yaml|media_player.yaml|custom_components/*) add restart ;;
             esac
           done <<< "$files"
           echo "categories=$(jq -nc '$ARGS.positional' --args "${cats[@]}")" >> "$GITHUB_OUTPUT"
