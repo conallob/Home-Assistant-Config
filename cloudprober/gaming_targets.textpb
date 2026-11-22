@@ -1,0 +1,93 @@
+# Targets for the `gaming` probe (gaming_probeset.cfg). One resource per host.
+# Identical in all three repos; keep them in step.
+#
+#   name    hostname, resolved by DNS (add `ip:` to pin it)
+#   port    omit for the scheme's default (443 for https, 80 for http)
+#   labels  game               exported on the metrics (nintendo|fortnite|minecraft)
+#           __cp_scheme__      http or https; the probe default is http, so every
+#                              HTTPS host must say so
+#
+# These hostnames were chosen from knowledge, not verified from the authoring
+# sandbox; prune any that turn out dead.
+
+resource {
+  name: "www.nintendo.com"
+  labels { key: "game" value: "nintendo" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "accounts.nintendo.com"
+  labels { key: "game" value: "nintendo" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+# The Switch's own "test connection" endpoints. Plain HTTP on purpose: that's
+# what the console uses, and ctest answers 200 with an `X-Organization: Nintendo`
+# header.
+resource {
+  name: "conntest.nintendowifi.net"
+  labels { key: "game" value: "nintendo" }
+  labels { key: "__cp_scheme__" value: "http" }
+}
+resource {
+  name: "ctest.cdn.nintendo.net"
+  labels { key: "game" value: "nintendo" }
+  labels { key: "__cp_scheme__" value: "http" }
+}
+
+# Fortnite runs on Epic Games' backend.
+resource {
+  name: "www.fortnite.com"
+  labels { key: "game" value: "fortnite" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "status.epicgames.com"
+  labels { key: "game" value: "fortnite" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "account-public-service-prod.ol.epicgames.com"
+  labels { key: "game" value: "fortnite" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "fortnite-public-service-prod11.ol.epicgames.com"
+  labels { key: "game" value: "fortnite" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "epicgames-download1.akamaized.net"
+  labels { key: "game" value: "fortnite" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+
+resource {
+  name: "www.minecraft.net"
+  labels { key: "game" value: "minecraft" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "sessionserver.mojang.com"
+  labels { key: "game" value: "minecraft" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "api.minecraftservices.com"
+  labels { key: "game" value: "minecraft" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "api.mojang.com"
+  labels { key: "game" value: "minecraft" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "piston-meta.mojang.com"
+  labels { key: "game" value: "minecraft" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
+resource {
+  name: "resources.download.minecraft.net"
+  labels { key: "game" value: "minecraft" }
+  labels { key: "__cp_scheme__" value: "https" }
+}
