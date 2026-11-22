@@ -1,5 +1,6 @@
 # Targets for the `gaming` probe (gaming_probeset.cfg). One resource per host.
-# Identical in all three repos; keep them in step.
+# Identical in homelab-apps and Home-Assistant-Config; keep them in step.
+# Not deployed at Meadow Close: this is a taku.ie-only workload.
 #
 #   name    hostname, resolved by DNS (add `ip:` to pin it)
 #   port    omit for the scheme's default (443 for https, 80 for http)
