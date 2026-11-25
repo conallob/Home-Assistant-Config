@@ -15,16 +15,18 @@ description: >-
   episodes) so the room reaches comfort (19C)
   by its "Warm By" time (Reuben and Genevieve 20:00, Bedroom 23:00), then holds
   comfort for input_number.upstairs_heating_hold_hours (3h). Otherwise the
-  target is setback (16C). Reuben's room never targets below
-  input_number.reuben_room_floor_temp (18C) at any time, which covers the old
-  "Operation Reuben Lie In" (warm until 08:00).
+  target is setback (16C). Between input_datetime.reuben_room_floor_start and
+  _end (20:00-08:00), Reuben's room never targets below
+  input_number.reuben_room_floor_temp (18C), whatever the weather or holiday
+  mode; this replaces the old "Operation Reuben Lie In". Outside that window
+  it follows the schedule like the other rooms.
 
 
   A room calls for heat below target - 0.3C and stops at target + 0.2C. While
   calling, its TRV is boosted 3C above target so the valve stays open; when
   not, the TRV is set to the target itself, so if Home Assistant stops the TRV
   falls back to regulating near target on its own sensor. The Nest is set to
-  heat at 24C while any room calls. Otherwise it idles at heat 16C (not
+  heat at 22C while any room calls. Otherwise it idles at heat 16C (not
   off) so it still acts as a failsafe floor for the zone. Writes only happen when
   a value changes, to spare TRV batteries and avoid churning the Nest (gen2,
   local via NoLongerEvil over MQTT). When a room
@@ -44,12 +46,14 @@ triggers:
   - input_number.upstairs_heating_outside_max_temp
   - input_number.upstairs_heating_hold_hours
   - input_number.reuben_room_floor_temp
+  - input_datetime.reuben_room_floor_start
+  - input_datetime.reuben_room_floor_end
   - input_datetime.upstairs_heating_reuben_ready
   - input_datetime.upstairs_heating_genevieve_ready
   - input_datetime.upstairs_heating_bedroom_ready
 variables:
   nest: climate.nest_02aa01ac111507zc
-  nest_call_temp: 24
+  nest_call_temp: 22
   # On the Nest's own sensor, which reads ~1.5C above Reuben's room, so this
   # sits below the 16C room setback and only calls if something has failed.
   nest_idle_temp: 16
@@ -70,6 +74,8 @@ variables:
     rate: input_number.upstairs_heating_reuben_warmup_rate
     learned: sensor.upstairs_heating_reuben_learned_warmup_rate
     floor: input_number.reuben_room_floor_temp
+    floor_start: input_datetime.reuben_room_floor_start
+    floor_end: input_datetime.reuben_room_floor_end
   - name: genevieve
     sensor: sensor.genevieve_sensor_temperature
     trv: climate.genevieve_trv
@@ -77,6 +83,8 @@ variables:
     rate: input_number.upstairs_heating_genevieve_warmup_rate
     learned: sensor.upstairs_heating_genevieve_learned_warmup_rate
     floor: ''
+    floor_start: ''
+    floor_end: ''
   - name: bedroom
     sensor: sensor.bedroom_bedroom_sensor_temperature
     trv: climate.bedroomtrv
@@ -84,6 +92,8 @@ variables:
     rate: input_number.upstairs_heating_bedroom_warmup_rate
     learned: sensor.upstairs_heating_bedroom_learned_warmup_rate
     floor: ''
+    floor_start: ''
+    floor_end: ''
   plan: >-
     {% set ns = namespace(out=[]) %}
     {% for r in rooms %}
@@ -104,7 +114,13 @@ variables:
         {% endfor %}
       {% endif %}
       {% if r.floor %}
-        {% set t.v = [t.v, states(r.floor) | float(0)] | max %}
+        {# Floor window can cross midnight (20:00-08:00) #}
+        {% set fs = today_at(states(r.floor_start) if has_value(r.floor_start) else '20:00:00') %}
+        {% set fe = today_at(states(r.floor_end) if has_value(r.floor_end) else '08:00:00') %}
+        {% set in_floor = (now() >= fs or now() < fe) if fs > fe else (fs <= now() < fe) %}
+        {% if in_floor %}
+          {% set t.v = [t.v, states(r.floor) | float(0)] | max %}
+        {% endif %}
       {% endif %}
       {% set target = t.v | round(1) %}
       {% set cur = states(r.sensor) | float(none) %}

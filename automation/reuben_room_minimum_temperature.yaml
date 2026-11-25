@@ -2,24 +2,64 @@ id: '1767000000001'
 alias: Reuben Room - Minimum Temperature Guard
 description: >
   Alert-only safety net for Reuben's room. The floor itself
-  (input_number.reuben_room_floor_temp, default 18C, applied at all times) is
-  enforced by "Upstairs Heating - Controller". If the room is still below the
-  floor 45 minutes later, the controller's heating isn't working (boiler, Nest,
-  TRV or sensor fault), so tell a human.
+  (input_number.reuben_room_floor_temp, default 18C, applied between
+  input_datetime.reuben_room_floor_start and _end, default 20:00-08:00) is
+  enforced by "Upstairs Heating - Controller". If the room has had 45 minutes
+  of floor heating and is still below the floor, the heating isn't working
+  (boiler, Nest, TRV or sensor fault), so tell a human. Outside the window the
+  room may legitimately sit below the floor, so no alert.
 triggers:
+  # Dropped below the floor inside the window and stayed there.
   - trigger: numeric_state
     entity_id: sensor.atc_f299_temperature
     below: input_number.reuben_room_floor_temp
     for:
       minutes: 45
+    id: below
+  # Already below when the window opens: numeric_state won't fire without a
+  # fresh crossing, so give the controller 45 minutes from the start instead.
+  - trigger: time
+    at: input_datetime.reuben_room_floor_start
+    id: window_start
+conditions:
+  - condition: time
+    after: input_datetime.reuben_room_floor_start
+    before: input_datetime.reuben_room_floor_end
+  - condition: numeric_state
+    entity_id: sensor.atc_f299_temperature
+    below: input_number.reuben_room_floor_temp
 actions:
+  - if:
+      - condition: trigger
+        id: window_start
+    then:
+      - wait_template: >-
+          {{ states('sensor.atc_f299_temperature') | float(0)
+             >= states('input_number.reuben_room_floor_temp') | float(18) }}
+        timeout:
+          minutes: 45
+        continue_on_timeout: true
+      - if:
+          - "{{ wait.completed }}"
+        then:
+          - stop: Room reached the floor within 45 minutes of the window opening
+    else:
+      # A crossing that began before the window: only alert once the window
+      # has been open for 45 minutes, so the controller has had its chance.
+      - if:
+          - >-
+            {% set fs = today_at(states('input_datetime.reuben_room_floor_start')) %}
+            {% set fs = fs - timedelta(days=1) if fs > now() else fs %}
+            {{ now() - fs < timedelta(minutes=45) }}
+        then:
+          - stop: Floor window opened less than 45 minutes ago
   - action: persistent_notification.create
     data:
       notification_id: reuben_room_cold
       title: Reuben's room is cold
       message: >
         {{ states('sensor.atc_f299_temperature') }}C, still below
-        {{ states('input_number.reuben_room_floor_temp') }}C after 45 minutes.
-        Check the "Upstairs Heating - Controller" trace, the upstairs Nest and
-        climate.reuben_trv.
+        {{ states('input_number.reuben_room_floor_temp') }}C after 45 minutes of
+        floor heating. Check the "Upstairs Heating - Controller" trace, the
+        upstairs Nest and climate.reuben_trv.
 mode: single
