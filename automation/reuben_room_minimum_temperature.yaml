@@ -1,59 +1,25 @@
 id: '1767000000001'
 alias: Reuben Room - Minimum Temperature Guard
 description: >
-  Keeps Reuben's room from dipping below the minimum (default 18C). Overrides
-  Nest away/eco and any lower setpoint (e.g. from the heating blueprint) on
-  both the Nest and the TRV. Independent of presence by design.
+  Alert-only safety net for Reuben's room. The floor itself
+  (input_number.reuben_room_floor_temp, default 18C, applied at all times) is
+  enforced by "Upstairs Heating - Controller". If the room is still below the
+  floor 45 minutes later, the controller's heating isn't working (boiler, Nest,
+  TRV or sensor fault), so tell a human.
 triggers:
   - trigger: numeric_state
     entity_id: sensor.atc_f299_temperature
     below: input_number.reuben_room_floor_temp
     for:
-      minutes: 5
-  # numeric_state only fires on a crossing, so re-check while still cold
-  - trigger: time_pattern
-    minutes: "/15"
-conditions:
-  - condition: numeric_state
-    entity_id: sensor.atc_f299_temperature
-    below: input_number.reuben_room_floor_temp
+      minutes: 45
 actions:
-  # The old "Away mode" switch is gone; the Nest now exposes away/eco as a preset.
-  - if:
-      - condition: template
-        value_template: "{{ state_attr('climate.nest_02aa01ac111507zc', 'preset_mode') != 'home' }}"
-    then:
-      - action: climate.set_preset_mode
-        target:
-          entity_id: climate.nest_02aa01ac111507zc
-        data:
-          preset_mode: home
-  - action: climate.set_hvac_mode
-    target:
-      entity_id:
-        - climate.nest_02aa01ac111507zc
-        - climate.reuben_trv
+  - action: persistent_notification.create
     data:
-      hvac_mode: heat
-  - action: climate.set_temperature
-    target:
-      entity_id:
-        - climate.nest_02aa01ac111507zc
-        - climate.reuben_trv
-    data:
-      temperature: "{{ states('input_number.reuben_room_floor_setpoint') | float(20) }}"
-  # Still cold after 30 minutes of heating: something is wrong, tell a human
-  - delay:
-      minutes: 30
-  - if:
-      - condition: numeric_state
-        entity_id: sensor.atc_f299_temperature
-        below: input_number.reuben_room_floor_temp
-    then:
-      - action: persistent_notification.create
-        data:
-          title: Reuben's room is cold
-          message: >
-            {{ states('sensor.atc_f299_temperature') }}C, still below
-            {{ states('input_number.reuben_room_floor_temp') }}C after 30 minutes of heating.
+      notification_id: reuben_room_cold
+      title: Reuben's room is cold
+      message: >
+        {{ states('sensor.atc_f299_temperature') }}C, still below
+        {{ states('input_number.reuben_room_floor_temp') }}C after 45 minutes.
+        Check the "Upstairs Heating - Controller" trace, the upstairs Nest and
+        climate.reuben_trv.
 mode: single

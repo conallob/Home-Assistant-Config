@@ -1,0 +1,59 @@
+upstairs_heating_comfort_temp:
+  name: "Upstairs Heating - Comfort Temperature"
+  min: 16
+  max: 23
+  step: 0.5
+  initial: 19
+  unit_of_measurement: "°C"
+  icon: mdi:thermometer-chevron-up
+upstairs_heating_setback_temp:
+  name: "Upstairs Heating - Setback Temperature"
+  min: 10
+  max: 19
+  step: 0.5
+  initial: 16
+  unit_of_measurement: "°C"
+  icon: mdi:thermometer-chevron-down
+upstairs_heating_outside_max_temp:
+  name: "Upstairs Heating - Preheat When Outside At Or Below"
+  min: 0
+  max: 20
+  step: 0.5
+  initial: 10
+  unit_of_measurement: "°C"
+  icon: mdi:sun-thermometer-outline
+upstairs_heating_hold_hours:
+  name: "Upstairs Heating - Hold Comfort For"
+  min: 0
+  max: 8
+  step: 0.5
+  initial: 3
+  unit_of_measurement: "h"
+  icon: mdi:timer-outline
+# Warm-up rates set how early each room's preheat starts: the target ramps up
+# towards comfort at this rate so it arrives at the ready time. Reuben's room
+# (NW facing, 3 external walls) is the slowest. Seeded from Nov 2026 history.
+upstairs_heating_reuben_warmup_rate:
+  name: "Upstairs Heating - Reuben Warm-up Rate"
+  min: 0.25
+  max: 3
+  step: 0.05
+  initial: 0.75
+  unit_of_measurement: "°C/h"
+  icon: mdi:chart-line
+upstairs_heating_genevieve_warmup_rate:
+  name: "Upstairs Heating - Genevieve Warm-up Rate"
+  min: 0.25
+  max: 3
+  step: 0.05
+  initial: 1
+  unit_of_measurement: "°C/h"
+  icon: mdi:chart-line
+upstairs_heating_bedroom_warmup_rate:
+  name: "Upstairs Heating - Bedroom Warm-up Rate"
+  min: 0.25
+  max: 3
+  step: 0.05
+  initial: 1
+  unit_of_measurement: "°C/h"
+  icon: mdi:chart-line

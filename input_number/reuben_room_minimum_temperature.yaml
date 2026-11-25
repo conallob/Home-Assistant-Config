@@ -6,11 +6,3 @@ reuben_room_floor_temp:
   initial: 18
   unit_of_measurement: "°C"
   icon: mdi:thermometer-low
-reuben_room_floor_setpoint:
-  name: "Reuben Room - Floor Guard Heating Setpoint"
-  min: 16
-  max: 24
-  step: 0.5
-  initial: 20
-  unit_of_measurement: "°C"
-  icon: mdi:thermometer-chevron-up
