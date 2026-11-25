@@ -1,0 +1,36 @@
+id: shack_radiator_off_when_unoccupied
+alias: Shack Radiator - Off When Unoccupied (Failsafe)
+description: >-
+  Failsafe so the Shack radiator is never left heating an empty room (e.g.
+  overnight). On weekdays at 17:00 and again at 21:00, if
+  binary_sensor.shack_presence shows nobody there and the radiator is still
+  heating, turn it off.
+triggers:
+- trigger: time
+  at: '17:00:00'
+- trigger: time
+  at: '21:00:00'
+conditions:
+- condition: time
+  weekday:
+  - mon
+  - tue
+  - wed
+  - thu
+  - fri
+- condition: state
+  entity_id: binary_sensor.shack_presence
+  state: 'off'
+- condition: not
+  conditions:
+  - condition: state
+    entity_id: climate.shack_heater
+    state:
+    - 'off'
+    - unavailable
+    - unknown
+actions:
+- action: climate.turn_off
+  target:
+    entity_id: climate.shack_heater
+mode: single
