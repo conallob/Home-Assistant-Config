@@ -125,7 +125,7 @@ The configuration includes REST commands for managing server hardware via Redfis
 
 ### Upstairs Heating
 
-`automation/upstairs_heating_controller.yaml` is the only writer for the Reuben, Genevieve and Bedroom TRVs and the upstairs Nest (`climate.nest_02aa01ac111507zc`, which is the zone/boiler call for all of upstairs). Its tunables live in `input_number/upstairs_heating_controller.yaml` and `input_datetime/upstairs_heating_controller.yaml`.
+`automation/upstairs_heating_controller.yaml` is the only writer for the Reuben, Genevieve and Bedroom TRVs and the upstairs Nest (`climate.nest_02aa01ac111507zc`, which is the zone/boiler call for all of upstairs). Both Nests are gen2 units no longer supported by Google: they run against NoLongerEvil locally and appear in HA as MQTT climate entities, so Google Home app settings and the Google Nest integration don't apply. Its tunables live in `input_number/upstairs_heating_controller.yaml` and `input_datetime/upstairs_heating_controller.yaml`.
 - Decisions use each room's own temperature sensor, not the TRV's (it sits on the radiator and reads high) or the Nest's (it reads ~1.5C above Reuben's room). The Nest is driven as a demand switch (heat at 24C when calling, idling at heat 16C as a failsafe floor otherwise), not as a thermostat.
 - Don't add those three TRVs back into `automation/advanced_heating_control.yaml` (the panhans blueprint, which still runs downstairs and the landing), and don't write their setpoints from other automations: two writers fight. Change the controller's targets instead.
 - `automation/reuben_room_minimum_temperature.yaml` only alerts; the floor itself is applied by the controller.

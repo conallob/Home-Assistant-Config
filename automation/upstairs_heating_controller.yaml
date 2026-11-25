@@ -26,7 +26,8 @@ description: >-
   falls back to regulating near target on its own sensor. The Nest is set to
   heat at 24C while any room calls. Otherwise it idles at heat 16C (not
   off) so it still acts as a failsafe floor for the zone. Writes only happen when
-  a value changes, to spare TRV batteries and the Nest API quota. When a room
+  a value changes, to spare TRV batteries and avoid churning the Nest (gen2,
+  local via NoLongerEvil over MQTT). When a room
   starts or stops calling it fires upstairs_heating_room_call (room, call,
   temperature), which the learned warm-up rate sensors record. The landing and
   bathroom never call for heat; they get heat only while a bedroom does.
