@@ -9,7 +9,10 @@ description: >-
 
   Targets, when not in holiday mode (switch.taku_holiday_mode) and outside is
   at or below input_number.upstairs_heating_outside_max_temp: the target ramps
-  up from setback at the room's warm-up rate so the room reaches comfort (19C)
+  up from setback at the room's warm-up rate (the 7-day median learned by
+  sensor.upstairs_heating_<room>_learned_warmup_rate, or the
+  input_number.upstairs_heating_<room>_warmup_rate fallback until it has 3
+  episodes) so the room reaches comfort (19C)
   by its "Warm By" time (Reuben and Genevieve 20:00, Bedroom 23:00), then holds
   comfort for input_number.upstairs_heating_hold_hours (3h). Otherwise the
   target is setback (16C). Reuben's room never targets below
@@ -22,7 +25,10 @@ description: >-
   not, the TRV is set to the target itself, so if Home Assistant stops the TRV
   falls back to regulating near target on its own sensor. The Nest is set to
   heat at 24C while any room calls, and off otherwise. Writes only happen when
-  a value changes, to spare TRV batteries and the Nest API quota.
+  a value changes, to spare TRV batteries and the Nest API quota. When a room
+  starts or stops calling it fires upstairs_heating_room_call (room, call,
+  temperature), which the learned warm-up rate sensors record. The landing and
+  bathroom never call for heat; they get heat only while a bedroom does.
 triggers:
 - trigger: time_pattern
   minutes: /5
@@ -57,25 +63,30 @@ variables:
     trv: climate.reuben_trv
     ready: input_datetime.upstairs_heating_reuben_ready
     rate: input_number.upstairs_heating_reuben_warmup_rate
+    learned: sensor.upstairs_heating_reuben_learned_warmup_rate
     floor: input_number.reuben_room_floor_temp
   - name: genevieve
     sensor: sensor.genevieve_sensor_temperature
     trv: climate.genevieve_trv
     ready: input_datetime.upstairs_heating_genevieve_ready
     rate: input_number.upstairs_heating_genevieve_warmup_rate
+    learned: sensor.upstairs_heating_genevieve_learned_warmup_rate
     floor: ''
   - name: bedroom
     sensor: sensor.bedroom_bedroom_sensor_temperature
     trv: climate.bedroomtrv
     ready: input_datetime.upstairs_heating_bedroom_ready
     rate: input_number.upstairs_heating_bedroom_warmup_rate
+    learned: sensor.upstairs_heating_bedroom_learned_warmup_rate
     floor: ''
   plan: >-
     {% set ns = namespace(out=[]) %}
     {% for r in rooms %}
       {% set t = namespace(v=setback) %}
       {% if active %}
-        {% set rate = [states(r.rate) | float(1), 0.1] | max %}
+        {# Prefer the rate learned over the last 7 days; fall back to the helper #}
+        {% set learned = states(r.learned) | float(0) %}
+        {% set rate = [learned if learned > 0 else states(r.rate) | float(1), 0.1] | max %}
         {% set ready_s = states(r.ready) if has_value(r.ready) else '20:00:00' %}
         {# Check yesterday's, today's and tomorrow's ready time so windows can cross midnight #}
         {% for d in [-1, 0, 1] %}
@@ -103,7 +114,8 @@ variables:
       {% endif %}
       {% set sp = [[((sp * 2) | round) / 2, 5] | max, 28] | min %}
       {% set ns.out = ns.out + [{'room': r.name, 'trv': r.trv, 'temp': cur,
-                                 'target': target, 'setpoint': sp, 'call': call}] %}
+                                 'target': target, 'setpoint': sp, 'call': call,
+                                 'was_calling': boosting}] %}
     {% endfor %}
     {{ ns.out }}
   zone_call: "{{ plan | selectattr('call') | list | count > 0 }}"
@@ -121,6 +133,15 @@ actions:
         data:
           hvac_mode: heat
           temperature: "{{ repeat.item.setpoint }}"
+    # Episode start/stop, for the learned warm-up rate sensors.
+    - if:
+      - "{{ repeat.item.call != repeat.item.was_calling and repeat.item.temp is not none }}"
+      then:
+      - event: upstairs_heating_room_call
+        event_data:
+          room: "{{ repeat.item.room }}"
+          call: "{{ repeat.item.call }}"
+          temperature: "{{ repeat.item.temp }}"
 - if:
   - "{{ zone_call }}"
   then:

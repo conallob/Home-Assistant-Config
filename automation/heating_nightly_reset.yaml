@@ -1,0 +1,21 @@
+id: heating_nightly_reset
+alias: Heating - Nightly Reset (House-wide)
+description: >-
+  At 04:00 every night, set every climate entity labelled `heating` back to
+  14C, so anything left heating (e.g. the Shack radiator) doesn't run until
+  morning. Split out of the retired "Operation Reuben Lie In".
+
+
+  House-wide for now; this should eventually become a per-zone reset. Don't
+  give the `heating` label to the TRVs owned by "Upstairs Heating - Controller"
+  (Reuben, Genevieve, Bedroom): the controller would immediately put them back.
+triggers:
+- trigger: time
+  at: '04:00:00'
+actions:
+- action: climate.set_temperature
+  target:
+    label_id: heating
+  data:
+    temperature: 14
+mode: single

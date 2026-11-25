@@ -129,6 +129,9 @@ The configuration includes REST commands for managing server hardware via Redfis
 - Decisions use each room's own temperature sensor, not the TRV's (it sits on the radiator and reads high) or the Nest's (it reads ~1.5C above Reuben's room). The Nest is driven as an on/off demand switch (heat at 24C / off), not as a thermostat.
 - Don't add those three TRVs back into `automation/advanced_heating_control.yaml` (the panhans blueprint, which still runs downstairs and the landing), and don't write their setpoints from other automations: two writers fight. Change the controller's targets instead.
 - `automation/reuben_room_minimum_temperature.yaml` only alerts; the floor itself is applied by the controller.
+- Preheat lead time uses each room's warm-up rate as learned over the last 7 days by `template/upstairs_heating_<room>_learned_warmup_rate.yaml` (median of heating episodes, recorded from the controller's `upstairs_heating_room_call` events). The `input_number` warm-up rates are only the fallback until a room has 3 episodes.
+- The landing and bathroom deliberately never call for heat.
+- `automation/heating_nightly_reset.yaml` sets every climate entity labelled `heating` to 14C at 04:00. It is house-wide for now and is meant to become per-zone. Don't label the controller's TRVs `heating`.
 
 ### Energy Monitoring and Solar Integration
 

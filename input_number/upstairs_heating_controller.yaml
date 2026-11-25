@@ -30,11 +30,13 @@ upstairs_heating_hold_hours:
   initial: 3
   unit_of_measurement: "h"
   icon: mdi:timer-outline
-# Warm-up rates set how early each room's preheat starts: the target ramps up
-# towards comfort at this rate so it arrives at the ready time. Reuben's room
-# (NW facing, 3 external walls) is the slowest. Seeded from Nov 2026 history.
+# Fallback warm-up rates: how early each room's preheat starts (the target
+# ramps up towards comfort at this rate so it arrives at the ready time). Only
+# used until sensor.upstairs_heating_<room>_learned_warmup_rate has 3 heating
+# episodes from the last 7 days. Reuben's room (NW facing, 3 external walls)
+# is the slowest. Seeded from Nov 2026 history.
 upstairs_heating_reuben_warmup_rate:
-  name: "Upstairs Heating - Reuben Warm-up Rate"
+  name: "Upstairs Heating - Reuben Fallback Warm-up Rate"
   min: 0.25
   max: 3
   step: 0.05
@@ -42,7 +44,7 @@ upstairs_heating_reuben_warmup_rate:
   unit_of_measurement: "°C/h"
   icon: mdi:chart-line
 upstairs_heating_genevieve_warmup_rate:
-  name: "Upstairs Heating - Genevieve Warm-up Rate"
+  name: "Upstairs Heating - Genevieve Fallback Warm-up Rate"
   min: 0.25
   max: 3
   step: 0.05
@@ -50,7 +52,7 @@ upstairs_heating_genevieve_warmup_rate:
   unit_of_measurement: "°C/h"
   icon: mdi:chart-line
 upstairs_heating_bedroom_warmup_rate:
-  name: "Upstairs Heating - Bedroom Warm-up Rate"
+  name: "Upstairs Heating - Bedroom Fallback Warm-up Rate"
   min: 0.25
   max: 3
   step: 0.05
