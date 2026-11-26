@@ -1,5 +1,6 @@
-# Targets for the `gaming` probe (gaming_probeset.cfg). One resource per host.
-# Identical in homelab-apps and Home-Assistant-Config; keep them in step.
+# Targets of the `gaming` probe (gaming_probeset.cfg), read through its
+# `file_targets`: one `resource` per host. Identical in homelab-apps and
+# Home-Assistant-Config; keep them in step.
 # Not deployed at Meadow Close: this is a taku.ie-only workload.
 #
 #   name    hostname, resolved by DNS (add `ip:` to pin it)
@@ -13,82 +14,172 @@
 
 resource {
   name: "www.nintendo.com"
-  labels { key: "game" value: "nintendo" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "nintendo"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "accounts.nintendo.com"
-  labels { key: "game" value: "nintendo" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "nintendo"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 # The Switch's own "test connection" endpoints. Plain HTTP on purpose: that's
 # what the console uses, and ctest answers 200 with an `X-Organization: Nintendo`
 # header.
 resource {
   name: "conntest.nintendowifi.net"
-  labels { key: "game" value: "nintendo" }
-  labels { key: "__cp_scheme__" value: "http" }
+  labels {
+    key: "game"
+    value: "nintendo"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "http"
+  }
 }
 resource {
   name: "ctest.cdn.nintendo.net"
-  labels { key: "game" value: "nintendo" }
-  labels { key: "__cp_scheme__" value: "http" }
+  labels {
+    key: "game"
+    value: "nintendo"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "http"
+  }
 }
 
 # Fortnite runs on Epic Games' backend.
 resource {
   name: "www.fortnite.com"
-  labels { key: "game" value: "fortnite" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "fortnite"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "status.epicgames.com"
-  labels { key: "game" value: "fortnite" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "fortnite"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "account-public-service-prod.ol.epicgames.com"
-  labels { key: "game" value: "fortnite" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "fortnite"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "fortnite-public-service-prod11.ol.epicgames.com"
-  labels { key: "game" value: "fortnite" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "fortnite"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "epicgames-download1.akamaized.net"
-  labels { key: "game" value: "fortnite" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "fortnite"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 
 resource {
   name: "www.minecraft.net"
-  labels { key: "game" value: "minecraft" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "minecraft"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "sessionserver.mojang.com"
-  labels { key: "game" value: "minecraft" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "minecraft"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "api.minecraftservices.com"
-  labels { key: "game" value: "minecraft" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "minecraft"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "api.mojang.com"
-  labels { key: "game" value: "minecraft" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "minecraft"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "piston-meta.mojang.com"
-  labels { key: "game" value: "minecraft" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "minecraft"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
 resource {
   name: "resources.download.minecraft.net"
-  labels { key: "game" value: "minecraft" }
-  labels { key: "__cp_scheme__" value: "https" }
+  labels {
+    key: "game"
+    value: "minecraft"
+  }
+  labels {
+    key: "__cp_scheme__"
+    value: "https"
+  }
 }
