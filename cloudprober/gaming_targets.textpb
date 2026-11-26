@@ -1,8 +1,5 @@
-# Targets of the `gaming` probe (gaming_probeset.cfg), one `endpoint` per host.
-# This file is a fragment: gaming_probeset.cfg pulls it in with `include`
-# inside the probe's `targets { }` block, so it is parsed as part of the
-# config (--configtest checks it) and is found relative to the file that
-# includes it, wherever that file sits. Identical in homelab-apps and
+# Targets of the `gaming` probe (gaming_probeset.cfg), read through its
+# `file_targets`: one `resource` per host. Identical in homelab-apps and
 # Home-Assistant-Config; keep them in step.
 # Not deployed at Meadow Close: this is a taku.ie-only workload.
 #
@@ -15,12 +12,12 @@
 # These hostnames were chosen from knowledge, not verified from the authoring
 # sandbox; prune any that turn out dead.
 
-endpoint {
+resource {
   name: "www.nintendo.com"
   labels { key: "game" value: "nintendo" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "accounts.nintendo.com"
   labels { key: "game" value: "nintendo" }
   labels { key: "__cp_scheme__" value: "https" }
@@ -28,70 +25,70 @@ endpoint {
 # The Switch's own "test connection" endpoints. Plain HTTP on purpose: that's
 # what the console uses, and ctest answers 200 with an `X-Organization: Nintendo`
 # header.
-endpoint {
+resource {
   name: "conntest.nintendowifi.net"
   labels { key: "game" value: "nintendo" }
   labels { key: "__cp_scheme__" value: "http" }
 }
-endpoint {
+resource {
   name: "ctest.cdn.nintendo.net"
   labels { key: "game" value: "nintendo" }
   labels { key: "__cp_scheme__" value: "http" }
 }
 
 # Fortnite runs on Epic Games' backend.
-endpoint {
+resource {
   name: "www.fortnite.com"
   labels { key: "game" value: "fortnite" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "status.epicgames.com"
   labels { key: "game" value: "fortnite" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "account-public-service-prod.ol.epicgames.com"
   labels { key: "game" value: "fortnite" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "fortnite-public-service-prod11.ol.epicgames.com"
   labels { key: "game" value: "fortnite" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "epicgames-download1.akamaized.net"
   labels { key: "game" value: "fortnite" }
   labels { key: "__cp_scheme__" value: "https" }
 }
 
-endpoint {
+resource {
   name: "www.minecraft.net"
   labels { key: "game" value: "minecraft" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "sessionserver.mojang.com"
   labels { key: "game" value: "minecraft" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "api.minecraftservices.com"
   labels { key: "game" value: "minecraft" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "api.mojang.com"
   labels { key: "game" value: "minecraft" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "piston-meta.mojang.com"
   labels { key: "game" value: "minecraft" }
   labels { key: "__cp_scheme__" value: "https" }
 }
-endpoint {
+resource {
   name: "resources.download.minecraft.net"
   labels { key: "game" value: "minecraft" }
   labels { key: "__cp_scheme__" value: "https" }

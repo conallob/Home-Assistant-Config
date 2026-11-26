@@ -27,3 +27,18 @@ jobs:
             -v "$PWD/cloudprober:/etc/cloudprober:ro" \
             cloudprober/cloudprober:latest \
             --configtest --config_file=/etc/cloudprober/base.cfg
+
+      - name: Load gaming_targets.textpb
+        run: |
+          # --configtest never reads a file_targets file, so a typo in
+          # gaming_targets.textpb would pass it and leave the probe with no
+          # targets. Run the real base.cfg briefly with the directory mounted
+          # where the add-on has it (base.cfg's $dir), and check every resource
+          # is read.
+          want=$(grep -c '^resource {' cloudprober/gaming_targets.textpb)
+          timeout 15 docker run --rm \
+            -v "$PWD/cloudprober:/homeassistant/cloudprober:ro" \
+            cloudprober/cloudprober:latest \
+            --config_file=/homeassistant/cloudprober/base.cfg > run.log 2>&1 || true
+          cat run.log
+          grep -q "Read $want endpoints" run.log
