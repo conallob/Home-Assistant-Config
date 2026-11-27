@@ -1,0 +1,202 @@
+id: upstairs_heating_controller
+alias: Upstairs Heating - Controller
+description: >-
+  Owns the Reuben, Genevieve and Bedroom TRVs and the upstairs Nest (the zone
+  valve / boiler call). Every 5 minutes it works out each room's target, then
+  compares it with the room's own sensor, not the TRV's (which sits on the
+  radiator and reads high) or the Nest's (which reads ~1.5C above Reuben's room).
+
+
+  Targets, when not in holiday mode (switch.taku_holiday_mode) and outside is
+  at or below input_number.upstairs_heating_outside_max_temp: the target ramps
+  up from setback at the room's warm-up rate (the 7-day median learned by
+  sensor.upstairs_heating_<room>_learned_warmup_rate, or the
+  input_number.upstairs_heating_<room>_warmup_rate fallback until it has 3
+  episodes) so the room reaches comfort (19C)
+  by its "Warm By" time (Reuben and Genevieve 20:00, Bedroom 23:00), then holds
+  comfort for input_number.upstairs_heating_hold_hours (3h). Otherwise the
+  target is setback (16C). Between input_datetime.reuben_room_floor_start and
+  _end (20:00-08:00), Reuben's room never targets below
+  input_number.reuben_room_floor_temp (18C), whatever the weather or holiday
+  mode; this replaces the old "Operation Reuben Lie In". Outside that window
+  it follows the schedule like the other rooms.
+
+
+  A room calls for heat below target - 0.3C and stops at target + 0.2C. While
+  calling, its TRV is boosted 3C above target so the valve stays open; when
+  not, the TRV is set to the target itself, so if Home Assistant stops the TRV
+  falls back to regulating near target on its own sensor. The Nest is set to
+  heat at 22C while any room calls. Otherwise it idles at heat 16C (not
+  off) so it still acts as a failsafe floor for the zone. Writes only happen when
+  a value changes, to spare TRV batteries and avoid churning the Nest (gen2,
+  local via NoLongerEvil over MQTT). When a room
+  starts or stops calling it fires upstairs_heating_room_call (room, call,
+  temperature), which the learned warm-up rate sensors record. The landing and
+  bathroom never call for heat; they get heat only while a bedroom does.
+triggers:
+- trigger: time_pattern
+  minutes: /5
+- trigger: homeassistant
+  event: start
+- trigger: state
+  entity_id:
+  - switch.taku_holiday_mode
+  - input_number.upstairs_heating_comfort_temp
+  - input_number.upstairs_heating_setback_temp
+  - input_number.upstairs_heating_outside_max_temp
+  - input_number.upstairs_heating_hold_hours
+  - input_number.reuben_room_floor_temp
+  - input_datetime.reuben_room_floor_start
+  - input_datetime.reuben_room_floor_end
+  - input_datetime.upstairs_heating_reuben_ready
+  - input_datetime.upstairs_heating_genevieve_ready
+  - input_datetime.upstairs_heating_bedroom_ready
+variables:
+  nest: climate.nest_02aa01ac111507zc
+  nest_call_temp: 22
+  # On the Nest's own sensor, which reads ~1.5C above Reuben's room, so this
+  # sits below the 16C room setback and only calls if something has failed.
+  nest_idle_temp: 16
+  boost: 3
+  comfort: "{{ states('input_number.upstairs_heating_comfort_temp') | float(19) }}"
+  setback: "{{ states('input_number.upstairs_heating_setback_temp') | float(16) }}"
+  hold_h: "{{ states('input_number.upstairs_heating_hold_hours') | float(3) }}"
+  # An unavailable forecast counts as cold, so a weather outage fails warm.
+  outside: "{{ state_attr('weather.home', 'temperature') | float(0) }}"
+  active: >-
+    {{ not is_state('switch.taku_holiday_mode', 'on')
+       and outside <= states('input_number.upstairs_heating_outside_max_temp') | float(10) }}
+  rooms:
+  - name: reuben
+    sensor: sensor.atc_f299_temperature
+    trv: climate.reuben_trv
+    ready: input_datetime.upstairs_heating_reuben_ready
+    rate: input_number.upstairs_heating_reuben_warmup_rate
+    learned: sensor.upstairs_heating_reuben_learned_warmup_rate
+    floor: input_number.reuben_room_floor_temp
+    floor_start: input_datetime.reuben_room_floor_start
+    floor_end: input_datetime.reuben_room_floor_end
+  - name: genevieve
+    sensor: sensor.genevieve_sensor_temperature
+    trv: climate.genevieve_trv
+    ready: input_datetime.upstairs_heating_genevieve_ready
+    rate: input_number.upstairs_heating_genevieve_warmup_rate
+    learned: sensor.upstairs_heating_genevieve_learned_warmup_rate
+    floor: ''
+    floor_start: ''
+    floor_end: ''
+  - name: bedroom
+    sensor: sensor.bedroom_bedroom_sensor_temperature
+    trv: climate.bedroomtrv
+    ready: input_datetime.upstairs_heating_bedroom_ready
+    rate: input_number.upstairs_heating_bedroom_warmup_rate
+    learned: sensor.upstairs_heating_bedroom_learned_warmup_rate
+    floor: ''
+    floor_start: ''
+    floor_end: ''
+  plan: >-
+    {% set ns = namespace(out=[]) %}
+    {% for r in rooms %}
+      {% set t = namespace(v=setback) %}
+      {% if active %}
+        {# Prefer the rate learned over the last 7 days; fall back to the helper #}
+        {% set learned = states(r.learned) | float(0) %}
+        {% set rate = [learned if learned > 0 else states(r.rate) | float(1), 0.1] | max %}
+        {% set ready_s = states(r.ready) if has_value(r.ready) else '20:00:00' %}
+        {# Check yesterday's, today's and tomorrow's ready time so windows can cross midnight #}
+        {% for d in [-1, 0, 1] %}
+          {% set hrs = (today_at(ready_s) + timedelta(days=d) - now()).total_seconds() / 3600 %}
+          {% if hrs > 0 %}
+            {% set t.v = [t.v, comfort - rate * hrs] | max %}
+          {% elif hrs > -hold_h %}
+            {% set t.v = [t.v, comfort] | max %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% if r.floor %}
+        {# Floor window can cross midnight (20:00-08:00) #}
+        {% set fs = today_at(states(r.floor_start) if has_value(r.floor_start) else '20:00:00') %}
+        {% set fe = today_at(states(r.floor_end) if has_value(r.floor_end) else '08:00:00') %}
+        {% set in_floor = (now() >= fs or now() < fe) if fs > fe else (fs <= now() < fe) %}
+        {% if in_floor %}
+          {% set t.v = [t.v, states(r.floor) | float(0)] | max %}
+        {% endif %}
+      {% endif %}
+      {% set target = t.v | round(1) %}
+      {% set cur = states(r.sensor) | float(none) %}
+      {% set boosting = state_attr(r.trv, 'temperature') | float(0) > target + 1 %}
+      {% if cur is none %}
+        {# Room sensor down: let the TRV regulate on its own sensor and follow its demand #}
+        {% set call = is_state_attr(r.trv, 'hvac_action', 'heating') %}
+        {% set sp = target %}
+      {% else %}
+        {% set call = (cur < target + 0.2) if boosting else (cur < target - 0.3) %}
+        {% set sp = target + boost if call else target %}
+      {% endif %}
+      {% set sp = [[((sp * 2) | round) / 2, 5] | max, 28] | min %}
+      {% set ns.out = ns.out + [{'room': r.name, 'trv': r.trv, 'temp': cur,
+                                 'target': target, 'setpoint': sp, 'call': call,
+                                 'was_calling': boosting}] %}
+    {% endfor %}
+    {{ ns.out }}
+  zone_call: "{{ plan | selectattr('call') | list | count > 0 }}"
+actions:
+- repeat:
+    for_each: "{{ plan }}"
+    sequence:
+    - if:
+      - "{{ not is_state(repeat.item.trv, 'heat')
+            or state_attr(repeat.item.trv, 'temperature') | float(0) != repeat.item.setpoint }}"
+      then:
+      - action: climate.set_temperature
+        target:
+          entity_id: "{{ repeat.item.trv }}"
+        data:
+          hvac_mode: heat
+          temperature: "{{ repeat.item.setpoint }}"
+    # Episode start/stop, for the learned warm-up rate sensors.
+    - if:
+      - "{{ repeat.item.call != repeat.item.was_calling and repeat.item.temp is not none }}"
+      then:
+      - event: upstairs_heating_room_call
+        event_data:
+          room: "{{ repeat.item.room }}"
+          call: "{{ repeat.item.call }}"
+          temperature: "{{ repeat.item.temp }}"
+- if:
+  - "{{ zone_call }}"
+  then:
+  # Away/eco presets cap the setpoint, so force home while heating.
+  - if:
+    - "{{ state_attr(nest, 'preset_mode') != 'home' }}"
+    then:
+    - action: climate.set_preset_mode
+      target:
+        entity_id: "{{ nest }}"
+      data:
+        preset_mode: home
+  - if:
+    - "{{ not is_state(nest, 'heat')
+          or state_attr(nest, 'temperature') | float(0) != nest_call_temp }}"
+    then:
+    - action: climate.set_temperature
+      target:
+        entity_id: "{{ nest }}"
+      data:
+        hvac_mode: heat
+        temperature: "{{ nest_call_temp }}"
+  else:
+  # Idle, not off: heat at a low setpoint keeps the Nest as a failsafe floor
+  # for the whole zone if Home Assistant or this automation stops.
+  - if:
+    - "{{ not is_state(nest, 'heat')
+          or state_attr(nest, 'temperature') | float(0) != nest_idle_temp }}"
+    then:
+    - action: climate.set_temperature
+      target:
+        entity_id: "{{ nest }}"
+      data:
+        hvac_mode: heat
+        temperature: "{{ nest_idle_temp }}"
+mode: single
+max_exceeded: silent

@@ -1,0 +1,15 @@
+upstairs_heating_reuben_ready:
+  name: "Upstairs Heating - Reuben Warm By"
+  has_date: false
+  has_time: true
+  initial: "20:00:00"
+upstairs_heating_genevieve_ready:
+  name: "Upstairs Heating - Genevieve Warm By"
+  has_date: false
+  has_time: true
+  initial: "20:00:00"
+upstairs_heating_bedroom_ready:
+  name: "Upstairs Heating - Bedroom Warm By"
+  has_date: false
+  has_time: true
+  initial: "23:00:00"

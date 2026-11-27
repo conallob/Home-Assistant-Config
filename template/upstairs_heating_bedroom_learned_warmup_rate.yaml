@@ -1,0 +1,61 @@
+# Learns how fast Bedroom's room warms while "Upstairs Heating - Controller"
+# is heating it. The controller fires upstairs_heating_room_call when the room
+# starts (call: true) and stops (call: false) calling for heat; each completed
+# episode becomes one sample of (temperature rise / hours). The state is the
+# median of the samples from the last 7 days, or unknown with fewer than 3,
+# in which case the controller uses input_number.upstairs_heating_bedroom_warmup_rate.
+# Templates here read the previous this.attributes, so the state lags a new
+# sample by up to an hour (the next time_pattern run).
+triggers:
+- trigger: event
+  event_type: upstairs_heating_room_call
+  event_data:
+    room: bedroom
+# Ages old samples out even when no episodes happen.
+- trigger: time_pattern
+  hours: /1
+sensor:
+- name: Upstairs Heating - Bedroom Learned Warmup Rate
+  unique_id: upstairs_heating_bedroom_learned_warmup_rate
+  unit_of_measurement: °C/h
+  state_class: measurement
+  icon: mdi:chart-line
+  state: >-
+    {% set cutoff = now() - timedelta(days=7) %}
+    {% set ns = namespace(r=[]) %}
+    {% for x in this.attributes.get('samples') or [] %}
+      {% if as_datetime(x[0]) > cutoff %}{% set ns.r = ns.r + [x[1]] %}{% endif %}
+    {% endfor %}
+    {% set r = ns.r | sort %}
+    {% set n = r | count %}
+    {{ ((r[(n - 1) // 2] + r[n // 2]) / 2) | round(2) if n >= 3 else none }}
+  attributes:
+    episode_start: >-
+      {% if trigger.platform == 'event' %}
+        {{ now().isoformat() if trigger.event.data.call else none }}
+      {% else %}
+        {{ this.attributes.get('episode_start') }}
+      {% endif %}
+    episode_start_temp: >-
+      {% if trigger.platform == 'event' %}
+        {{ trigger.event.data.temperature if trigger.event.data.call else none }}
+      {% else %}
+        {{ this.attributes.get('episode_start_temp') }}
+      {% endif %}
+    samples: >-
+      {% set cutoff = now() - timedelta(days=7) %}
+      {% set ns = namespace(s=[]) %}
+      {% for x in this.attributes.get('samples') or [] %}
+        {% if as_datetime(x[0]) > cutoff %}{% set ns.s = ns.s + [x] %}{% endif %}
+      {% endfor %}
+      {% set start = this.attributes.get('episode_start') %}
+      {% if trigger.platform == 'event' and not trigger.event.data.call and start %}
+        {% set hrs = (now() - as_datetime(start)).total_seconds() / 3600 %}
+        {% set rise = trigger.event.data.temperature | float(0)
+                      - this.attributes.get('episode_start_temp') | float(0) %}
+        {# Ignore episodes too short or too flat to say anything, and outliers #}
+        {% if 0.33 <= hrs <= 6 and rise >= 0.2 and 0.1 <= rise / hrs <= 5 %}
+          {% set ns.s = ns.s + [[now().isoformat(), (rise / hrs) | round(2)]] %}
+        {% endif %}
+      {% endif %}
+      {{ ns.s }}

@@ -1,0 +1,14 @@
+# Window in which Reuben's room is held at or above
+# input_number.reuben_room_floor_temp (applied by "Upstairs Heating -
+# Controller", alerted on by "Reuben Room - Minimum Temperature Guard").
+# Crosses midnight. Outside it the room follows the normal schedule/setback.
+reuben_room_floor_start:
+  name: "Reuben Room - Minimum Temperature From"
+  has_date: false
+  has_time: true
+  initial: "20:00:00"
+reuben_room_floor_end:
+  name: "Reuben Room - Minimum Temperature Until"
+  has_date: false
+  has_time: true
+  initial: "08:00:00"
