@@ -1,0 +1,51 @@
+id: '1779000000002'
+alias: Upstairs Heating - Live Activity End
+description: >
+  Ends the upstairs heating Live Activity once
+  binary_sensor.upstairs_heating_live_activity goes off (rooms back above the
+  minimum and, in the Lie In window, Reuben's room at target; or the window
+  ended). Shows a green "All set" card with the temperatures for 10 minutes,
+  then clears it, unless the activity became needed again meanwhile.
+  clear_notification is harmless if no activity is open.
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.upstairs_heating_live_activity
+    to: 'off'
+  # Restart-mode trick: coming back on cancels the pending clear below.
+  - trigger: state
+    entity_id: binary_sensor.upstairs_heating_live_activity
+    to: 'on'
+conditions:
+  - condition: state
+    entity_id: binary_sensor.upstairs_heating_live_activity
+    state: 'off'
+actions:
+  - action: notify.conall_phone
+    data:
+      title: "Upstairs heating"
+      message: >-
+        All set · Reuben {{ states('sensor.atc_f299_temperature') | float(0) | round(1) }}°
+        · Genevieve {{ states('sensor.genevieve_sensor_temperature') | float(0) | round(1) }}°
+        · Bedroom {{ states('sensor.bedroom_bedroom_sensor_temperature') | float(0) | round(1) }}°
+      data:
+        tag: upstairs_heating
+        live_update: true
+        silent: true
+        progress: 1
+        progress_max: 1
+        critical_text: "OK"
+        notification_icon: mdi:radiator
+        notification_icon_color: "#4CAF50"
+        color: "#4CAF50"
+  - delay: "00:10:00"
+  - if:
+      - condition: state
+        entity_id: binary_sensor.upstairs_heating_live_activity
+        state: 'off'
+    then:
+      - action: notify.conall_phone
+        data:
+          message: clear_notification
+          data:
+            tag: upstairs_heating
+mode: restart

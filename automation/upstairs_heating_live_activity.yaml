@@ -1,0 +1,73 @@
+id: '1779000000001'
+alias: Upstairs Heating - Live Activity
+description: >
+  Shows Reuben's, Genevieve's and the Bedroom's temperatures (with a flame for
+  rooms whose TRV is heating) as an iOS Live Activity (Android: Live Update)
+  while binary_sensor.upstairs_heating_live_activity is on. The progress bar
+  and big number follow the coldest of the three rooms; the card is orange
+  while any room is under the minimum, blue otherwise. Ended by "Upstairs
+  Heating - Live Activity End". Needs Core 2026.7.0+ and companion app 2026.9.0+
+  / iOS 17.2+ on the phone behind notify.conall_phone. Pushes are throttled on
+  purpose (one per cooldown): iOS drops frequent Live Activity updates and
+  limits how often new ones can start.
+triggers:
+  - trigger: state
+    entity_id:
+      - sensor.atc_f299_temperature
+      - sensor.genevieve_sensor_temperature
+      - sensor.bedroom_bedroom_sensor_temperature
+  - trigger: state
+    entity_id: binary_sensor.upstairs_heating_live_activity
+    to: 'on'
+conditions:
+  - condition: state
+    entity_id: binary_sensor.upstairs_heating_live_activity
+    state: 'on'
+variables:
+  rooms:
+    - name: Reuben
+      temp: sensor.atc_f299_temperature
+      trv: climate.reuben_trv
+    - name: Genevieve
+      temp: sensor.genevieve_sensor_temperature
+      trv: climate.genevieve_trv
+    - name: Bedroom
+      temp: sensor.bedroom_bedroom_sensor_temperature
+      trv: climate.bedroomtrv
+  temps: >-
+    {{ rooms | map(attribute='temp') | map('states') | select('is_number')
+       | map('float') | list }}
+  coldest: "{{ temps | min if temps else 0 }}"
+  target: "{{ states('input_number.reuben_room_floor_setpoint') | float(20) }}"
+  floor: "{{ states('input_number.reuben_room_floor_temp') | float(18) }}"
+  # Progress bar covers 15C .. target in 0.1C steps (integer progress only)
+  base: 15
+actions:
+  - action: notify.conall_phone
+    data:
+      title: "Upstairs heating"
+      message: >-
+        {% for r in rooms -%}
+        {{ r.name }} {{ (states(r.temp) | float | round(1) ~ '°') if states(r.temp) | is_number else '?' }}
+        {{- ' 🔥' if is_state_attr(r.trv, 'hvac_action', 'heating') else '' }}
+        {{- ' · ' if not loop.last else '' }}
+        {%- endfor %}
+      data:
+        tag: upstairs_heating
+        live_update: true
+        # Quiet pushes: lower priority, iOS may batch them, no sound
+        silent: true
+        critical_text: "{{ coldest | round(1) }}°"
+        progress: >-
+          {{ [[((coldest - base) * 10) | round(0) | int, 0] | max,
+              ((target - base) * 10) | round(0) | int] | min }}
+        progress_max: "{{ ((target - base) * 10) | round(0) | int }}"
+        notification_icon: mdi:radiator
+        notification_icon_color: "{{ '#FF9800' if coldest < floor else '#2196F3' }}"
+        color: "{{ '#FF9800' if coldest < floor else '#2196F3' }}"
+        url: /lovelace-radiators
+  # Cooldown after the push: further sensor changes are ignored until it ends
+  # (mode: single), so chatty BLE sensors can't flood the Live Activity.
+  - delay: "00:05:00"
+mode: single
+max_exceeded: silent
