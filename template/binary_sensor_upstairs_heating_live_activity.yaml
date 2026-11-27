@@ -1,0 +1,26 @@
+# Drives the upstairs heating Live Activity (see
+# automation/upstairs_heating_live_activity*.yaml). On while:
+#  - Operation Reuben Lie In is warming Reuben's room (04:00-07:30 and the room
+#    is below the target), or
+#  - any of Reuben's, Genevieve's or the Bedroom's rooms is below the minimum.
+# Hysteresis (0.5C, using its own previous state) plus a 2 minute delay_off
+# stop it flapping, because every flap would start a new Live Activity and
+# iOS limits how often those can be started.
+binary_sensor:
+  - name: "Upstairs Heating Live Activity"
+    unique_id: upstairs_heating_live_activity
+    delay_off:
+      minutes: 2
+    icon: mdi:radiator
+    state: >
+      {% set r = states('sensor.atc_f299_temperature') | float(none) %}
+      {% set g = states('sensor.genevieve_sensor_temperature') | float(none) %}
+      {% set b = states('sensor.bedroom_bedroom_sensor_temperature') | float(none) %}
+      {% set sp = states('input_number.reuben_room_floor_setpoint') | float(20) %}
+      {% set fl = states('input_number.reuben_room_floor_temp') | float(18) %}
+      {% set on = is_state('binary_sensor.upstairs_heating_live_activity', 'on') %}
+      {% set window = '04:00' <= now().strftime('%H:%M') < '07:30' %}
+      {% set temps = [r, g, b] | reject('none') | list %}
+      {% set cold = temps | select('lt', fl + (0.5 if on else 0)) | list | length > 0 %}
+      {% set warming = window and r is not none and r < sp - (0 if on else 0.5) %}
+      {{ cold or warming }}
