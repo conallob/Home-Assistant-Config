@@ -39,6 +39,7 @@ variables:
   # (they reference the others).
   reload_services:
     input_select: input_select.reload
+    input_text: input_text.reload
     input_number: input_number.reload
     input_datetime: input_datetime.reload
     timer: timer.reload

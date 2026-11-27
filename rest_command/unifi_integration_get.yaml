@@ -1,0 +1,10 @@
+# GET against the UniFi Network Integration API on the UDM Pro SE.
+# Usage: rest_command.unifi_integration_get with data {path: "sites"}.
+# API key: UniFi Network > Settings > Control Plane > Integrations.
+# 192.168.1.1 is assumed to be the UDM's address - adjust if it differs.
+url: "https://192.168.1.1/proxy/network/integration/v1/{{ path }}"
+method: GET
+verify_ssl: false
+headers:
+  X-API-KEY: !secret unifi_api_key
+  Accept: "application/json"

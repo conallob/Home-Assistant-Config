@@ -49,6 +49,7 @@ jobs:
               rest/*) add rest ;;
               rest_command/*) add rest_command ;;
               input_select/*) add input_select ;;
+              input_text/*) add input_text ;;
               input_number/*) add input_number ;;
               input_datetime/*) add input_datetime ;;
               timer/*) add timer ;;

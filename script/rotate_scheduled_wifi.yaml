@@ -1,0 +1,81 @@
+alias: "Rotate Scheduled WiFi Passphrase"
+description: >-
+  Generates a new random passphrase for the "Scheduled" SSID, pushes it to the
+  UDM Pro SE via the UniFi Network Integration API (GET the broadcast, change
+  securityConfiguration.passphrase, PUT it back), re-reads it to verify, then
+  stores it in input_text.scheduled_wifi_passphrase for the QR payload sensor.
+  Run daily by automation/scheduled_wifi_rotation.yaml; can also be run by hand
+  to cut a device off immediately. Changing the passphrase disconnects every
+  client on the SSID.
+mode: single
+fields: {}
+sequence:
+  - variables:
+      ssid: Scheduled
+      # No look-alike characters (0/O, 1/l/I); alphanumeric only so the WiFi
+      # QR payload needs no escaping.
+      alphabet: "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+      new_passphrase: >-
+        {%- set a = alphabet | list -%}
+        {%- for _ in range(16) -%}{{ a | random }}{%- endfor -%}
+  - action: rest_command.unifi_integration_get
+    data:
+      path: sites
+    response_variable: sites
+  - variables:
+      site_id: >-
+        {%- set s = sites.content.data -%}
+        {%- set d = s | selectattr('internalReference', 'eq', 'default') | list -%}
+        {{- (d[0] if d else s[0]).id -}}
+  - action: rest_command.unifi_integration_get
+    data:
+      path: "sites/{{ site_id }}/wifi/broadcasts"
+    response_variable: broadcasts
+  - variables:
+      matches: "{{ broadcasts.content.data | selectattr('name', 'eq', ssid) | list }}"
+  - if:
+      - condition: template
+        value_template: "{{ matches | length != 1 }}"
+    then:
+      - stop: "Expected exactly one WiFi broadcast named '{{ ssid }}', found {{ matches | length }}"
+        error: true
+  - variables:
+      broadcast_path: "sites/{{ site_id }}/wifi/broadcasts/{{ matches[0].id }}"
+  - action: rest_command.unifi_integration_get
+    data:
+      path: "{{ broadcast_path }}"
+    response_variable: current
+  - action: rest_command.unifi_integration_put
+    data:
+      path: "{{ broadcast_path }}"
+      # PUT takes the whole object back, minus the read-only id/metadata.
+      body: >-
+        {%- set b = dict(current.content.items() | rejectattr('0', 'in', ['id', 'metadata']) | list) -%}
+        {{- b | combine({'securityConfiguration': {'passphrase': new_passphrase}}, recursive=true) -}}
+    response_variable: put_result
+  # The controller now has the new passphrase, so record it straight away; the
+  # verification below only raises an alert if the read-back disagrees.
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.scheduled_wifi_passphrase
+    data:
+      value: "{{ new_passphrase }}"
+  - action: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.scheduled_wifi_last_rotated
+    data:
+      datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  - action: rest_command.unifi_integration_get
+    data:
+      path: "{{ broadcast_path }}"
+    response_variable: verify
+  - if:
+      - condition: template
+        value_template: "{{ verify.content.securityConfiguration.passphrase != new_passphrase }}"
+    then:
+      - action: notify.conall_phone
+        data:
+          title: Scheduled WiFi rotation needs checking
+          message: >-
+            UniFi did not read back the new passphrase for '{{ ssid }}'. The QR
+            payload may not match the live password.
