@@ -1,0 +1,66 @@
+id: '1779000000001'
+alias: Reuben Room - Warm-up Live Activity
+description: >
+  Shows Reuben's room warming up as an iOS Live Activity (Android: Live
+  Update) on the phone: current temperature, a progress bar towards the target
+  and an icon/colour that goes orange -> blue -> green. Runs while Operation
+  Reuben Lie In is holding the room warm (04:00-07:30), or whenever the room is
+  under the minimum-temperature floor. Ended by "Reuben Room - Warm-up Live
+  Activity End". Needs Home Assistant Core 2026.7.0+, and companion app
+  2026.9.0+ / iOS 17.2+ on the phone behind notify.conall_phone.
+  Pushes are throttled on purpose: iOS drops frequent Live Activity updates
+  and limits how often new activities can start, so this sends at most one
+  update per cooldown, and only restarts once the room has cooled below
+  (target - 0.5C) after reaching the target.
+triggers:
+  - trigger: state
+    entity_id: sensor.atc_f299_temperature
+conditions:
+  - condition: template
+    value_template: "{{ states('sensor.atc_f299_temperature') | is_number }}"
+  # Still warming up (hysteresis stops start/stop flapping around the target)
+  - condition: template
+    value_template: >
+      {{ states('sensor.atc_f299_temperature') | float
+         < states('input_number.reuben_room_floor_setpoint') | float - 0.5 }}
+  # Only while Lie In is holding the room warm, or the room is under the floor
+  - condition: or
+    conditions:
+      - condition: time
+        after: '04:00:00'
+        before: '07:30:00'
+      - condition: numeric_state
+        entity_id: sensor.atc_f299_temperature
+        below: input_number.reuben_room_floor_temp
+variables:
+  temp: "{{ states('sensor.atc_f299_temperature') | float }}"
+  target: "{{ states('input_number.reuben_room_floor_setpoint') | float(20) }}"
+  floor: "{{ states('input_number.reuben_room_floor_temp') | float(18) }}"
+  # Progress bar covers 15C .. 20C-ish in 0.1C steps (integer progress only)
+  base: 15
+actions:
+  - action: notify.conall_phone
+    data:
+      title: "Reuben's room"
+      message: >-
+        {{ temp | round(1) }}°C, heating to {{ target | round(0) | int }}°C
+        {{ '(below ' ~ (floor | round(0) | int) ~ '°C minimum)' if temp < floor else '' }}
+      data:
+        tag: reuben_room_warmup
+        live_update: true
+        # Quiet pushes: lower priority, iOS may batch them, no sound
+        silent: true
+        critical_text: "{{ temp | round(1) }}°"
+        progress: >-
+          {{ [[((temp - base) * 10) | round(0) | int, 0] | max,
+              ((target - base) * 10) | round(0) | int] | min }}
+        progress_max: "{{ ((target - base) * 10) | round(0) | int }}"
+        notification_icon: mdi:radiator
+        notification_icon_color: "{{ '#FF9800' if temp < floor else '#2196F3' }}"
+        color: "{{ '#FF9800' if temp < floor else '#2196F3' }}"
+        url: /lovelace-radiators
+  # Cooldown after the push: further sensor changes are ignored until it ends
+  # (mode: single), so a chatty BLE sensor can't flood the Live Activity.
+  - delay: "00:05:00"
+mode: single
+max_exceeded: silent
